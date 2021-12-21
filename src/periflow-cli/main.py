@@ -1,7 +1,3 @@
-import os
-from pathlib import Path
-from typing import Union
-
 import typer
 import requests
 import tabulate
