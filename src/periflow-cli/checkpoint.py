@@ -1,28 +1,24 @@
-from typing import List, Optional
+"""CLI for Checkpoint
+"""
+from typing import Optional
 
-import requests
+import tabulate
 import typer
 
-from utils import get_uri, auto_token_refresh, get_auth_header
-
 import autoauth
+
+from utils import get_group_id, get_uri
 
 app = typer.Typer()
 
 
 @app.command("list", help="List all credentials that belong to the group.")
-def checkpoint_list(file: List[str] = typer.Option(...),
-                    category: Optional[str] = typer.Option(None),
+def checkpoint_list(category: Optional[str] = typer.Option(None),
                     cursor: Optional[str] = typer.Option(None),
                     limit: Optional[int] = typer.Option(None)):
-    print("list", file, category)
-    return
-    response = autoauth.get(get_uri("user/group"))
-    if response.status_code != 200:
-        typer.echo(response.text)
-        typer.Exit(1)
-
-    groups = response.json()["results"]
+    """List all checkpoints that belong to the user's group
+    """
+    group_id = get_group_id()
     request_data = {}
 
     if category is not None:
@@ -32,41 +28,51 @@ def checkpoint_list(file: List[str] = typer.Option(...),
     if limit is not None:
         request_data.update({"limit": limit})
 
-    checkpoints = []
-    for group in groups:
-        request_data.update({"group_id": group["id"]})
-        response = autoauth.get(get_uri("checkpoint/"), json=request_data)
-        if response.status_code != 200:
-            typer.echo(response.text)
-            typer.Exit(1)
-        checkpoints += response.json()["results"]
+    request_data.update({"group_id": group_id})
+    response = autoauth.get(get_uri("checkpoint/"), json=request_data)
+    if response.status_code != 200:
+        typer.secho(f"Cannot retrieve checkpoints. Error code = {response.status_code} detail = {response.text}")
+        typer.Exit(1)
+    checkpoints = response.json()["results"]
+    next_cursor = response.json()["next_cursor"]
 
-    typer.echo(checkpoints)
+    headers = ["id", "category", "vendor", "storage_name", "iteration", "created_at"]
+    results = []
+    for checkpoint in checkpoints:
+        results.append([checkpoint[header] for header in headers])
+
+    typer.echo(f"Cursor: {next_cursor}")
+    typer.echo(tabulate.tabulate(results, headers=headers))
 
 
-@auto_token_refresh
-def try_create():
-    pass
+@app.command("view")
+def checkpoint_detail(checkpoint_id: str = typer.Option(...)):
+    response = autoauth.get(get_uri(f"checkpoint/{checkpoint_id}/"))
+    if response.status_code != 200:
+        typer.secho(f"Cannot retrieve checkpoint. Error code = {response.status_code} detail = {response.text}")
+        typer.Exit(1)
+
+    checkpoint_json = response.json()
+    typer.echo(f"id: {checkpoint_json['id']}")
+    typer.echo(f"category: {checkpoint_json['category']}")
+    typer.echo(f"vendor: {checkpoint_json['vendor']}")
 
 
+
+# FIXME (TB): which is better design?
+# 1. getting files as positional argument
+#   pf checkpoint file1 file2 ... fileN --category .. --cursor .. --limit ..
+# 2. getting files as repetitive keyword arguments
+#   pf checkpoint --files file1 --files file2 ... --files fileN --category ..
 @app.command("create", help="Create the credential.")
 def checkpoint_create():
     print("create")
-
-
-@auto_token_refresh
-def try_update():
-    pass
 
 
 @app.command("update", help="Update the existing credential.")
 def checkpoint_update():
     print("update")
 
-
-@auto_token_refresh
-def try_delete():
-    pass
 
 
 @app.command("delete", help="Delete the existing credential.")

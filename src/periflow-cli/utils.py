@@ -1,11 +1,13 @@
-import typing
-from typing import Union, Callable
-from pathlib import Path
 import os
 import functools
 
+from pathlib import Path
+from typing import Callable, List, Union
+
 import typer
 import requests
+
+import autoauth
 
 
 # Variables
@@ -65,3 +67,22 @@ def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable:
 
 def get_auth_header() -> dict:
     return {"Authorization": f"Bearer {get_token('access')}"}
+
+
+def get_group_id() -> int:
+    r = autoauth.get(get_uri("user/group/"))
+    if r.status_code != 200:
+        typer.secho(f"Cannot acquire group info. Error Code = {r.status_code} detail = {r.text}")
+        typer.Exit(1)
+    groups = r.json()["results"]
+    if len(groups) == 0:
+        typer.secho("You are not assigned to any group... Please contact to admin",
+                    err=True,
+                    fg=typer.colors.RED)
+        typer.Exit(1)
+    if len(groups) > 1:
+        typer.secho("Currently we do not support users with more than two groups... Please contact admin",
+                    err=True,
+                    fg=typer.colors.RED)
+        typer.Exit(1)
+    return groups[0]['id']

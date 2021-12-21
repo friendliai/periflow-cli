@@ -1,35 +1,18 @@
-import typer
 from typing import Optional
 
-from utils import get_uri
-import autoauth
 import tabulate
+import typer
+
+import autoauth
+
+from utils import get_uri, get_group_id
 
 app = typer.Typer()
 
 
-def _get_group_id():
-    r = autoauth.get(get_uri("user/group/"))
-    if r.status_code != 200:
-        typer.secho(f"Cannot acquire group info. Error Code = {r.status_code} detail = {r.text}")
-        typer.Exit(1)
-    groups = r.json()["results"]
-    if len(groups) == 0:
-        typer.secho("You are not assigned to any group... Please contact to admin",
-                    err=True,
-                    fg=typer.colors.RED)
-        typer.Exit(1)
-    if len(groups) > 1:
-        typer.secho("Currently we do not support users with more than two groups... Please contact admin",
-                    err=True,
-                    fg=typer.colors.RED)
-        typer.Exit(1)
-    return groups[0]['id']
-
-
 @app.command()
 def list():
-    group_id = _get_group_id()
+    group_id = get_group_id()
     results = [["id", "name", "vendor", "storage_name"]]
     datastores = autoauth.get(get_uri(f"group/{group_id}/datastore/")).json()
 
@@ -44,7 +27,7 @@ def create(name: str = typer.Option(...),
            storage_name: str = typer.Option(...),
            credential_id: str = typer.Option(...)):
 
-    group_id = _get_group_id()
+    group_id = get_group_id()
 
     request_json = {
         "name": name,
@@ -75,7 +58,7 @@ def update(datastore_id: str = typer.Option(...),
            storage_name: Optional[str] = typer.Option(None),
            credential_id: Optional[str] = typer.Option(None)):
 
-    group_id = _get_group_id()
+    group_id = get_group_id()
 
     request_json = {}
     if name is not None:
@@ -108,7 +91,7 @@ def update(datastore_id: str = typer.Option(...),
 @app.command()
 def delete(datastore_id: str = typer.Option(...)):
 
-    group_id = _get_group_id()
+    group_id = get_group_id()
 
     r = autoauth.get(get_uri(f"group/{group_id}/datastore/{datastore_id}"))
     if r.status_code == 200:
