@@ -5,11 +5,13 @@ from typing import Union
 import typer
 import requests
 import tabulate
+import datastore
 
 from utils import get_uri, update_token, get_auth_header
 import autoauth
 
 app = typer.Typer()
+app.add_typer(datastore.app, name="datastore")
 
 
 @app.command()
