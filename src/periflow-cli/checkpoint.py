@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 import requests
 import typer
@@ -11,9 +11,12 @@ app = typer.Typer()
 
 
 @app.command("list", help="List all credentials that belong to the group.")
-def checkpoint_list(category: Optional[str] = typer.Option(None),
-         cursor: Optional[str] = typer.Option(None),
-         limit: Optional[int] = typer.Option(None)):
+def checkpoint_list(file: List[str] = typer.Option(...),
+                    category: Optional[str] = typer.Option(None),
+                    cursor: Optional[str] = typer.Option(None),
+                    limit: Optional[int] = typer.Option(None)):
+    print("list", file, category)
+    return
     response = autoauth.get(get_uri("user/group"))
     if response.status_code != 200:
         typer.echo(response.text)
