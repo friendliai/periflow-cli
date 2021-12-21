@@ -1,6 +1,4 @@
 import typer
-import yaml
-from pathlib import Path
 from typing import Optional
 
 from utils import get_uri
