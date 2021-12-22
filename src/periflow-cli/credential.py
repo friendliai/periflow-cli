@@ -98,7 +98,9 @@ def delete(cred_id: str = typer.Option(...)):
     if r.status_code == 204:
         typer.echo(f"Successfully deleted credential ID = {cred_id}")
     else:
-        typer.echo(r.json())
+        typer.secho(f"Delete failed... Error Code = {r.status_code}, Detail = {r.text}",
+                    err=True,
+                    fg=typer.colors.RED)
 
 
 if __name__ == '__main__':
