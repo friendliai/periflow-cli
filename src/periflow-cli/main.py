@@ -1,13 +1,16 @@
 import typer
 import requests
 import tabulate
-import datastore
 
 from utils import get_uri, update_token, get_auth_header
 import autoauth
 
+import datastore
+import credential
+
 app = typer.Typer()
 app.add_typer(datastore.app, name="datastore")
+app.add_typer(credential.app, name="credential")
 
 
 @app.command()
