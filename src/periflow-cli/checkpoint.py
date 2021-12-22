@@ -1,6 +1,6 @@
 """CLI for Checkpoint
 """
-from typing import Optional
+from typing import List, Optional
 
 import tabulate
 import typer
@@ -12,7 +12,7 @@ from utils import get_group_id, get_uri
 app = typer.Typer()
 
 
-@app.command("list", help="List all credentials that belong to the group.")
+@app.command("list")
 def checkpoint_list(category: Optional[str] = typer.Option(None),
                     cursor: Optional[str] = typer.Option(None),
                     limit: Optional[int] = typer.Option(None)):
@@ -47,6 +47,8 @@ def checkpoint_list(category: Optional[str] = typer.Option(None),
 
 @app.command("view")
 def checkpoint_detail(checkpoint_id: str = typer.Option(...)):
+    """Show details of the given checkpoint_id
+    """
     response = autoauth.get(get_uri(f"checkpoint/{checkpoint_id}/"))
     if response.status_code != 200:
         typer.secho(f"Cannot retrieve checkpoint. Error code = {response.status_code} detail = {response.text}")
@@ -56,7 +58,15 @@ def checkpoint_detail(checkpoint_id: str = typer.Option(...)):
     typer.echo(f"id: {checkpoint_json['id']}")
     typer.echo(f"category: {checkpoint_json['category']}")
     typer.echo(f"vendor: {checkpoint_json['vendor']}")
-
+    typer.echo(f"iteration: {checkpoint_json['iteration']}")
+    typer.echo(f"created_at: {checkpoint_json['created_at']}")
+    typer.echo("files:")
+    headers = ["name", "path", "mtime", "size"]
+    results = []
+    for file in checkpoint_json['files']:
+        results.append([file[header] for header in headers])
+    headers[2] = "modified time"
+    typer.echo(tabulate.tabulate(results, headers=headers))
 
 
 # FIXME (TB): which is better design?
