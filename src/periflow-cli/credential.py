@@ -1,13 +1,12 @@
+from pathlib import Path
 from typing import Optional, List, Dict
 
 import tabulate
 import typer
-import requests
 import yaml
-from pathlib import Path
 
-from utils import get_uri
 import autoauth
+from utils import get_uri
 
 
 app = typer.Typer()
@@ -23,9 +22,9 @@ def _print_cred_list(cred_list: List[Dict]):
 
 @app.command()
 def create(cred_type: str = typer.Option(...),
-                     name: str = typer.Option(...),
-                     yaml_path: str = typer.Option(...),
-                     type_version: int = typer.Option(1)):
+           name: str = typer.Option(...),
+           yaml_path: str = typer.Option(...),
+           type_version: int = typer.Option(1)):
     request_data = {
         "type": cred_type,
         "name": name,
@@ -94,7 +93,7 @@ def update(cred_id: str = typer.Option(...),
 
 @app.command()
 def delete(cred_id: str = typer.Option(...)):
-    r = requests.delete(get_uri(f"credential/{cred_id}/"))
+    r = autoauth.delete(get_uri(f"credential/{cred_id}/"))
     if r.status_code == 204:
         typer.echo(f"Successfully deleted credential ID = {cred_id}")
     else:

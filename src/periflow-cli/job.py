@@ -1,13 +1,16 @@
-import tabulate
-import typer
-import requests
-import yaml
-import zipfile
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
+import json
+import time
+import zipfile
+
+import tabulate
+import typer
+import yaml
 
 import autoauth
-from utils import get_uri, auto_token_refresh, get_auth_header
+from utils import get_uri
 
 app = typer.Typer()
 template_app = typer.Typer()
@@ -17,26 +20,50 @@ app.add_typer(template_app, name="template")
 app.add_typer(log_app, name="log")
 
 
-def zip_dir(dir_path: Path, zip_path: Path):
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zip_file:
+def _zip_dir(dir_path: Path, zip_path: Path):
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_LZMA) as zip_file:
         for e in dir_path.rglob("*"):
-            zip_file.write(e, e.relative_to(dir_path))
+            zip_file.write(e, e.relative_to(dir_path.parent))
 
 
 @app.command()
 def run(vm_config_id: int = typer.Option(...),
-        config_path: str = typer.Option(...),
+        config_file: str = typer.Option(...),
         num_desired_devices: int = typer.Option(1),
-        workspace_path: Optional[str] = typer.Option(None),
+        workspace_dir: Optional[str] = typer.Option(None),
         data_store_name: Optional[str] = typer.Option(None)):
+    # TODO: Support template.
     request_data = {
         "vm_config_id": vm_config_id
     }
-    config: dict = yaml.safe_load(Path(config_path).open("r"))
+
+    config: dict = yaml.safe_load(Path(config_file).open("r"))
     for k, v in config.items():
         request_data.update({k: v})
-    r = autoauth.post(get_uri("job/"), json=request_data)
-    typer.echo(r.text)
+    files = None
+    if workspace_dir is not None:
+        if workspace_dir.endswith("/"):
+            workspace_dir = workspace_dir[:-1]
+        assert not workspace_dir.endswith("/")
+        workspace = Path(workspace_dir)
+        if not workspace.is_dir():
+            typer.secho(f"Specified workspace is not directory...",
+                        err=True,
+                        fg=typer.colors.RED)
+            typer.Exit(1)
+        workspace_zip = Path(workspace_dir + ".zip")
+        _zip_dir(workspace, workspace_zip)
+        files = {'workspace_zip': ('workspace.zip', workspace_zip.open('rb'))}
+    r = autoauth.post(get_uri("job/"), data={"data": json.dumps(request_data)}, files=files)
+    if r.status_code == 201:
+        headers = ["id", "workspace_signature", "workspace_id"]
+        typer.echo(tabulate.tabulate([[r.json()["id"],
+                                       r.json()["workspace_signature"],
+                                       r.json()["workspace_id"]]], headers=headers))
+    else:
+        typer.secho(f"Failed to run the specified job! Error Code = {r.status_code} Detail = {r.text}",
+                    err=True,
+                    fg=typer.colors.RED)
 
 
 @app.command()
@@ -141,22 +168,79 @@ def template_view(template_id: int = typer.Option(...)):
     typer.echo(r.text)
 
 
+# TODO: Implement since/until if necessary
 @log_app.command("view")
 def log_view(job_id: int = typer.Option(...),
-             ascending: bool = typer.Option(False),
-             limit: Optional[int] = typer.Option(None),
+             num_lines: int = typer.Option(100),
+             pattern: Optional[str] = typer.Option(None),
              log_type: Optional[str] = typer.Option(None),
+             head: bool = typer.Option(False),
+             export_path: Optional[str] = typer.Option(None),
+             follow: bool = typer.Option(False)
              ):
-    request_data = {
-        "ascending": ascending
-    }
-    if limit is not None:
-        request_data["limit"] = limit
+    if num_lines <= 0 or num_lines > 10000:
+        typer.secho("'num_lines' should be a positive integer, equal or smaller than 10000",
+                    err=True,
+                    fg=typer.colors.RED)
+        typer.Exit(1)
+
+    if head and follow:
+        typer.secho("'follow' cannot be set in 'head' mode",
+                    err=True,
+                    fg=typer.colors.RED)
+        typer.Exit(1)
+
+    if export_path is not None and follow:
+        typer.secho("'follow' cannot be set when 'export_path' is given",
+                    err=True,
+                    fg=typer.colors.RED)
+        typer.Exit(1)
+
+    request_data = dict()
+    request_data['ascending'] = head
+    request_data['limit'] = num_lines
+    if pattern is not None:
+        request_data['content'] = pattern
     if log_type is not None:
-        request_data["log_type"] = log_type
-    r = autoauth.get(get_uri(f"job/{job_id}/text_log/"), json=request_data)
-    # TODO: Elaborate
-    typer.echo(r.text)
+        request_data['log_type'] = log_type
+    init_r = autoauth.get(get_uri(f"job/{job_id}/text_log/"), json=request_data)
+    fetched_lines = 0
+
+    if init_r.status_code == 200:
+        logs = init_r.json()['results']
+        fetched_lines += len(logs)
+        if not head:
+            logs.reverse()
+        if export_path is not None:
+            with Path(export_path).open("w") as export_file:
+                for record in logs:
+                    export_file.write(f"[{record['timestamp']}] {record['content']}\n")
+        else:
+            for record in logs:
+                typer.echo(f"[{record['timestamp']}] {record['content']}")
+        # TODO: [PFT-162] Use WebSockets when following logs.
+        if follow:
+            try:
+                last_timestamp_str = logs[-1]
+                while True:
+                    time.sleep(1)
+                    datetime_format = '%Y-%m-%dT%H:%M:%S.%fZ'
+                    last_datetime = datetime.strptime(last_timestamp_str, datetime_format)
+                    new_datetime = last_datetime + timedelta(microseconds=1)
+                    request_data['since'] = new_datetime.strftime(datetime_format)
+                    request_data['ascending'] = True
+                    follow_r = autoauth.get(get_uri(f"job/{job_id}/text_log/"), json=request_data)
+                    follow_logs = follow_r.json()["results"]
+                    for record in follow_logs:
+                        typer.echo(f"[{record['timestamp']}] {record['content']}")
+                    last_timestamp_str = follow_logs[-1]
+            except KeyboardInterrupt:
+                pass
+    else:
+        typer.secho(f"Log fetching failed! Error Code = {init_r.status_code}, Detail = {init_r.text}",
+                    err=True,
+                    fg=typer.colors.RED)
+        typer.Exit(1)
 
 
 if __name__ == '__main__':

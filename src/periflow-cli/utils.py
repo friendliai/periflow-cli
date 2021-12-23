@@ -1,5 +1,4 @@
-import typing
-from typing import Union, Callable
+from typing import Union, Callable, Tuple, Dict
 from pathlib import Path
 import os
 import functools
@@ -54,11 +53,23 @@ def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable:
                 refresh_r = requests.post(get_uri("token/refresh/"), data={"refresh": refresh_token})
                 if refresh_r.status_code == 200:
                     update_token(token_type="access", token=refresh_r.json()["access"])
+                    # We need to restore file offset if we want to transfer file objects
+                    if "files" in kwargs:
+                        files: Dict = kwargs["files"]
+                        for file_name, file_tuple in files.items():
+                            for element in file_tuple:
+                                if hasattr(element, "seek"):
+                                    # Restore file offset
+                                    element.seek(0)
                     r = func(*args, **kwargs)
                 else:
-                    typer.secho("Failed to refresh access token... Please login again", fg=typer.colors.RED)
+                    typer.secho("Failed to refresh access token... Please login again",
+                                err=True,
+                                fg=typer.colors.RED)
             else:
-                typer.secho("Failed to refresh access token... Please login again", fg=typer.colors.RED)
+                typer.secho("Failed to refresh access token... Please login again",
+                            err=True,
+                            fg=typer.colors.RED)
         return r
     return inner
 
