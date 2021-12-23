@@ -7,10 +7,12 @@ import autoauth
 
 import datastore
 import credential
+import job
 
 app = typer.Typer()
 app.add_typer(datastore.app, name="datastore")
 app.add_typer(credential.app, name="credential")
+app.add_typer(job.app, name="job")
 
 
 @app.command()
