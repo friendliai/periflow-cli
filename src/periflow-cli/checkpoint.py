@@ -217,7 +217,7 @@ def checkpoint_create(file_or_dir: Path = typer.Option(...),
             "job_setting_json": None,
         }
 
-        response = autoauth.get(get_uri(f"credential/{credential_id}"))
+        response = autoauth.get(get_uri(f"credential/{credential_id}/"))
         if response.status_code != 200:
             secho_error_and_exit(
                 f"Cannot retrieve credential. Error code = {response.status_code} detail = {response.text}")
@@ -252,7 +252,7 @@ def checkpoint_update(checkpoint_id: uuid.UUID = typer.Option(...),
     # TODO (TB): Currently, cannot modify dist_json and job_setting_json
     group_id = get_group_id()
 
-    response = autoauth.get(get_uri(f"group/{group_id}/checkpoint/{checkpoint_id}"))
+    response = autoauth.get(get_uri(f"group/{group_id}/checkpoint/{checkpoint_id}/"))
     if response.status_code != 200:
         secho_error_and_exit(
             f"Cannot retrieve checkpoint. Error code = {response.status_code} detail = {response.text}")
@@ -291,7 +291,7 @@ def checkpoint_update(checkpoint_id: uuid.UUID = typer.Option(...),
         request_data["files"] = storage_helper.get_checkpoint_file_list()
 
         response = autoauth.patch(get_uri(
-            f"group/{group_id}/checkpoint/{checkpoint_id}"), json=request_data)
+            f"group/{group_id}/checkpoint/{checkpoint_id}/"), json=request_data)
         if response.status_code == 200:
             _echo_checkpoint_detail(response.json())
         else:
@@ -300,8 +300,11 @@ def checkpoint_update(checkpoint_id: uuid.UUID = typer.Option(...),
     else:
         raise NotImplementedError
 
-@app.command("delete", help="Delete the existing credential.")
+
+@app.command("delete")
 def checkpoint_delete(checkpoint_id: uuid.UUID = typer.Option(...)):
+    """Delete the existing checkpoint.
+    """
     response = autoauth.delete(get_uri(f"checkpoint/{checkpoint_id}/"))
     if response.status_code == 204:
         typer.echo(f"Successfully deleted checkpoint (ID = {checkpoint_id})")
