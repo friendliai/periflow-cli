@@ -2,8 +2,9 @@ import typer
 import requests
 import tabulate
 
-from utils import get_uri, update_token, get_auth_header
 import autoauth
+from autoauth import update_token, get_auth_header
+from utils import get_uri
 
 import checkpoint
 import credential
