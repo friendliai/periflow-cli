@@ -3,7 +3,6 @@ from typing import Optional, List, Dict
 
 import tabulate
 import typer
-import requests
 import yaml
 
 import autoauth
@@ -94,7 +93,7 @@ def update(cred_id: str = typer.Option(...),
 
 @app.command()
 def delete(cred_id: str = typer.Option(...)):
-    r = requests.delete(get_uri(f"credential/{cred_id}/"))
+    r = autoauth.delete(get_uri(f"credential/{cred_id}/"))
     if r.status_code == 204:
         typer.echo(f"Successfully deleted credential ID = {cred_id}")
     else:
