@@ -1,13 +1,13 @@
+from pathlib import Path
 from typing import Optional, List, Dict
 
 import tabulate
 import typer
 import requests
 import yaml
-from pathlib import Path
 
-from utils import get_uri
 import autoauth
+from utils import get_uri
 
 
 app = typer.Typer()
@@ -23,9 +23,9 @@ def _print_cred_list(cred_list: List[Dict]):
 
 @app.command()
 def create(cred_type: str = typer.Option(...),
-                     name: str = typer.Option(...),
-                     yaml_path: str = typer.Option(...),
-                     type_version: int = typer.Option(1)):
+           name: str = typer.Option(...),
+           yaml_path: str = typer.Option(...),
+           type_version: int = typer.Option(1)):
     request_data = {
         "type": cred_type,
         "name": name,
