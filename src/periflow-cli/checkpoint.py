@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 
 import boto3
 import botocore
+import requests
 import tabulate
 import typer
 from azure.storage.blob import BlobServiceClient
@@ -163,11 +164,11 @@ class CloudStorageHelper:
 
 @app.command("create")
 def checkpoint_create(file_or_dir: Path = typer.Option(...),
-                      local_file: bool = typer.Option(False),
                       iteration: int = typer.Option(...),
+                      vendor: str = typer.Option(...),
+                      storage_name: str = typer.Option(...),
+                      local_file: bool = typer.Option(False),
                       credential_id: Optional[uuid.UUID] = typer.Option(None),
-                      vendor: Optional[str] = typer.Option(None),
-                      storage_name: Optional[str] = typer.Option(None),
                       # advanced arguments
                       pp_degree: int = typer.Option(1),
                       dp_degree: int = typer.Option(1),
@@ -194,18 +195,37 @@ def checkpoint_create(file_or_dir: Path = typer.Option(...),
     # TODO (TB): get job_setting_json from CLI
 
     if local_file:
-        raise NotImplementedError
+        if vendor not in ("aws",):
+            secho_error_and_exit(
+                "Invalid Argument: Currently, we only support AWS for local checkpoint upload.")
+        file_list: List[Path] = [file_or_dir] if file_or_dir.is_file() else [
+            x for x in file_or_dir.glob("**/*") if x.is_file()]
+        request_data = {"num_files": len(file_list)}
+        response = autoauth.post(get_uri(f"group/{group_id}/checkpoint/upload"), json=request_data)
+        if response.status_code != 201:
+            secho_error_and_exit(
+                "Cannot retrieve the url for uploading checkpoint. "
+                f"Error code = {response.status_code} "
+                f"detail = {response.text}")
+        for file_name in file_list:
+            key = str(file_name.relative_to(file_or_dir.parent))
+            response['fields']['key'] = key
+            with open(file_name, 'rb') as file:
+                upload_response = requests.post(
+                    response['url'],
+                    data=response['fields'],
+                    files={'file': (key, file)})
+                if upload_response.status_code not in (201, 204):
+                    secho_error_and_exit(
+                        f"Failed to upload file {file_name}"
+                        f"Error code = {upload_response.status_code} "
+                        f"detail = {upload_response.text}")
     else:
         if credential_id is None:
             secho_error_and_exit("Invalid Argument: credential_id should be provided")
 
-        if vendor is None:
-            secho_error_and_exit("Invalid Argument: vendor should be provided")
-        elif vendor not in ("aws", "azure", "gcp"):
+        if vendor not in ("aws", "azure", "gcp"):
             secho_error_and_exit("Invalid Argument: vendor should be one of `azure`, `aws`, `gcp`.")
-
-        if storage_name is None:
-            secho_error_and_exit("Invalid Argument: storage_name should be provided")
 
         request_data = {
             "category": "user_provided",
