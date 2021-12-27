@@ -167,8 +167,7 @@ def checkpoint_create(file_or_dir: Path = typer.Option(...),
                       iteration: int = typer.Option(...),
                       vendor: str = typer.Option(...),
                       storage_name: str = typer.Option(...),
-                      local_file: bool = typer.Option(False),
-                      credential_id: Optional[uuid.UUID] = typer.Option(None),
+                      credential_id: uuid.UUID = typer.Option(...),
                       # advanced arguments
                       pp_degree: int = typer.Option(1),
                       dp_degree: int = typer.Option(1),
@@ -194,75 +193,49 @@ def checkpoint_create(file_or_dir: Path = typer.Option(...),
 
     # TODO (TB): get job_setting_json from CLI
 
-    if local_file:
-        if vendor not in ("aws",):
-            secho_error_and_exit(
-                "Invalid Argument: Currently, we only support AWS for local checkpoint upload.")
-        file_list: List[Path] = [file_or_dir] if file_or_dir.is_file() else [
-            x for x in file_or_dir.glob("**/*") if x.is_file()]
-        request_data = {"num_files": len(file_list)}
-        response = autoauth.post(get_uri(f"group/{group_id}/checkpoint/upload"), json=request_data)
-        if response.status_code != 201:
-            secho_error_and_exit(
-                "Cannot retrieve the url for uploading checkpoint. "
-                f"Error code = {response.status_code} "
-                f"detail = {response.text}")
-        for file_name in file_list:
-            key = str(file_name.relative_to(file_or_dir.parent))
-            response['fields']['key'] = key
-            with open(file_name, 'rb') as file:
-                upload_response = requests.post(
-                    response['url'],
-                    data=response['fields'],
-                    files={'file': (key, file)})
-                if upload_response.status_code not in (201, 204):
-                    secho_error_and_exit(
-                        f"Failed to upload file {file_name}"
-                        f"Error code = {upload_response.status_code} "
-                        f"detail = {upload_response.text}")
+    if credential_id is None:
+        secho_error_and_exit("Invalid Argument: credential_id should be provided")
+
+    if vendor not in ("aws", "azure", "gcp"):
+        secho_error_and_exit("Invalid Argument: vendor should be one of `azure`, `aws`, `gcp`.")
+
+    request_data = {
+        "category": "user_provided",
+        "vendor": vendor,
+        "iteration": iteration,
+        "storage_name": storage_name,
+        "dist_json": dist_json,
+        "credential_id": credential_id,
+        "job_setting_json": None,
+    }
+
+    response = autoauth.get(get_uri(f"credential/{credential_id}/"))
+    if response.status_code != 200:
+        secho_error_and_exit(
+            "Cannot retrieve credential. "
+            f"Error code = {response.status_code} detail = {response.text}")
+
+    credential_json = response.json()
+    if credential_json["type"] != vendor:
+        secho_error_and_exit(
+            f"Credential type and vendor mismatch: {credential_json['type']} and {vendor}")
+
+    storage_helper = CloudStorageHelper(
+        file_or_dir, credential_json["value"], vendor, storage_name)
+    request_data["files"] = storage_helper.get_checkpoint_file_list()
+
+    response = autoauth.post(get_uri(f"group/{group_id}/checkpoint/"), json=request_data)
+    if response.status_code == 201:
+        _echo_checkpoint_detail(response.json())
     else:
-        if credential_id is None:
-            secho_error_and_exit("Invalid Argument: credential_id should be provided")
-
-        if vendor not in ("aws", "azure", "gcp"):
-            secho_error_and_exit("Invalid Argument: vendor should be one of `azure`, `aws`, `gcp`.")
-
-        request_data = {
-            "category": "user_provided",
-            "vendor": vendor,
-            "iteration": iteration,
-            "storage_name": storage_name,
-            "dist_json": dist_json,
-            "credential_id": credential_id,
-            "job_setting_json": None,
-        }
-
-        response = autoauth.get(get_uri(f"credential/{credential_id}/"))
-        if response.status_code != 200:
-            secho_error_and_exit(
-                f"Cannot retrieve credential. Error code = {response.status_code} detail = {response.text}")
-
-        credential_json = response.json()
-        if credential_json["type"] != vendor:
-            secho_error_and_exit(
-                f"Credential type and vendor mismatch: {credential_json['type']} and {vendor}")
-
-        storage_helper = CloudStorageHelper(
-            file_or_dir, credential_json["value"], vendor, storage_name)
-        request_data["files"] = storage_helper.get_checkpoint_file_list()
-
-        response = autoauth.post(get_uri(f"group/{group_id}/checkpoint/"), json=request_data)
-        if response.status_code == 201:
-            _echo_checkpoint_detail(response.json())
-        else:
-            secho_error_and_exit(
-                f"Failed to create checkpoint. Error code = {response.status_code} detail = {response.text}")
+        secho_error_and_exit(
+            "Failed to create checkpoint. "
+            f"Error code = {response.status_code} detail = {response.text}")
 
 
 @app.command("update")
 def checkpoint_update(checkpoint_id: uuid.UUID = typer.Option(...),
                       file_or_dir: Path = typer.Option(...),
-                      local_file: bool = typer.Option(False),
                       iteration: Optional[int] = typer.Option(None),
                       credential_id: Optional[uuid.UUID] = typer.Option(None),
                       vendor: Optional[str] = typer.Option(None),
@@ -275,50 +248,49 @@ def checkpoint_update(checkpoint_id: uuid.UUID = typer.Option(...),
     response = autoauth.get(get_uri(f"group/{group_id}/checkpoint/{checkpoint_id}/"))
     if response.status_code != 200:
         secho_error_and_exit(
-            f"Cannot retrieve checkpoint. Error code = {response.status_code} detail = {response.text}")
+            "Cannot retrieve checkpoint. "
+            f"Error code = {response.status_code} detail = {response.text}")
     checkpoint_json = response.json()
 
     request_data = {}
     if iteration is not None:
         request_data["iteration"] = iteration
-
-    if not local_file:
-        if vendor is not None:
-            request_data["vendor"] = vendor
-        else:
-            vendor = checkpoint_json["vendor"]
-        if credential_id is not None:
-            request_data["credential_id"] = credential_id
-        else:
-            credential_id = checkpoint_json["credential_id"]
-        if storage_name is not None:
-            request_data["storage_name"] = storage_name
-        else:
-            storage_name = checkpoint_json["storage_name"]
-
-        response = autoauth.get(get_uri(f"credential/{credential_id}/"))
-        if response.status_code != 200:
-            secho_error_and_exit(
-                f"Cannot retrieve credential. Error code = {response.status_code} detail = {response.text}")
-
-        credential_json = response.json()
-        if credential_json["type"] != vendor:
-            secho_error_and_exit(
-                f"Credential type and vendor mismatch: {credential_json['type']} and {vendor}")
-
-        storage_helper = CloudStorageHelper(
-            file_or_dir, credential_json["value"], vendor, storage_name)
-        request_data["files"] = storage_helper.get_checkpoint_file_list()
-
-        response = autoauth.patch(get_uri(
-            f"group/{group_id}/checkpoint/{checkpoint_id}/"), json=request_data)
-        if response.status_code == 200:
-            _echo_checkpoint_detail(response.json())
-        else:
-            secho_error_and_exit(
-                f"Failed to update checkpoint. Error code = {response.status_code} detail = {response.text}")
+    if vendor is not None:
+        request_data["vendor"] = vendor
     else:
-        raise NotImplementedError
+        vendor = checkpoint_json["vendor"]
+    if credential_id is not None:
+        request_data["credential_id"] = credential_id
+    else:
+        credential_id = checkpoint_json["credential_id"]
+    if storage_name is not None:
+        request_data["storage_name"] = storage_name
+    else:
+        storage_name = checkpoint_json["storage_name"]
+
+    response = autoauth.get(get_uri(f"credential/{credential_id}/"))
+    if response.status_code != 200:
+        secho_error_and_exit(
+            "Cannot retrieve credential. "
+            f"Error code = {response.status_code} detail = {response.text}")
+
+    credential_json = response.json()
+    if credential_json["type"] != vendor:
+        secho_error_and_exit(
+            f"Credential type and vendor mismatch: {credential_json['type']} and {vendor}")
+
+    storage_helper = CloudStorageHelper(
+        file_or_dir, credential_json["value"], vendor, storage_name)
+    request_data["files"] = storage_helper.get_checkpoint_file_list()
+
+    response = autoauth.patch(get_uri(
+        f"group/{group_id}/checkpoint/{checkpoint_id}/"), json=request_data)
+    if response.status_code == 200:
+        _echo_checkpoint_detail(response.json())
+    else:
+        secho_error_and_exit(
+            "Failed to update checkpoint. "
+            f"Error code = {response.status_code} detail = {response.text}")
 
 
 @app.command("delete")
