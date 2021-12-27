@@ -7,7 +7,6 @@ from typing import Dict, List, Optional
 
 import boto3
 import botocore
-import requests
 import tabulate
 import typer
 from azure.storage.blob import BlobServiceClient
