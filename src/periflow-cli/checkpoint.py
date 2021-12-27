@@ -1,7 +1,5 @@
 """CLI for Checkpoint
 """
-import uuid
-
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -63,7 +61,7 @@ def checkpoint_list(category: Optional[str] = typer.Option(None),
 
 
 @app.command("view")
-def checkpoint_detail(checkpoint_id: uuid.UUID = typer.Option(...)):
+def checkpoint_detail(checkpoint_id: str = typer.Option(...)):
     """Show details of the given checkpoint_id
     """
     group_id = get_group_id()
@@ -102,13 +100,13 @@ class CloudStorageHelper:
 
         file_list = []
 
-        object_contents = container_client.list_blobs(name_starts_with=self.file_or_dir)
+        object_contents = container_client.list_blobs(name_starts_with=str(self.file_or_dir))
         for object_content in object_contents:
             object_name = object_content['name']
             file_list.append({
                 'name': object_name.split('/')[-1],
                 'path': object_name,
-                'mtime': object_content['last_modified'],
+                'mtime': object_content['last_modified'].isoformat(),
                 'size': object_content['size'],
             })
 
@@ -138,13 +136,13 @@ class CloudStorageHelper:
         file_list = []
 
         object_contents = s3_client.list_objects(
-            Bucket=self.storage_name, Prefix=self.file_or_dir)['Contents']
+            Bucket=self.storage_name, Prefix=str(self.file_or_dir))['Contents']
         for object_content in object_contents:
             object_key = object_content['Key']
             file_list.append({
                 'name': object_key.split('/')[-1],
                 'path': object_key,
-                'mtime': object_content['LastModified'],
+                'mtime': object_content['LastModified'].isoformat(),
                 'size': object_content['Size']
             })
 
@@ -166,7 +164,7 @@ def checkpoint_create(file_or_dir: Path = typer.Option(...),
                       iteration: int = typer.Option(...),
                       vendor: str = typer.Option(...),
                       storage_name: str = typer.Option(...),
-                      credential_id: uuid.UUID = typer.Option(...),
+                      credential_id: str = typer.Option(...),
                       # advanced arguments
                       pp_degree: int = typer.Option(1),
                       dp_degree: int = typer.Option(1),
@@ -233,10 +231,10 @@ def checkpoint_create(file_or_dir: Path = typer.Option(...),
 
 
 @app.command("update")
-def checkpoint_update(checkpoint_id: uuid.UUID = typer.Option(...),
+def checkpoint_update(checkpoint_id: str = typer.Option(...),
                       file_or_dir: Path = typer.Option(...),
                       iteration: Optional[int] = typer.Option(None),
-                      credential_id: Optional[uuid.UUID] = typer.Option(None),
+                      credential_id: Optional[str] = typer.Option(None),
                       vendor: Optional[str] = typer.Option(None),
                       storage_name: Optional[str] = typer.Option(None)):
     """Update the existing checkpoint.
@@ -293,7 +291,7 @@ def checkpoint_update(checkpoint_id: uuid.UUID = typer.Option(...),
 
 
 @app.command("delete")
-def checkpoint_delete(checkpoint_id: uuid.UUID = typer.Option(...)):
+def checkpoint_delete(checkpoint_id: str = typer.Option(...)):
     """Delete the existing checkpoint.
     """
     response = autoauth.delete(get_uri(f"checkpoint/{checkpoint_id}/"))
