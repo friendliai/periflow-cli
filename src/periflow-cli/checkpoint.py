@@ -294,7 +294,9 @@ def checkpoint_update(checkpoint_id: str = typer.Option(...),
 def checkpoint_delete(checkpoint_id: str = typer.Option(...)):
     """Delete the existing checkpoint.
     """
-    response = autoauth.delete(get_uri(f"checkpoint/{checkpoint_id}/"))
+    group_id = get_group_id()
+
+    response = autoauth.delete(get_uri(f"group/{group_id}/checkpoint/{checkpoint_id}/"))
     if response.status_code == 204:
         typer.echo(f"Successfully deleted checkpoint (ID = {checkpoint_id})")
     else:
