@@ -55,6 +55,8 @@ def run(vm_config_id: int = typer.Option(...),
         _zip_dir(workspace, workspace_zip)
         files = {'workspace_zip': ('workspace.zip', workspace_zip.open('rb'))}
     r = autoauth.post(get_uri("job/"), data={"data": json.dumps(request_data)}, files=files)
+    if workspace_dir is not None:
+        workspace_zip.unlink()
     if r.status_code == 201:
         headers = ["id", "workspace_signature", "workspace_id"]
         typer.echo(tabulate.tabulate([[r.json()["id"],
@@ -234,7 +236,7 @@ def log_view(job_id: int = typer.Option(...),
                     datetime_format = '%Y-%m-%dT%H:%M:%S.%fZ'
                     if last_timestamp_str is not None:
                         last_datetime = datetime.strptime(last_timestamp_str, datetime_format)
-                        new_datetime = last_datetime + timedelta(seconds=1)
+                        new_datetime = last_datetime + timedelta(milliseconds=1)
                         request_data['since'] = new_datetime.strftime(datetime_format)
                     request_data['ascending'] = 'true'
                     follow_r = autoauth.get(get_uri(f"job/{job_id}/text_log/"), params=request_data)
