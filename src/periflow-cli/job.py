@@ -197,13 +197,16 @@ def log_view(job_id: int = typer.Option(...),
         typer.Exit(1)
 
     request_data = dict()
-    request_data['ascending'] = head
+    if head:
+        request_data['ascending'] = 'true'
+    else:
+        request_data['ascending'] = 'false'
     request_data['limit'] = num_lines
     if pattern is not None:
         request_data['content'] = pattern
     if log_type is not None:
         request_data['log_type'] = log_type
-    init_r = autoauth.get(get_uri(f"job/{job_id}/text_log/"), json=request_data)
+    init_r = autoauth.get(get_uri(f"job/{job_id}/text_log/"), params=request_data)
     fetched_lines = 0
 
     if init_r.status_code == 200:
@@ -221,20 +224,34 @@ def log_view(job_id: int = typer.Option(...),
         # TODO: [PFT-162] Use WebSockets when following logs.
         if follow:
             try:
-                last_timestamp_str = logs[-1]
+                if len(logs) > 0:
+                    last_timestamp_str = logs[-1]['timestamp']
+                else:
+                    last_timestamp_str = None
                 while True:
                     time.sleep(1)
+                    request_data = {}
                     datetime_format = '%Y-%m-%dT%H:%M:%S.%fZ'
-                    last_datetime = datetime.strptime(last_timestamp_str, datetime_format)
-                    new_datetime = last_datetime + timedelta(microseconds=1)
-                    request_data['since'] = new_datetime.strftime(datetime_format)
-                    request_data['ascending'] = True
-                    follow_r = autoauth.get(get_uri(f"job/{job_id}/text_log/"), json=request_data)
-                    follow_logs = follow_r.json()["results"]
-                    for record in follow_logs:
-                        typer.echo(f"[{record['timestamp']}] {record['content']}")
-                    last_timestamp_str = follow_logs[-1]
+                    if last_timestamp_str is not None:
+                        last_datetime = datetime.strptime(last_timestamp_str, datetime_format)
+                        new_datetime = last_datetime + timedelta(seconds=1)
+                        request_data['since'] = new_datetime.strftime(datetime_format)
+                    request_data['ascending'] = 'true'
+                    follow_r = autoauth.get(get_uri(f"job/{job_id}/text_log/"), params=request_data)
+                    if follow_r.status_code == 200:
+                        follow_logs = follow_r.json()["results"]
+                        for record in follow_logs:
+                            typer.echo(f"[{record['timestamp']}] {record['content']}")
+                        if len(follow_logs) > 0:
+                            last_timestamp_str = follow_logs[-1]['timestamp']
+                    else:
+                        typer.secho(f"Log fetching failed! Error Code = {init_r.status_code}, Detail = {init_r.text}",
+                                    err=True,
+                                    fg=typer.colors.RED)
+                        typer.Exit(1)
             except KeyboardInterrupt:
+                typer.secho(f"Keyboard Interrupt...",
+                            fg=typer.colors.MAGENTA)
                 pass
     else:
         typer.secho(f"Log fetching failed! Error Code = {init_r.status_code}, Detail = {init_r.text}",
