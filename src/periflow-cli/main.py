@@ -2,15 +2,18 @@ import typer
 import requests
 import tabulate
 
-from utils import get_uri, update_token, get_auth_header
 import autoauth
+from autoauth import update_token, get_auth_header
+from utils import get_uri
 
-import datastore
+import checkpoint
 import credential
+import datastore
 
 app = typer.Typer()
-app.add_typer(datastore.app, name="datastore")
 app.add_typer(credential.app, name="credential")
+app.add_typer(checkpoint.app, name="checkpoint")
+app.add_typer(datastore.app, name="datastore")
 
 
 @app.command()
