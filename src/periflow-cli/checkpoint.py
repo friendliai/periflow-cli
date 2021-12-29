@@ -14,6 +14,7 @@ from utils import get_group_id, get_uri, secho_error_and_exit
 
 app = typer.Typer()
 
+
 def _echo_checkpoint_detail(checkpoint_json: dict):
     typer.echo(f"id: {checkpoint_json['id']}")
     typer.echo(f"category: {checkpoint_json['category']}")
@@ -27,6 +28,7 @@ def _echo_checkpoint_detail(checkpoint_json: dict):
         results.append([file[header] for header in headers])
     headers[2] = "modified time"
     typer.echo(tabulate.tabulate(results, headers=headers))
+
 
 @app.command("list")
 def checkpoint_list(category: Optional[str] = typer.Option(None),

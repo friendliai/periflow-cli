@@ -6,7 +6,7 @@ from typing import Callable, Union
 import requests
 import typer
 
-from utils import get_uri
+from utils import get_uri, secho_error_and_exit
 
 credential_path = Path(os.environ["HOME"], ".periflow")
 access_token_path = credential_path / "access_token"
@@ -24,7 +24,7 @@ def get_token(token_type: str) -> Union[str, None]:
         if token_type == "refresh":
             return refresh_token_path.read_text()
         else:
-            raise ValueError("token_type should be one of 'access' or 'refresh'.")
+            secho_error_and_exit("token_type should be one of 'access' or 'refresh'.")
     except FileNotFoundError:
         return None
 
@@ -33,8 +33,7 @@ def update_token(token_type: str, token: str) -> None:
     try:
         credential_path.mkdir(exist_ok=True)
     except (FileNotFoundError, FileExistsError) as e:
-        typer.echo(f"Cannot store credential info... {e}", err=True)
-        typer.Exit(1)
+        secho_error_and_exit(f"Cannot store credential info... {e}")
     if token_type == "access":
         access_token_path.write_text(token)
     elif token_type == "refresh":
@@ -54,12 +53,11 @@ def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable:
                     update_token(token_type="access", token=refresh_r.json()["access"])
                     r = func(*args, **kwargs)
                 else:
-                    typer.secho("Failed to refresh access token... Please login again", fg=typer.colors.RED)
+                    secho_error_and_exit("Failed to refresh access token... Please login again")
             else:
-                typer.secho("Failed to refresh access token... Please login again", fg=typer.colors.RED)
+                secho_error_and_exit("Failed to refresh access token... Please login again")
         return r
     return inner
-
 
 
 @auto_token_refresh
