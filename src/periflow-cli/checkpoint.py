@@ -8,6 +8,7 @@ import botocore
 import tabulate
 import typer
 from azure.storage.blob import BlobServiceClient
+from requests import HTTPError
 
 import autoauth
 from utils import get_group_id, get_uri, secho_error_and_exit
@@ -47,7 +48,9 @@ def checkpoint_list(category: Optional[str] = typer.Option(None),
         request_data.update({"limit": limit})
 
     response = autoauth.get(get_uri(f"group/{group_id}/checkpoint/"), json=request_data)
-    if response.status_code != 200:
+    try:
+        response.raise_for_status()
+    except HTTPError:
         secho_error_and_exit(
             f"Cannot retrieve checkpoints. Error code = {response.status_code} detail = {response.text}")
     checkpoints = response.json()["results"]
@@ -68,7 +71,9 @@ def checkpoint_detail(checkpoint_id: str = typer.Option(...)):
     """
     group_id = get_group_id()
     response = autoauth.get(get_uri(f"group/{group_id}/checkpoint/{checkpoint_id}/"))
-    if response.status_code != 200:
+    try:
+        response.raise_for_status()
+    except HTTPError:
         secho_error_and_exit(
             f"Cannot retrieve checkpoint. Error code = {response.status_code} detail = {response.text}")
 
@@ -209,7 +214,9 @@ def checkpoint_create(file_or_dir: Path = typer.Option(...),
     }
 
     response = autoauth.get(get_uri(f"credential/{credential_id}/"))
-    if response.status_code != 200:
+    try:
+        response.raise_for_status()
+    except HTTPError:
         secho_error_and_exit(
             "Cannot retrieve credential. "
             f"Error code = {response.status_code} detail = {response.text}")
@@ -224,9 +231,10 @@ def checkpoint_create(file_or_dir: Path = typer.Option(...),
     request_data["files"] = storage_helper.get_checkpoint_file_list()
 
     response = autoauth.post(get_uri(f"group/{group_id}/checkpoint/"), json=request_data)
-    if response.status_code == 201:
+    try:
+        response.raise_for_status()
         _echo_checkpoint_detail(response.json())
-    else:
+    except HTTPError:
         secho_error_and_exit(
             "Failed to create checkpoint. "
             f"Error code = {response.status_code} detail = {response.text}")
@@ -245,7 +253,9 @@ def checkpoint_update(checkpoint_id: str = typer.Option(...),
     group_id = get_group_id()
 
     response = autoauth.get(get_uri(f"group/{group_id}/checkpoint/{checkpoint_id}/"))
-    if response.status_code != 200:
+    try:
+        response.raise_for_status()
+    except HTTPError:
         secho_error_and_exit(
             "Cannot retrieve checkpoint. "
             f"Error code = {response.status_code} detail = {response.text}")
@@ -268,7 +278,9 @@ def checkpoint_update(checkpoint_id: str = typer.Option(...),
         storage_name = checkpoint_json["storage_name"]
 
     response = autoauth.get(get_uri(f"credential/{credential_id}/"))
-    if response.status_code != 200:
+    try:
+        response.raise_for_status()
+    except HTTPError:
         secho_error_and_exit(
             "Cannot retrieve credential. "
             f"Error code = {response.status_code} detail = {response.text}")
@@ -284,9 +296,10 @@ def checkpoint_update(checkpoint_id: str = typer.Option(...),
 
     response = autoauth.patch(get_uri(
         f"group/{group_id}/checkpoint/{checkpoint_id}/"), json=request_data)
-    if response.status_code == 200:
+    try:
+        response.raise_for_status()
         _echo_checkpoint_detail(response.json())
-    else:
+    except HTTPError:
         secho_error_and_exit(
             "Failed to update checkpoint. "
             f"Error code = {response.status_code} detail = {response.text}")
@@ -299,9 +312,10 @@ def checkpoint_delete(checkpoint_id: str = typer.Option(...)):
     group_id = get_group_id()
 
     response = autoauth.delete(get_uri(f"group/{group_id}/checkpoint/{checkpoint_id}/"))
-    if response.status_code == 204:
+    try:
+        response.raise_for_status()
         typer.echo(f"Successfully deleted checkpoint (ID = {checkpoint_id})")
-    else:
+    except HTTPError:
         secho_error_and_exit(
             f"Delete failed. Error code = {response.status_code}, Detail = {response.text}")
 

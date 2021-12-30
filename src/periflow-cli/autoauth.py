@@ -49,10 +49,19 @@ def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable:
             refresh_token = get_token("refresh")
             if refresh_token is not None:
                 refresh_r = requests.post(get_uri("token/refresh/"), data={"refresh": refresh_token})
-                if refresh_r.status_code == 200:
+                try:
+                    refresh_r.raise_for_status()
                     update_token(token_type="access", token=refresh_r.json()["access"])
+                    # We need to restore file offset if we want to transfer file objects
+                    if "files" in kwargs:
+                        files = kwargs["files"]
+                        for file_name, file_tuple in files.items():
+                            for element in file_tuple:
+                                if hasattr(element, "seek"):
+                                    # Restore file offset
+                                    element.seek(0)
                     r = func(*args, **kwargs)
-                else:
+                except requests.HTTPError:
                     secho_error_and_exit("Failed to refresh access token... Please login again")
             else:
                 secho_error_and_exit("Failed to refresh access token... Please login again")

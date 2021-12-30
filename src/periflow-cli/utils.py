@@ -1,3 +1,8 @@
+from typing import Union, Callable, Tuple, Dict
+from pathlib import Path
+import os
+import functools
+
 import typer
 import autoauth
 
@@ -10,9 +15,9 @@ def get_uri(path):
     return periflow_api_server + path
 
 
-def secho_error_and_exit(text: str, color = typer.colors.RED):
+def secho_error_and_exit(text: str, color=typer.colors.RED):
     typer.secho(text, err=True, fg=color)
-    typer.Exit(1)
+    raise typer.Exit(1)
 
 
 def get_group_id() -> int:
