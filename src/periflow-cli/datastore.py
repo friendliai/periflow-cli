@@ -1,35 +1,18 @@
-import typer
 from typing import Optional
 
-from utils import get_uri
-import autoauth
 import tabulate
+import typer
+from requests import HTTPError
+
+import autoauth
+from utils import get_uri, get_group_id, secho_error_and_exit
 
 app = typer.Typer()
 
 
-def _get_group_id():
-    r = autoauth.get(get_uri("user/group/"))
-    if r.status_code != 200:
-        typer.secho(f"Cannot acquire group info. Error Code = {r.status_code} detail = {r.text}")
-        typer.Exit(1)
-    groups = r.json()["results"]
-    if len(groups) == 0:
-        typer.secho("You are not assigned to any group... Please contact to admin",
-                    err=True,
-                    fg=typer.colors.RED)
-        typer.Exit(1)
-    if len(groups) > 1:
-        typer.secho("Currently we do not support users with more than two groups... Please contact admin",
-                    err=True,
-                    fg=typer.colors.RED)
-        typer.Exit(1)
-    return groups[0]['id']
-
-
 @app.command()
 def list():
-    group_id = _get_group_id()
+    group_id = get_group_id()
     results = [["id", "name", "vendor", "storage_name"]]
     datastores = autoauth.get(get_uri(f"group/{group_id}/datastore/")).json()
 
@@ -44,7 +27,7 @@ def create(name: str = typer.Option(...),
            storage_name: str = typer.Option(...),
            credential_id: str = typer.Option(...)):
 
-    group_id = _get_group_id()
+    group_id = get_group_id()
 
     request_json = {
         "name": name,
@@ -54,7 +37,8 @@ def create(name: str = typer.Option(...),
     }
 
     r = autoauth.post(get_uri(f"group/{group_id}/datastore/"), json=request_json)
-    if r.status_code == 201:
+    try:
+        r.raise_for_status()
         results = [
             ["id", "name", "vendor", "storage_name"],
             [
@@ -64,8 +48,8 @@ def create(name: str = typer.Option(...),
                 r.json()["storage_name"]
             ]]
         typer.echo(tabulate.tabulate(results, headers="firstrow"))
-    else:
-        typer.secho(r.text, err=True, color=typer.colors.RED)
+    except HTTPError:
+        secho_error_and_exit(f"Datastore create failed... Error Code = {r.status_code}, Detail = {r.text}")
 
 
 @app.command()
@@ -75,7 +59,7 @@ def update(datastore_id: str = typer.Option(...),
            storage_name: Optional[str] = typer.Option(None),
            credential_id: Optional[str] = typer.Option(None)):
 
-    group_id = _get_group_id()
+    group_id = get_group_id()
 
     request_json = {}
     if name is not None:
@@ -87,11 +71,11 @@ def update(datastore_id: str = typer.Option(...),
     if credential_id is not None:
         request_json.update({"credential_id": credential_id})
     if not request_json:
-        typer.secho("You need to specify at least one properties to update datastore",
-                    err=True,
-                    fg=typer.colors.RED)
+        secho_error_and_exit("You need to specify at least one properties to update datastore")
+
     r = autoauth.patch(get_uri(f"group/{group_id}/datastore/{datastore_id}/"), json=request_json)
-    if r.status_code == 200:
+    try:
+        r.raise_for_status()
         results = [
             ["id", "name", "vendor", "storage_name"],
             [
@@ -101,17 +85,18 @@ def update(datastore_id: str = typer.Option(...),
                 r.json()["storage_name"]
             ]]
         typer.echo(tabulate.tabulate(results, headers="firstrow"))
-    else:
-        typer.secho(r.text, err=True, color=typer.colors.RED)
+    except HTTPError:
+        secho_error_and_exit(f"Datastore update failed... Error Code = {r.status_code}, Detail = {r.text}")
 
 
 @app.command()
 def delete(datastore_id: str = typer.Option(...)):
 
-    group_id = _get_group_id()
+    group_id = get_group_id()
 
     r = autoauth.get(get_uri(f"group/{group_id}/datastore/{datastore_id}"))
-    if r.status_code == 200:
+    try:
+        r.raise_for_status()
         typer.secho("Datastore to be deleted", fg=typer.colors.MAGENTA)
         results = [
             ["id", "name", "vendor", "storage_name"],
@@ -122,18 +107,18 @@ def delete(datastore_id: str = typer.Option(...)):
                 r.json()["storage_name"]
             ]]
         typer.echo(tabulate.tabulate(results, headers="firstrow"))
-    else:
-        typer.secho(r.text, err=True, color=typer.colors.RED)
-        typer.Exit(1)
+    except HTTPError:
+        secho_error_and_exit(f"Datastore delete failed... Error Code = {r.status_code}, Detail = {r.text}")
     datastore_delete = typer.confirm("Are you sure want to delete the datastore? This cannot be undone")
     if not datastore_delete:
         typer.Exit(1)
 
     r = autoauth.delete(get_uri(f"group/{group_id}/datastore/{datastore_id}"))
-    if r.status_code == 204:
+    try:
+        r.raise_for_status()
         typer.echo(f"Successfully deleted datastore.")
-    else:
-        typer.secho(r.text, err=True, color=typer.colors.RED)
+    except HTTPError:
+        secho_error_and_exit(f"Failed to delete datastore... Error Code = {r.status_code}, Detail = {r.text}")
 
 
 if __name__ == '__main__':
