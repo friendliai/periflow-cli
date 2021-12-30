@@ -172,7 +172,7 @@ def template_view(template_id: int = typer.Option(...)):
 @log_app.command("view")
 def log_view(job_id: int = typer.Option(...),
              num_records: int = typer.Option(100),
-             pattern: Optional[str] = typer.Option(None),
+             content: Optional[str] = typer.Option(None),
              log_type: Optional[str] = typer.Option(None),
              head: bool = typer.Option(False),
              export_path: Optional[Path] = typer.Option(None),
@@ -194,8 +194,8 @@ def log_view(job_id: int = typer.Option(...),
     else:
         request_data['ascending'] = 'false'
     request_data['limit'] = num_records
-    if pattern is not None:
-        request_data['content'] = pattern
+    if content is not None:
+        request_data['content'] = content
     if log_type is not None:
         request_data['log_type'] = log_type
     init_r = autoauth.get(get_uri(f"job/{job_id}/text_log/"), params=request_data)
