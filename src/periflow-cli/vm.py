@@ -1,8 +1,11 @@
 """CLI for VM
 """
+from typing import Optional
+
 import json
 import tabulate
 import typer
+import yaml
 from requests.exceptions import HTTPError
 
 import autoauth
@@ -112,6 +115,73 @@ def config_detail(vm_config_id: int = typer.Option(...)):
             f"Failed to get VM config. Error code = {response.status_code} "
             f"detail = {response.text}.")
 
+    result = response.json()
+    typer.echo(f"id: {result['id']}")
+    typer.echo(f"group id: {result['group_id']}")
+    typer.echo("config type:")
+    typer.echo(f"    id: {result['vm_config_type']['id']}")
+    typer.echo(f"    name: {result['vm_config_type']['name']}")
+    typer.echo("template data:")
+    typer.echo(json.dumps(result["template_data"], indent=4))
+
+
+@config_app.command("create")
+def config_create(vm_config_type_id: Optional[int] = typer.Option(None),
+                  vm_config_type_name: Optional[str] = typer.Option(None),
+                  template_data_file: typer.FileText = typer.Option(...)):
+    group_id = get_group_id()
+
+    if vm_config_type_id is None and vm_config_type_name is None:
+        secho_error_and_exit("Either VMConfigTypeId or VMConfigTypeNAme should be specified")
+
+    try:
+        template_data = yaml.safe_load(template_data_file)
+    except yaml.YAMLError as exc:
+        secho_error_and_exit(f"Error occurred while parsing template file... {exc}")
+
+    request_data = {}
+    if vm_config_type_id is None:
+        request_data["vm_config_type_name"] = vm_config_type_name
+    else:
+        request_data["vm_config_type_id"] = vm_config_type_id
+    request_data["template_data"] = template_data
+
+    response = autoauth.post(get_uri(f"group/{group_id}/vm_config/"), json=request_data)
+
+    try:
+        response.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(
+            f"Failed to create VM config. Error code = {response.status_code} "
+            f"detail = {response.text}.")
+
+    result = response.json()
+    typer.echo(f"id: {result['id']}")
+    typer.echo(f"group id: {result['group_id']}")
+    typer.echo("config type:")
+    typer.echo(f"    id: {result['vm_config_type']['id']}")
+    typer.echo(f"    name: {result['vm_config_type']['name']}")
+    typer.echo("template data:")
+    typer.echo(json.dumps(result["template_data"], indent=4))
+
+
+@config_app.command("update")
+def config_update(vm_config_id: int = typer.Option(...),
+                  template_data_file: typer.FileText = typer.Option(...)):
+    try:
+        template_data = yaml.safe_load(template_data_file)
+    except yaml.YAMLError as exc:
+        secho_error_and_exit(f"Error occurred while parsing template file... {exc}")
+
+    request_data = {}
+    request_data["template_data"] = template_data
+    response = autoauth.patch(get_uri(f"vm_config/{vm_config_id}/"), json=request_data)
+    try:
+        response.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(
+            f"Failed to update VM config. Error code = {response.status_code} "
+            f"detail = {response.text}.")
     result = response.json()
     typer.echo(f"id: {result['id']}")
     typer.echo(f"group id: {result['group_id']}")
