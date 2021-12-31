@@ -120,3 +120,15 @@ def config_detail(vm_config_id: int = typer.Option(...)):
     typer.echo(f"    name: {result['vm_config_type']['name']}")
     typer.echo("template data:")
     typer.echo(json.dumps(result["template_data"], indent=4))
+
+
+@config_app.command("delete")
+def config_delete(vm_config_id: int = typer.Option(...)):
+    response = autoauth.delete(get_uri(f"vm_config/{vm_config_id}/"))
+    try:
+        response.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(
+            f"Failed to delete VM config. Error code = {response.status_code} "
+            f"detail = {response.text}.")
+    typer.echo(f"Successfully deleted vm config (ID = {vm_config_id})")
