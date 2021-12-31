@@ -1,5 +1,6 @@
 """CLI for VM
 """
+import json
 import tabulate
 import typer
 from requests.exceptions import HTTPError
@@ -29,12 +30,75 @@ def quota_list():
             f"Failed to get VM quota. Error code = {response.status_code} "
             f"detail = {response.text}.")
 
-    quotas = response.json()["results"]
+    quotas = response.json()
 
     headers = ["vm_instance_type", "initial_quota", "quota"]
 
     results = []
     for quota in quotas:
-        results.append([quota[header] for header in headers])
+        sub_result = []
+        for header in headers:
+            if header == "vm_instance_type":
+                sub_result.append(json.dumps(quota[header], indent=4))
+            else:
+                sub_result.append(quota[header])
+        results.append(sub_result)
 
-    typer.echo(tabulate.tabulate(results, headers=["Instance Type", "Initial Quota", "Quota"]))
+    typer.echo(tabulate.tabulate(results, headers=[x.replace("_", " ") for x in headers]))
+
+
+@config_app.command("type")
+def config_type_list():
+    response = autoauth.get(get_uri("vm_config_type/"))
+    try:
+        response.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(
+            f"Failed to get VM config. Error code = {response.status_code} "
+            f"detail = {response.text}.")
+
+    vm_config_types = response.json()
+
+    headers = ["id", "name", "code", "data_schema", "vm_instance_type", "num_devices_per_vm"]
+    results = []
+    for vm_config_type in vm_config_types:
+        sub_result = []
+        for header in headers:
+            if header in ("data_schema", "vm_instance_type"):
+                sub_result.append(json.dumps(vm_config_type[header], indent=4))
+            else:
+                sub_result.append(vm_config_type[header])
+        results.append(sub_result)
+
+    typer.echo(tabulate.tabulate(results, headers=[x.replace("_", " ") for x in headers]))
+
+
+@config_app.command("list")
+def config_list():
+    group_id = get_group_id()
+
+    response = autoauth.get(get_uri(f"group/{group_id}/vm_config/"))
+    try:
+        response.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(
+            f"Failed to get VM config. Error code = {response.status_code} "
+            f"detail = {response.text}.")
+
+    vm_configs = response.json()
+
+    headers = ["id", "template_data", "vm_config_type"]
+    results = []
+    for vm_config in vm_configs:
+        sub_result = []
+        for header in headers:
+            if header == "vm_config_type":
+                sub_result.append(vm_config[header]["name"])
+            elif header == "template_data":
+                sub_result.append(json.dumps(vm_config[header], indent=4))
+            else:
+                # id
+                sub_result.append(vm_config[header])
+        results.append(sub_result)
+
+    typer.echo(tabulate.tabulate(results, headers=[x.replace("_", " ") for x in headers]))
