@@ -39,7 +39,7 @@ def quota_list():
         sub_result = []
         for header in headers:
             if header == "vm_instance_type":
-                sub_result.append(json.dumps(quota[header], indent=4))
+                sub_result.append(json.dumps(quota[header], indent=2))
             else:
                 sub_result.append(quota[header])
         results.append(sub_result)
@@ -65,7 +65,7 @@ def config_type_list():
         sub_result = []
         for header in headers:
             if header in ("data_schema", "vm_instance_type"):
-                sub_result.append(json.dumps(vm_config_type[header], indent=4))
+                sub_result.append(json.dumps(vm_config_type[header], indent=2))
             else:
                 sub_result.append(vm_config_type[header])
         results.append(sub_result)
@@ -82,23 +82,41 @@ def config_list():
         response.raise_for_status()
     except HTTPError:
         secho_error_and_exit(
-            f"Failed to get VM config. Error code = {response.status_code} "
+            f"Failed to get VM configs. Error code = {response.status_code} "
             f"detail = {response.text}.")
 
     vm_configs = response.json()
 
-    headers = ["id", "template_data", "vm_config_type"]
+    headers = ["id", "vm_config_type"]
     results = []
     for vm_config in vm_configs:
         sub_result = []
         for header in headers:
             if header == "vm_config_type":
                 sub_result.append(vm_config[header]["name"])
-            elif header == "template_data":
-                sub_result.append(json.dumps(vm_config[header], indent=4))
             else:
                 # id
                 sub_result.append(vm_config[header])
         results.append(sub_result)
 
     typer.echo(tabulate.tabulate(results, headers=[x.replace("_", " ") for x in headers]))
+
+
+@config_app.command("view")
+def config_detail(vm_config_id: int = typer.Option(...)):
+    response = autoauth.get(get_uri(f"vm_config/{vm_config_id}/"))
+    try:
+        response.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(
+            f"Failed to get VM config. Error code = {response.status_code} "
+            f"detail = {response.text}.")
+
+    result = response.json()
+    typer.echo(f"id: {result['id']}")
+    typer.echo(f"group id: {result['group_id']}")
+    typer.echo("config type:")
+    typer.echo(f"    id: {result['vm_config_type']['id']}")
+    typer.echo(f"    name: {result['vm_config_type']['name']}")
+    typer.echo("template data:")
+    typer.echo(json.dumps(result["template_data"], indent=4))
