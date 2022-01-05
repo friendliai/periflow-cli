@@ -24,9 +24,11 @@ app.add_typer(log_app, name="log")
 
 @contextmanager
 def _zip_dir(dir_path: Path, zip_path: Path):
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_LZMA) as zip_file:
+    typer.secho("Compressing training directory...", fg=typer.colors.MAGENTA)
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zip_file:
         for e in dir_path.rglob("*"):
             zip_file.write(e, e.relative_to(dir_path.parent))
+    typer.secho("Compressing finished... Now uploading...", fg=typer.colors.MAGENTA)
     yield zip_path.open("rb")
     zip_path.unlink()
 
@@ -35,7 +37,7 @@ def _zip_dir(dir_path: Path, zip_path: Path):
 def run(vm_config_id: int = typer.Option(...),
         config_file: typer.FileText = typer.Option(...),
         num_desired_devices: int = typer.Option(1),
-        workspace_dir: Optional[Path] = typer.Option(None),
+        training_dir: Optional[Path] = typer.Option(None),
         data_store_name: Optional[str] = typer.Option(None)):
     # TODO: Support template.
     # TODO: Support datastore.
@@ -50,13 +52,13 @@ def run(vm_config_id: int = typer.Option(...),
 
     for k, v in config.items():
         request_data.update({k: v})
-    if workspace_dir is not None:
-        if not workspace_dir.exists():
+    if training_dir is not None:
+        if not training_dir.exists():
             secho_error_and_exit(f"Specified workspace does not exist...")
-        if not workspace_dir.is_dir():
+        if not training_dir.is_dir():
             secho_error_and_exit(f"Specified workspace is not directory...")
-        workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
-        with _zip_dir(workspace_dir, workspace_zip) as zip_file:
+        workspace_zip = Path(training_dir.parent / (training_dir.name + ".zip"))
+        with _zip_dir(training_dir, workspace_zip) as zip_file:
             files = {'workspace_zip': ('workspace.zip', zip_file)}
             r = autoauth.post(get_uri("job/"), data={"data": json.dumps(request_data)}, files=files)
     else:
