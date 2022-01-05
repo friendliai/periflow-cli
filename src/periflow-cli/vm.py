@@ -127,11 +127,11 @@ def config_detail(vm_config_id: int = typer.Option(...)):
 
 @config_app.command("create")
 def config_create(vm_config_type_id: Optional[int] = typer.Option(None),
-                  vm_config_type_name: Optional[str] = typer.Option(None),
+                  vm_config_type_code: Optional[str] = typer.Option(None),
                   template_data_file: typer.FileText = typer.Option(...)):
     group_id = get_group_id()
 
-    if vm_config_type_id is None and vm_config_type_name is None:
+    if vm_config_type_id is None and vm_config_type_code is None:
         secho_error_and_exit("Either VMConfigTypeId or VMConfigTypeNAme should be specified")
 
     try:
@@ -141,7 +141,7 @@ def config_create(vm_config_type_id: Optional[int] = typer.Option(None),
 
     request_data = {}
     if vm_config_type_id is None:
-        request_data["vm_config_type_name"] = vm_config_type_name
+        request_data["vm_config_type_code"] = vm_config_type_code
     else:
         request_data["vm_config_type_id"] = vm_config_type_id
     request_data["template_data"] = template_data
