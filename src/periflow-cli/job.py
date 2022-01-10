@@ -75,7 +75,7 @@ def run(vm_config_id: int = typer.Option(...),
 
 
 @app.command()
-def list(long_list: bool = typer.Option(False, "--long_list", "-l")):
+def list(long_list: bool = typer.Option(False, "--long-list", "-l")):
     group_id = get_group_id()
     # TODO: Solve discrepancy in "limit"
     job_list = []
@@ -137,7 +137,7 @@ def stop(job_id: int = typer.Option(...)):
 
 @app.command()
 def view(job_id: int = typer.Option(...),
-         long_list: bool = typer.Option(False, "--long_list", "-l")):
+         long_list: bool = typer.Option(False, "--long-list", "-l")):
     r = autoauth.get(get_uri(f"job/{job_id}/"))
     try:
         r.raise_for_status()
