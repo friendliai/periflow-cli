@@ -10,9 +10,10 @@ from requests import HTTPError
 import tabulate
 import typer
 import yaml
+from dateutil.parser import parse
 
 import autoauth
-from utils import get_uri, secho_error_and_exit, get_group_id
+from utils import get_uri, secho_error_and_exit, get_group_id, datetime_to_pretty_str, timedelta_to_pretty_str
 
 app = typer.Typer()
 template_app = typer.Typer()
@@ -74,7 +75,7 @@ def run(vm_config_id: int = typer.Option(...),
 
 
 @app.command()
-def list():
+def list(long_list: bool = typer.Option(False, "--long_list", "-l")):
     group_id = get_group_id()
     # TODO: Solve discrepancy in "limit"
     job_list = []
@@ -86,17 +87,25 @@ def list():
     except HTTPError:
         secho_error_and_exit(f"List failed! Error Code = {r.status_code}, Detail = {r.text}")
     for job in r.json()["results"]:
+        if job.get("started_at") is not None:
+            start = datetime_to_pretty_str(parse(job["started_at"]), long_list=long_list)
+        else:
+            start = None
+        if job.get("started_at") is not None and job.get("finished_at") is not None:
+            duration = timedelta_to_pretty_str(parse(job["started_at"]), parse(job["finished_at"]), long_list=long_list)
+        else:
+            duration = None
         job_list.append([job["id"],
                          job["status"],
                          job["vm_config"]["vm_config_type"]["name"],
                          job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
                          job["num_desired_devices"],
                          job["data_store"],
-                         job["started_at"],
-                         job["finished_at"]])
+                         start,
+                         duration])
     typer.echo(tabulate.tabulate(
         job_list,
-        headers=["id", "status", "vm_name", "device", "# devices", "datastore", "start", "end"]))
+        headers=["id", "status", "vm_name", "device", "# devices", "datastore", "start", "duration"]))
 
 
 @app.command()
@@ -127,23 +136,32 @@ def stop(job_id: int = typer.Option(...)):
 
 
 @app.command()
-def view(job_id: int = typer.Option(...)):
+def view(job_id: int = typer.Option(...),
+         long_list: bool = typer.Option(False, "--long_list", "-l")):
     r = autoauth.get(get_uri(f"job/{job_id}/"))
     try:
         r.raise_for_status()
         job = r.json()
+        if job.get("started_at") is not None:
+            start = datetime_to_pretty_str(parse(job["started_at"]), long_list=long_list)
+        else:
+            start = None
+        if job.get("started_at") is not None and job.get("finished_at") is not None:
+            duration = timedelta_to_pretty_str(parse(job["started_at"]), parse(job["finished_at"]), long_list=long_list)
+        else:
+            duration = None
         job_list = [[job["id"],
                      job["status"],
                      job["vm_config"]["vm_config_type"]["name"],
                      job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
                      job["num_desired_devices"],
                      job["data_store"],
-                     job["started_at"],
-                     job["finished_at"]]]
+                     start,
+                     duration]]
         typer.echo(
             tabulate.tabulate(
                 job_list,
-                headers=["id", "status", "vm_name", "device", "# devices", "datastore", "start", "end"]))
+                headers=["id", "status", "vm_name", "device", "# devices", "datastore", "start", "duration"]))
     except HTTPError:
         secho_error_and_exit(f"View failed! Error Code = {r.status_code}, Detail = {r.text}")
 
@@ -226,11 +244,10 @@ def log_view(job_id: int = typer.Option(...),
                 while True:
                     time.sleep(interval)
                     request_data = {}
-                    datetime_format = '%Y-%m-%dT%H:%M:%S.%fZ'
                     if last_timestamp_str is not None:
-                        last_datetime = datetime.strptime(last_timestamp_str, datetime_format)
+                        last_datetime = parse(last_timestamp_str)
                         new_datetime = last_datetime + timedelta(milliseconds=1)
-                        request_data['since'] = new_datetime.strftime(datetime_format)
+                        request_data['since'] = new_datetime.isoformat()
                     request_data['ascending'] = 'true'
                     follow_r = autoauth.get(get_uri(f"job/{job_id}/text_log/"), params=request_data)
                     try:
