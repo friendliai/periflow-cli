@@ -14,10 +14,12 @@ def datetime_to_pretty_str(past: Optional[datetime], long_list: bool):
     cur = datetime.now().astimezone()
     delta = cur - past
     if long_list:
+        if delta < timedelta(minutes=1):
+            return f'{delta.seconds % 60}s ago'
         if delta < timedelta(hours=1):
-            return f'{round((delta.seconds % 3600) / 60)}m ago'
+            return f'{round((delta.seconds % 3600) / 60)}m {delta.seconds % 60}s ago'
         elif delta < timedelta(days=1):
-            return f'{delta.seconds // 3600}h {round((delta.seconds % 3600) / 60)}m ago'
+            return f'{delta.seconds // 3600}h {round((delta.seconds % 3600) / 60)}m {delta.seconds % 60}s ago'
         elif delta < timedelta(days=3):
             return f'{delta.days}d {delta.seconds // 3600}h ' \
                    f'{round((delta.seconds % 3600) / 60)}m ago'
