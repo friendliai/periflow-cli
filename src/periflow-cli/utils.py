@@ -1,7 +1,6 @@
-from typing import Union, Callable, Tuple, Dict
-from pathlib import Path
-import os
-import functools
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+import math
 
 import typer
 import autoauth
@@ -9,6 +8,51 @@ import autoauth
 
 # Variables
 periflow_api_server = "https://api-dev.friendli.ai/api/"
+
+
+def datetime_to_pretty_str(past: Optional[datetime], long_list: bool):
+    cur = datetime.now().astimezone()
+    delta = cur - past
+    if long_list:
+        if delta < timedelta(minutes=1):
+            return f'{delta.seconds % 60}s ago'
+        if delta < timedelta(hours=1):
+            return f'{round((delta.seconds % 3600) / 60)}m {delta.seconds % 60}s ago'
+        elif delta < timedelta(days=1):
+            return f'{delta.seconds // 3600}h {round((delta.seconds % 3600) / 60)}m {delta.seconds % 60}s ago'
+        elif delta < timedelta(days=3):
+            return f'{delta.days}d {delta.seconds // 3600}h ' \
+                   f'{round((delta.seconds % 3600) / 60)}m ago'
+        else:
+            return past.astimezone(tz=cur.tzinfo).strftime("%Y-%d-%m %H:%M:%S")
+    else:
+        if delta < timedelta(hours=1):
+            return f'{round((delta.seconds % 3600) / 60)} mins ago'
+        elif delta < timedelta(days=1):
+            return f'{round(delta.seconds / 3600)} hours ago'
+        else:
+            return f'{delta.days + round(delta.seconds / (3600 * 24))} days ago'
+
+
+def timedelta_to_pretty_str(start: datetime, finish: datetime, long_list: bool):
+    delta = finish - start
+    if long_list:
+        if delta < timedelta(minutes=1):
+            return f'{(delta.seconds % 60)}s'
+        if delta < timedelta(hours=1):
+            return f'{(delta.seconds % 3600) // 60}m {(delta.seconds % 60)}s'
+        elif delta < timedelta(days=1):
+            return f'{delta.seconds // 3600}h {(delta.seconds % 3600) // 60}m {(delta.seconds % 60)}s'
+        else:
+            return f'{delta.days}d {delta.seconds // 3600}h ' \
+                   f'{(delta.seconds % 3600) // 60}m {delta.seconds % 60}s'
+    else:
+        if delta < timedelta(hours=1):
+            return f'{round((delta.seconds % 3600) / 60)} mins'
+        elif delta < timedelta(days=1):
+            return f'{round(delta.seconds / 3600)} hours'
+        else:
+            return f'{delta.days + round(delta.seconds / (3600 * 24))} days'
 
 
 def get_uri(path):
