@@ -1,10 +1,13 @@
 import functools
 import os
+from contextlib import contextmanager, asynccontextmanager
+from enum import Enum
 from pathlib import Path
 from typing import Callable, Union
 
 import requests
 import typer
+import websockets
 
 from utils import get_uri, secho_error_and_exit
 
@@ -13,15 +16,20 @@ access_token_path = credential_path / "access_token"
 refresh_token_path = credential_path / "refresh_token"
 
 
+class TokenType(Enum):
+    ACCESS = 1
+    REFRESH = 2
+
+
 def get_auth_header() -> dict:
-    return {"Authorization": f"Bearer {get_token('access')}"}
+    return {"Authorization": f"Bearer {get_token(TokenType.ACCESS)}"}
 
 
-def get_token(token_type: str) -> Union[str, None]:
+def get_token(token_type: TokenType) -> Union[str, None]:
     try:
-        if token_type == "access":
+        if token_type == TokenType.ACCESS:
             return access_token_path.read_text()
-        if token_type == "refresh":
+        if token_type == TokenType.REFRESH:
             return refresh_token_path.read_text()
         else:
             secho_error_and_exit("token_type should be one of 'access' or 'refresh'.")
@@ -46,7 +54,7 @@ def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable:
         r = func(*args, **kwargs)
         if r.status_code == 401 or r.status_code == 403:
             typer.echo("Refresh access token...")
-            refresh_token = get_token("refresh")
+            refresh_token = get_token(TokenType.REFRESH)
             if refresh_token is not None:
                 refresh_r = requests.post(get_uri("token/refresh/"), data={"refresh": refresh_token})
                 try:
@@ -107,3 +115,13 @@ def delete(*args, **kwargs) -> requests.Response:
         kwargs["headers"] = get_auth_header()
     r = requests.delete(*args, **kwargs)
     return r
+
+
+# TODO: [PFT-198] Auto authentication refresh
+@asynccontextmanager
+async def connect_with_auth(uri: str):
+    access_token = get_token(TokenType.ACCESS)
+    uri = uri.rstrip('/') + '/'
+    uri_with_auth = f'{uri}?token={access_token}'
+    async with websockets.connect(uri_with_auth) as conn:
+        yield conn

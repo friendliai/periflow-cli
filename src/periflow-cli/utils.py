@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import math
@@ -5,9 +6,9 @@ import math
 import typer
 import autoauth
 
-
 # Variables
 periflow_api_server = "https://api-dev.friendli.ai/api/"
+periflow_ws_server = "wss://api-ws-dev.friendli.ai/ws/"
 
 
 def datetime_to_pretty_str(past: Optional[datetime], long_list: bool):
@@ -57,6 +58,10 @@ def timedelta_to_pretty_str(start: datetime, finish: datetime, long_list: bool):
 
 def get_uri(path):
     return periflow_api_server + path
+
+
+def get_wss_uri(path):
+    return periflow_ws_server + path
 
 
 def secho_error_and_exit(text: str, color=typer.colors.RED):
