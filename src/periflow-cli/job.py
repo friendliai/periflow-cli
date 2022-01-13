@@ -231,11 +231,9 @@ async def _consume_and_print_logs(websocket: websockets.WebSocketClientProtocol)
 
 async def _monitor_job_logs_via_ws(uri: str, log_type: Optional[LogType]):
     if log_type is None:
-        sources = ["process.stderr", "process.stdout"]
-    elif log_type is LogType.STDOUT:
-        sources = ["process.stdout"]
+        sources = [f"process.{x.value}" for x in LogType]
     else:
-        sources = ["process.stderr"]
+        sources = [f"process.{log_type.value}"]
 
     async with autoauth.connect_with_auth(uri) as conn:
         await _subscribe(conn, sources)

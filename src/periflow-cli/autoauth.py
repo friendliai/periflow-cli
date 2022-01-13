@@ -121,7 +121,7 @@ def delete(*args, **kwargs) -> requests.Response:
 @asynccontextmanager
 async def connect_with_auth(uri: str):
     access_token = get_token(TokenType.ACCESS)
-    assert uri.endswith("/")
+    uri = uri.rstrip('/') + '/'
     uri_with_auth = f'{uri}?token={access_token}'
     async with websockets.connect(uri_with_auth) as conn:
         yield conn
