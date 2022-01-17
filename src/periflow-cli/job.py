@@ -43,13 +43,13 @@ def _zip_dir(dir_path: Path, zip_path: Path):
 @app.command()
 def run(vm_config_id: int = typer.Option(...),
         config_file: typer.FileText = typer.Option(...),
-        num_desired_devices: int = typer.Option(1),
-        training_dir: Optional[Path] = typer.Option(None),
-        data_store_name: Optional[str] = typer.Option(None)):
+        num_devices: int = typer.Option(1),
+        training_dir: Optional[Path] = typer.Option(None)):
     # TODO: Support template.
     # TODO: Support datastore.
     request_data = {
-        "vm_config_id": vm_config_id
+        "vm_config_id": vm_config_id,
+        "num_devices": num_devices
     }
 
     try:
@@ -69,7 +69,8 @@ def run(vm_config_id: int = typer.Option(...),
             files = {'workspace_zip': ('workspace.zip', zip_file)}
             r = autoauth.post(get_uri("job/"), data={"data": json.dumps(request_data)}, files=files)
     else:
-        r = autoauth.post(get_uri("job/"), data={"data": json.dumps(request_data)})
+        r = autoauth.post(get_uri("job/"), json=request_data)
+        typer.echo(r.request.body)
     try:
         r.raise_for_status()
         headers = ["id", "workspace_signature", "workspace_id"]
@@ -106,12 +107,12 @@ def list(long_list: bool = typer.Option(False, "--long-list", "-l")):
                          job["vm_config"]["vm_config_type"]["name"],
                          job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
                          job["num_desired_devices"],
-                         job["data_store"],
+                         job["data_store"]['storage_name'] if job["data_store"] is not None else None,
                          start,
                          duration])
     typer.echo(tabulate.tabulate(
         job_list,
-        headers=["id", "status", "vm_name", "device", "# devices", "datastore", "start", "duration"]))
+        headers=["id", "status", "vm_name", "device", "# devices", "data_name", "start", "duration"]))
 
 
 @app.command()
@@ -161,13 +162,15 @@ def view(job_id: int = typer.Option(...),
                      job["vm_config"]["vm_config_type"]["name"],
                      job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
                      job["num_desired_devices"],
-                     job["data_store"],
+                     job["data_store"]['storage_name'] if job["data_store"] is not None else None,
                      start,
-                     duration]]
+                     duration,
+                     job["error_message"]]]
         typer.echo(
             tabulate.tabulate(
                 job_list,
-                headers=["id", "status", "vm_name", "device", "# devices", "datastore", "start", "duration"]))
+                headers=["id", "status", "vm_name", "device", "# devices", "datastore",
+                         "start", "duration", "err_msg"]))
     except HTTPError:
         secho_error_and_exit(f"View failed! Error Code = {r.status_code}, Detail = {r.text}")
 
@@ -178,7 +181,7 @@ def template_list():
     try:
         r.raise_for_status()
         # TODO: Elaborate
-        typer.echo(r.text)
+        typer.echo(json.dumps(r.json(), sort_keys=True, indent=2))
     except HTTPError:
         secho_error_and_exit(f"Listing failed! Error Code = {r.status_code}, Detail = {r.text}")
 
