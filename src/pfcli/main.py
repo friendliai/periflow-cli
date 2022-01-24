@@ -1,23 +1,12 @@
-import typer
 import requests
 import tabulate
 from requests import HTTPError
 
+
+from pfcli import app
 from autoauth import update_token, get_auth_header
 from utils import get_uri, secho_error_and_exit
 import autoauth
-import checkpoint
-import credential
-import job
-import datastore
-import vm
-
-app = typer.Typer()
-app.add_typer(credential.app, name="credential")
-app.add_typer(job.app, name="job")
-app.add_typer(checkpoint.app, name="checkpoint")
-app.add_typer(datastore.app, name="datastore")
-app.add_typer(vm.app, name="vm")
 
 
 @app.command()

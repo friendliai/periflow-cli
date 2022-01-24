@@ -6,8 +6,8 @@ import typer
 import yaml
 from requests import HTTPError
 
-import autoauth
-from utils import get_uri, secho_error_and_exit, get_group_id
+from pfcli import autoauth
+from pfcli.utils import get_uri, secho_error_and_exit, get_group_id
 
 
 app = typer.Typer()

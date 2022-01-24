@@ -13,13 +13,13 @@ import yaml
 from dateutil.parser import parse
 import websockets
 
-import autoauth
-from utils import (get_uri,
-                   get_wss_uri,
-                   secho_error_and_exit,
-                   get_group_id,
-                   datetime_to_pretty_str,
-                   timedelta_to_pretty_str)
+from pfcli import autoauth
+from pfcli.utils import (get_uri,
+                         get_wss_uri,
+                         secho_error_and_exit,
+                         get_group_id,
+                         datetime_to_pretty_str,
+                         timedelta_to_pretty_str)
 
 app = typer.Typer()
 template_app = typer.Typer()

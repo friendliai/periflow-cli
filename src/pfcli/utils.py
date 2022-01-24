@@ -4,7 +4,7 @@ from typing import Optional
 import math
 
 import typer
-import autoauth
+from pfcli import autoauth
 
 # Variables
 periflow_api_server = "https://api-dev.friendli.ai/api/"

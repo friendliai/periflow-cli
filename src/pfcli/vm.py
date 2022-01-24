@@ -8,8 +8,8 @@ import typer
 import yaml
 from requests.exceptions import HTTPError
 
-import autoauth
-from utils import get_group_id, get_uri, secho_error_and_exit
+from pfcli import autoauth
+from pfcli.utils import get_group_id, get_uri, secho_error_and_exit
 
 app = typer.Typer()
 quota_app = typer.Typer()
