@@ -34,10 +34,10 @@ COMMON_DEPS = [
     "websockets>=10.1",
     "PyYaml>=6.0",
     "typer>=0.4.0",
-    "boto3",
-    "botocore",
-    "azure-mgmt-storage",
-    "azure-storage-blob"
+    "boto3>=1.20.*",
+    "botocore>=1.23.*",
+    "azure-mgmt-storage>=19.0.*",
+    "azure-storage-blob>=12.9.*"
 ]
 
 TEST_DEPS = [
