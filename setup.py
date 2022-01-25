@@ -1,4 +1,4 @@
-# Copyright (C) 2021 friendli.ai
+# Copyright (C) 2022 friendli.ai
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
