@@ -2,11 +2,23 @@ import requests
 import tabulate
 from requests import HTTPError
 
+import typer
 
-from pfcli import app
-from autoauth import update_token, get_auth_header
-from utils import get_uri, secho_error_and_exit
-import autoauth
+from pfcli import checkpoint
+from pfcli import credential
+from pfcli import job
+from pfcli import datastore
+from pfcli import vm
+from pfcli import autoauth
+from pfcli.autoauth import update_token, get_auth_header
+from pfcli.utils import get_uri, secho_error_and_exit
+
+app = typer.Typer()
+app.add_typer(credential.app, name="credential")
+app.add_typer(job.app, name="job")
+app.add_typer(checkpoint.app, name="checkpoint")
+app.add_typer(datastore.app, name="datastore")
+app.add_typer(vm.app, name="vm")
 
 
 @app.command()
@@ -44,5 +56,9 @@ def login(username: str = typer.Option(..., prompt="Enter Username"),
         secho_error_and_exit("Login failed... Please check your username and password.")
 
 
-if __name__ == '__main__':
+def main():
     app()
+
+
+if __name__ == "__main__":
+    main()

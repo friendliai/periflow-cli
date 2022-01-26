@@ -64,7 +64,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "pf=pfcli:app",
+            "pf=pfcli.__main__:main",
         ]
     },
     include_package_data=True,
