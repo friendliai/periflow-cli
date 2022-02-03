@@ -1,16 +1,17 @@
-import typer
 import requests
 import tabulate
 from requests import HTTPError
 
-from autoauth import update_token, get_auth_header
-from utils import get_uri, secho_error_and_exit
-import autoauth
-import checkpoint
-import credential
-import job
-import datastore
-import vm
+import typer
+
+from pfcli import checkpoint
+from pfcli import credential
+from pfcli import job
+from pfcli import datastore
+from pfcli import vm
+from pfcli import autoauth
+from pfcli.autoauth import update_token, get_auth_header
+from pfcli.utils import get_uri, secho_error_and_exit
 
 app = typer.Typer()
 app.add_typer(credential.app, name="credential")
@@ -55,5 +56,9 @@ def login(username: str = typer.Option(..., prompt="Enter Username"),
         secho_error_and_exit("Login failed... Please check your username and password.")
 
 
-if __name__ == '__main__':
+def main():
     app()
+
+
+if __name__ == "__main__":
+    main()

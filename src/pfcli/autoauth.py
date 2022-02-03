@@ -9,7 +9,7 @@ import requests
 import typer
 import websockets
 
-from utils import get_uri, secho_error_and_exit
+from pfcli.utils import get_uri, secho_error_and_exit
 
 credential_path = Path(os.environ["HOME"], ".periflow")
 access_token_path = credential_path / "access_token"

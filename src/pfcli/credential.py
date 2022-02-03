@@ -6,8 +6,8 @@ import typer
 import yaml
 from requests import HTTPError
 
-import autoauth
-from utils import get_uri, secho_error_and_exit
+from pfcli import autoauth
+from pfcli.utils import get_uri, secho_error_and_exit, get_group_id
 
 
 app = typer.Typer()
@@ -35,9 +35,10 @@ def create(cred_type: str = typer.Option(...),
         value = yaml.safe_load(config_file)
     except yaml.YAMLError as e:
         secho_error_and_exit(f"Error occurred while parsing config file... {e}")
+    group_id = get_group_id()
     request_data.update({"value": value})
 
-    r = autoauth.post(get_uri("credential/"),
+    r = autoauth.post(get_uri(f"group/{group_id}/credential/"),
                       json=request_data)
     try:
         r.raise_for_status()

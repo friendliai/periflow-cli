@@ -4,8 +4,8 @@ import tabulate
 import typer
 from requests import HTTPError
 
-import autoauth
-from utils import get_uri, get_group_id, secho_error_and_exit
+from pfcli import autoauth
+from pfcli.utils import get_uri, get_group_id, secho_error_and_exit
 
 app = typer.Typer()
 
