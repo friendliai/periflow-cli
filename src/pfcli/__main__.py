@@ -51,7 +51,7 @@ def login(username: str = typer.Option(..., prompt="Enter Username"),
         r.raise_for_status()
         update_token(token_type="access", token=r.json()["access"])
         update_token(token_type="refresh", token=r.json()["refresh"])
-        typer.echo("Login success!")
+        typer.echo("\nLogin success!\nWelcome back to...\n _____             _____ _\n|  __ \___ _ __(_)|  ___| | _____      __\n|  ___/ _ \ '__| || |__ | |/ _ \ \ /\ / /\n| |  |  __/ |  | ||  __|| | (_) | V  V / \n|_|   \___|_|  |_||_|   |_|\___/ \_/\_/  \n")
     except HTTPError:
         secho_error_and_exit("Login failed... Please check your username and password.")
 
