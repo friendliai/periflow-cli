@@ -13,11 +13,11 @@ app = typer.Typer()
 @app.command()
 def list():
     group_id = get_group_id()
-    results = [["id", "name", "vendor", "storage_name"]]
+    results = [["name", "vendor", "storage_name"]]
     datastores = autoauth.get(get_uri(f"group/{group_id}/datastore/")).json()
 
     for datastore in datastores:
-        results.append([datastore["id"], datastore["name"], datastore["vendor"], datastore["storage_name"]])
+        results.append([datastore["name"], datastore["vendor"], datastore["storage_name"]])
     typer.echo(tabulate.tabulate(results, headers="firstrow"))
 
 
