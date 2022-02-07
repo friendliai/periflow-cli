@@ -42,13 +42,14 @@ def quota_list():
         sub_result = []
         for header in headers:
             if header == "vm_instance_type":
-                quota[header].pop('id')
-                sub_result.append(json.dumps(quota[header], indent=2))
+                del(quota[header]['id'])
+                string = json.dumps(quota[header], indent=0).replace("{", "").replace("}", "").replace('"', "").replace(",", "")
+                sub_result.append(string)
             else:
                 sub_result.append(quota[header])
         results.append(sub_result)
 
-    typer.echo(tabulate.tabulate(results, headers=[x.replace("_", " ") for x in headers]))
+    typer.echo(tabulate.tabulate(results, headers=[x.replace("_", " ") for x in headers], tablefmt='fancy_grid'))
 
 
 @config_app.command("type")
