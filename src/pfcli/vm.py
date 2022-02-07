@@ -42,6 +42,7 @@ def quota_list():
         sub_result = []
         for header in headers:
             if header == "vm_instance_type":
+                quota[header].pop('id')
                 sub_result.append(json.dumps(quota[header], indent=2))
             else:
                 sub_result.append(quota[header])
