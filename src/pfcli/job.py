@@ -198,7 +198,10 @@ def template_view(template_id: int = typer.Option(...)):
     try:
         r.raise_for_status()
         # TODO: Elaborate
-        typer.echo(r.text)
+        template = r.json()
+        del(template['created_at'])
+        del(template['data_schema'])
+        typer.echo(yaml.dump(template, sort_keys=False, indent=4))
     except HTTPError:
         secho_error_and_exit(f"View failed! Error Code = {r.status_code}, Detail = {r.text}")
 
