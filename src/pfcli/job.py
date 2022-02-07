@@ -181,9 +181,36 @@ def template_list():
     try:
         r.raise_for_status()
         # TODO: Elaborate
-        typer.echo(json.dumps(r.json(), sort_keys=True, indent=2))
+        for template in r.json():
+            del(template['id'])
+            del(template['created_at'])
+            del(template['data_schema'])
+            typer.echo("---------------------------------------")
+            typer.echo(yaml.dump(template, sort_keys=False, indent=4))
     except HTTPError:
         secho_error_and_exit(f"Listing failed! Error Code = {r.status_code}, Detail = {r.text}")
+
+
+@template_app.command("get")
+def template_get(template_name: str = typer.Option(...),
+                 download_file: Optional[typer.FileTextWrite] = typer.Option("template.txt", "--download-file", "-f")):
+    r = autoauth.get(get_uri(f"job_template/"))
+    try:
+        r.raise_for_status()
+        chosen = []
+
+        for template in r.json():
+            if template['name'] == template_name:
+                chosen = template
+                break
+        del(chosen['id'])
+        del(chosen['created_at'])
+        del(chosen['data_schema'])
+        template_details = yaml.dump(chosen, sort_keys=False, indent=4)
+        download_file.write(template_details)
+        typer.echo(template_details)
+    except HTTPError:
+        secho_error_and_exit(f"Get failed! Error Code = {r.status_code}, Detail = {r.text}")
 
 
 @template_app.command("view")
