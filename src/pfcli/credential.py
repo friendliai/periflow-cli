@@ -14,10 +14,10 @@ app = typer.Typer()
 
 
 def _print_cred_list(cred_list: List[Dict]):
-    headers = ["id", "name", "type", "type_version", "created_at"]
+    headers = ["name", "type", "type_version", "created_at"]
     results = []
     for cred in cred_list:
-        results.append([cred["id"], cred["name"], cred["type"], cred["type_version"], cred["created_at"]])
+        results.append([cred["name"], cred["type"], cred["type_version"], cred["created_at"]])
     typer.echo(tabulate.tabulate(results, headers=headers))
 
 
