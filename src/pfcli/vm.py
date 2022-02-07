@@ -122,7 +122,7 @@ def config_detail(vm_config_id: int = typer.Option(...)):
     typer.echo(f"    id: {result['vm_config_type']['id']}")
     typer.echo(f"    name: {result['vm_config_type']['name']}")
     typer.echo("template data:")
-    typer.echo(json.dumps(result["template_data"], indent=4))
+    typer.echo(json.dumps(result["template_data"], indent=4).replace("{\n", "").replace("}", "").replace('"', ""))
 
 
 @config_app.command("create")
