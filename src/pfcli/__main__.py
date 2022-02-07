@@ -26,8 +26,8 @@ def self():
     r = autoauth.get(get_uri("user/self/"), headers=get_auth_header())
     try:
         r.raise_for_status()
-        results = [[r.json()["id"], r.json()["username"], r.json()["email"]]]
-        typer.echo(tabulate.tabulate(results, headers=["id", "username", "email"]))
+        results = [[r.json()["username"], r.json()["email"]]]
+        typer.echo(tabulate.tabulate(results, headers=["username", "email"]))
     except HTTPError:
         secho_error_and_exit(f"Error Code = {r.status_code}, Detail = {r.json()['detail']}")
 
