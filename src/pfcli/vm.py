@@ -42,9 +42,8 @@ def quota_list():
         sub_result = []
         for header in headers:
             if header == "vm_instance_type":
-                del(quota[header]['id'])
-                string = json.dumps(quota[header], indent=0).replace("{", "").replace("}", "").replace('"', "").replace(",", "")
-                sub_result.append(string)
+                instance_type_spec = 'name: ' + quota[header]['name'] + '\ncode: ' + quota[header]['code'] + '\nvendor: ' + quota[header]['vendor'] + '\nregion: ' + quota[header]['region'] + '\ndevice type: ' + quota[header]['device_type'] + '\n'
+                sub_result.append(instance_type_spec)
             else:
                 sub_result.append(quota[header])
         results.append(sub_result)
