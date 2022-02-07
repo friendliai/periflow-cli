@@ -115,14 +115,10 @@ def config_detail(vm_config_id: int = typer.Option(...)):
             f"Failed to get VM config. Error code = {response.status_code} "
             f"detail = {response.text}.")
 
-    result = response.json()
-    typer.echo(f"id: {result['id']}")
-    typer.echo(f"group id: {result['group_id']}")
-    typer.echo("config type:")
-    typer.echo(f"    id: {result['vm_config_type']['id']}")
-    typer.echo(f"    name: {result['vm_config_type']['name']}")
-    typer.echo("template data:")
-    typer.echo(json.dumps(result["template_data"], indent=4).replace("{\n", "").replace("}", "").replace('"', ""))
+    result = response.json()   
+    del(result['id'])
+    result['config type name'] = result.pop('vm_config_type')['name']
+    typer.echo(yaml.dump(result, indent=4))
 
 
 @config_app.command("create")
