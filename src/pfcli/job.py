@@ -193,7 +193,7 @@ def template_list():
 
 @template_app.command("get")
 def template_get(template_name: str = typer.Option(...),
-                 download_file: Optional[typer.FileTextWrite] = typer.Option("template.txt", "--download-file", "-f")):
+                 download_file: Optional[typer.FileTextWrite] = typer.Option(None, "--download-file", "-f")):
     r = autoauth.get(get_uri(f"job_template/"))
     try:
         r.raise_for_status()
@@ -207,8 +207,11 @@ def template_get(template_name: str = typer.Option(...),
         del(chosen['created_at'])
         del(chosen['data_schema'])
         template_details = yaml.dump(chosen, sort_keys=False, indent=4)
-        download_file.write(template_details)
-        typer.echo(template_details)
+        if download_file != None:
+            download_file.write(template_details)
+            typer.echo("Template File Download Success!\n")
+        else:
+            typer.echo(template_details)
     except HTTPError:
         secho_error_and_exit(f"Get failed! Error Code = {r.status_code}, Detail = {r.text}")
 
