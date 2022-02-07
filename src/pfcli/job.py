@@ -181,7 +181,13 @@ def template_list():
     try:
         r.raise_for_status()
         # TODO: Elaborate
-        typer.echo(json.dumps(r.json(), sort_keys=True, indent=2))
+        for template in r.json():
+            del(template['id'])
+            del(template['created_at'])
+            del(template['data_schema'])
+            typer.echo("---------------------------------------")
+            typer.echo(yaml.dump(template, sort_keys=False, indent=4))
+        #typer.echo(json.dumps(r.json(), sort_keys=True, indent=2))
     except HTTPError:
         secho_error_and_exit(f"Listing failed! Error Code = {r.status_code}, Detail = {r.text}")
 
