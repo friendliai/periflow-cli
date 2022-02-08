@@ -166,12 +166,14 @@ def config_create(vm_config_type_code: str = typer.Option(...),
             f"Failed to create VM config. Error code = {response.status_code} "
             f"detail = {response.text}.")
 
-    result = response.json()
-    typer.echo("config type:")
-    typer.echo(f"    code: {result['vm_config_type']['code']}")
-    typer.echo(f"    name: {result['vm_config_type']['name']}")
-    typer.echo("template data:")
-    typer.echo(json.dumps(result["template_data"], indent=4))
+    result = {
+        "config type": {
+            "name": response.json()['vm_config_type']['name'],
+            "code": response.json()['vm_config_type']['code']
+        },
+        "template data": response.json()['template_data']
+    }
+    typer.echo(yaml.dump(result, indent=4))
 
 
 @config_app.command("update")
