@@ -106,7 +106,7 @@ def config_list():
 
 
 @config_app.command("view")
-def config_detail(vm_config_id: int = typer.Option(...), detail: bool = typer.Option(False, help="view all available fields for debugging purposes")):
+def config_detail(vm_config_id: int = typer.Option(...), detail: bool = typer.Option(False, help="View all available fields of vm configs")):
     response = autoauth.get(get_uri(f"vm_config/{vm_config_id}/"))
     try:
         response.raise_for_status()
