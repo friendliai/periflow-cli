@@ -213,6 +213,7 @@ def template_get(template_name: str = typer.Option(...),
         else:
             typer.echo(template_details)
     except HTTPError:
+        # TODO: Hide Status Code from Users
         secho_error_and_exit(f"Get failed! Error Code = {r.status_code}, Detail = {r.text}")
 
 
