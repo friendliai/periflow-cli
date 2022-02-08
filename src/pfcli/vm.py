@@ -106,7 +106,7 @@ def config_list():
 
 
 @config_app.command("view")
-def config_detail(vm_config_id: int = typer.Option(...), detail: bool = False):
+def config_detail(vm_config_id: int = typer.Option(...), detail: bool = typer.Option(False, help="view all available fields for debugging purposes")):
     response = autoauth.get(get_uri(f"vm_config/{vm_config_id}/"))
     try:
         response.raise_for_status()
@@ -116,15 +116,13 @@ def config_detail(vm_config_id: int = typer.Option(...), detail: bool = False):
             f"detail = {response.text}.")
 
     result = response.json()   
-    if detail:
-        typer.echo(yaml.dump(result, indent=4))
-    else:
-        result_simple = {
+    if detail is False:
+        result = {
             "group id": result["group_id"],
             "vm config type (code)": result["vm_config_type"]["code"],
             "template data": result["template_data"]
         }
-        typer.echo(yaml.dump(result_simple, indent=4))
+    typer.echo(yaml.dump(result, indent=4))
 
 
 @config_app.command("create")
