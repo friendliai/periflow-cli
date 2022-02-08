@@ -80,18 +80,27 @@ def config_type_list():
 
     vm_config_types = response.json()
 
-    headers = ["id", "name", "code", "data_schema", "vm_instance_type", "num_devices_per_vm"]
+    headers = ["name", "code", "data_schema", "vm_instance_type", "num_devices_per_vm"]
     results = []
     for vm_config_type in vm_config_types:
         sub_result = []
         for header in headers:
-            if header in ("data_schema", "vm_instance_type"):
-                sub_result.append(json.dumps(vm_config_type[header], indent=2))
+            if header == "data_schema":
+                sub_result.append(yaml.dump(vm_config_type[header], indent=2))
+            elif header == "vm_instance_type":
+                type_detail = {
+                    "code": vm_config_type[header]["code"],
+                    "name": vm_config_type[header]["name"], 
+                    "device type": vm_config_type[header]["device_type"],
+                    "region": vm_config_type[header]["region"],
+                    "vendor": vm_config_type[header]["vendor"]
+                }
+                sub_result.append(yaml.dump(type_detail, indent=2))
             else:
                 sub_result.append(vm_config_type[header])
         results.append(sub_result)
 
-    typer.echo(tabulate.tabulate(results, headers=[x.replace("_", " ") for x in headers]))
+    typer.echo(tabulate.tabulate(results, headers=[x.replace("_", " ") for x in headers], tablefmt="fancy_grid"))
 
 
 @config_app.command("list")
