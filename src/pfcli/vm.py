@@ -90,19 +90,19 @@ def config_list():
 
     vm_configs = response.json()
 
-    headers = ["id", "vm_config_type"]
+    headers = ["name", "code"]
     results = []
     for vm_config in vm_configs:
         sub_result = []
         for header in headers:
-            if header == "vm_config_type":
-                sub_result.append(vm_config[header]["name"])
+            if header == "name":
+                sub_result.append(vm_config['vm_config_type'][header])
             else:
-                # id
-                sub_result.append(vm_config[header])
+                sub_result.append(vm_config['vm_config_type'][header])
         results.append(sub_result)
 
-    typer.echo(tabulate.tabulate(results, headers=[x.replace("_", " ") for x in headers]))
+    typer.echo("\nvm config types")
+    typer.echo(tabulate.tabulate(results, headers))
 
 
 @config_app.command("view")
