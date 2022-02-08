@@ -55,7 +55,7 @@ def quota_list():
             elif header == "initial_quota":
                 quota_result = f"{quota_result} ({quota[header]})"
             elif header == "quota":
-                quota_result = str(quota[header]) + quota_result
+                quota_result = f"{quota[header]}{quota_result}"
         sub_result.append(quota_result)
         results.append(sub_result)
 
