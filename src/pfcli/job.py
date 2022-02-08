@@ -184,12 +184,15 @@ def template_list():
         for template in r.json():
             prop_string = ""
             for prop in template["data_schema"]["properties"]:
-                prop_string = prop_string + "    " + prop + ": " + template["data_schema"]["properties"][prop]["type"] + " (" + str(template["data_example"][prop]) + ")\n"
+                template["data_schema"]["properties"][prop] = template["data_schema"]["properties"][prop]["type"]+ " (" + str(template["data_example"][prop]) + ")"
+            result = {
+             "name" : template["name"],
+             "model code" : template["model_code"],
+             "engine code" : template["engine_code"],
+             "data schema (example)" : template["data_schema"]["properties"]
+            }
             typer.echo("------------------------------")
-            typer.echo("name: " + template["name"])
-            typer.echo("model code: " + template["model_code"])
-            typer.echo("engine code: " + template["engine_code"])
-            typer.echo("data schema (example): \n" + prop_string)
+            typer.echo(yaml.dump(result, sort_keys=False, indent=4))
     except HTTPError:
         secho_error_and_exit(f"Listing failed! Error Code = {r.status_code}, Detail = {r.text}")
 
