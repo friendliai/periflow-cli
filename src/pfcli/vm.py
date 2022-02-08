@@ -42,8 +42,14 @@ def quota_list():
         sub_result = []
         for header in headers:
             if header == "vm_instance_type":
-                del(quota[header]['id'])
-                instance_type_spec = yaml.dump(quota[header])
+                type_details = {
+                    'name' : quota[header]['name'],
+                    'code' : quota[header]['code'],
+                    'vendor' : quota[header]['vendor'],
+                    'region' : quota[header]['region'],
+                    'device type' : quota[header]['device_type']
+                }
+                instance_type_spec = yaml.dump(type_details)
                 sub_result.append(instance_type_spec)
             else:
                 sub_result.append(quota[header])
