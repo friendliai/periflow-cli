@@ -53,7 +53,7 @@ def quota_list():
                 instance_type_spec = yaml.dump(type_details)
                 sub_result.append(instance_type_spec)
             elif header == "initial_quota":
-                quota_result = quota_result + " (" + str(quota[header]) + ")"
+                quota_result = f"{quota_result} ({quota[header]})"
             elif header == "quota":
                 quota_result = str(quota[header]) + quota_result
         sub_result.append(quota_result)
