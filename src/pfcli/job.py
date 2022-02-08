@@ -182,11 +182,17 @@ def template_list():
         r.raise_for_status()
         # TODO: Elaborate
         for template in r.json():
-            del(template['id'])
-            del(template['created_at'])
-            del(template['data_schema'])
-            typer.echo("---------------------------------------")
-            typer.echo(yaml.dump(template, sort_keys=False, indent=4))
+            prop_string = ""
+            for prop in template["data_schema"]["properties"]:
+                template["data_schema"]["properties"][prop] = f"{template['data_schema']['properties'][prop]['type']} ({template['data_example'][prop]})"
+            result = {
+                "name" : template["name"],
+                "model code" : template["model_code"],
+                "engine code" : template["engine_code"],
+                "data schema (example)" : template["data_schema"]["properties"]
+            }
+            typer.echo("------------------------------")
+            typer.echo(yaml.dump(result, sort_keys=False, indent=4))
     except HTTPError:
         secho_error_and_exit(f"Listing failed! Error Code = {r.status_code}, Detail = {r.text}")
 
