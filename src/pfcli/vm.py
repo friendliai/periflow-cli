@@ -203,7 +203,8 @@ def config_update(vm_config_type_code: str = typer.Option(...),
 
 
 @config_app.command("delete")
-def config_delete(vm_config_id: int = typer.Option(...)):
+def config_delete(vm_config_type_code: str = typer.Option(...)):
+    vm_config_id = config_id_by_type_code(vm_config_type_code)
     response = autoauth.delete(get_uri(f"vm_config/{vm_config_id}/"))
     try:
         response.raise_for_status()
@@ -211,4 +212,4 @@ def config_delete(vm_config_id: int = typer.Option(...)):
         secho_error_and_exit(
             f"Failed to delete VM config. Error code = {response.status_code} "
             f"detail = {response.text}.")
-    typer.echo(f"Successfully deleted vm config (ID = {vm_config_id})")
+    typer.echo(f"Successfully deleted vm config (vm config type code = {vm_config_type_code})")
