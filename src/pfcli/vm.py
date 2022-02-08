@@ -40,14 +40,27 @@ def quota_list():
     results = []
     for quota in quotas:
         sub_result = []
+        quota_result = ""
         for header in headers:
             if header == "vm_instance_type":
-                sub_result.append(json.dumps(quota[header], indent=2))
-            else:
-                sub_result.append(quota[header])
+                type_details = {
+                    'name' : quota[header]['name'],
+                    'code' : quota[header]['code'],
+                    'vendor' : quota[header]['vendor'],
+                    'region' : quota[header]['region'],
+                    'device type' : quota[header]['device_type']
+                }
+                instance_type_spec = yaml.dump(type_details)
+                sub_result.append(instance_type_spec)
+            elif header == "initial_quota":
+                quota_result = f"{quota_result} ({quota[header]})"
+            elif header == "quota":
+                quota_result = f"{quota[header]}{quota_result}"
+        sub_result.append(quota_result)
         results.append(sub_result)
 
-    typer.echo(tabulate.tabulate(results, headers=[x.replace("_", " ") for x in headers]))
+    headers = ["vm instance type", "quota (initial)"]
+    typer.echo(tabulate.tabulate(results, headers=headers, tablefmt='fancy_grid'))
 
 
 @config_app.command("type")
