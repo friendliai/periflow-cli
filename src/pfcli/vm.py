@@ -49,7 +49,8 @@ def quota_list():
                 sub_result.append(quota[header])
         results.append(sub_result)
 
-    typer.echo(tabulate.tabulate(results, headers=[x.replace("_", " ") for x in headers], tablefmt='fancy_grid'))
+    headers = [x.replace("_", " ") for x in headers]
+    typer.echo(tabulate.tabulate(results, headers=headers, tablefmt='fancy_grid'))
 
 
 @config_app.command("type")
