@@ -12,7 +12,21 @@ from pfcli.utils import get_uri, secho_error_and_exit, get_group_id
 
 app = typer.Typer()
 
+def cred_id_by_name(cred_name: str, cred_type: str):
+    request_data = {"type": cred_type}
+    r = autoauth.get(get_uri("credential/"), params=request_data)
+    try:
+        r.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(f"Credential listing failed... Error Code = {r.status_code}, Detail = {r.text}")
+    creds = r.json()
+    try:
+        cred_id = next(cred["id"] for cred in creds if cred["name"] == cred_name)
+        return cred_id
+    except:
+        secho_error_and_exit(f"Cannot find a credential with such name")
 
+    
 def _print_cred_list(cred_list: List[Dict]):
     headers = ["name", "type", "type_version", "created_at"]
     results = []
@@ -42,7 +56,7 @@ def create(cred_type: str = typer.Option(...),
                       json=request_data)
     try:
         r.raise_for_status()
-        typer.echo(f"Credential registered... ID = {r.json()['id']}")
+        typer.echo(f"Credential registered... Name = {r.json()['name']}")
     except HTTPError:
         secho_error_and_exit(f"Credential register failed... Code = {r.status_code}, Msg = {r.text}")
 
@@ -61,14 +75,12 @@ def list(cred_type: str = typer.Option(...)):
 
 @app.command()
 def update(name: str = typer.Option(...),
-           cred_type: Optional[str] = typer.Option(None),
+           cred_type: str = typer.Option(...),
            type_version: int = typer.Option(None),
            config_file: Optional[typer.FileText] = typer.Option(None)):
     request_data = {}
-    if cred_type is not None:
-        request_data["cred_type"] = cred_type
-    if name is not None:
-        request_data["name"] = name
+    request_data["cred_type"] = cred_type
+    request_data["name"] = name
     if type_version is not None:
         request_data["type_version"] = type_version
     if config_file is not None:
@@ -77,25 +89,28 @@ def update(name: str = typer.Option(...),
         except yaml.YAMLError as e:
             secho_error_and_exit(f"Error occurred while parsing config file... {e}")
         request_data["value"] = value
-    if not request_data:
+    if type_version == None and config_file == None:
         secho_error_and_exit("No properties to be updated...")
+
+    cred_id = cred_id_by_name(name, cred_type)
     r = autoauth.patch(get_uri(f"credential/{cred_id}/"), json=request_data)
     cred = r.json()
     try:
         r.raise_for_status()
         typer.echo(tabulate.tabulate(
-            [[cred["id"], cred["name"], cred["type"], cred["type_version"], cred["created_at"]]],
-            headers=["id", "name", "type", "type_version", "created_at"]))
+            [cred["name"], cred["type"], cred["type_version"], cred["created_at"]]],
+            headers=["name", "type", "type_version", "created_at"]))
     except HTTPError:
         secho_error_and_exit(f"Update Failed... Error Code = {r.status_code}, Detail = {r.text}")
 
 
 @app.command()
-def delete(cred_id: str = typer.Option(...)):
+def delete(name: str = typer.Option(...), cred_type: str = typer.Option(...)):
+    cred_id = cred_id_by_name(name, cred_type)
     r = autoauth.delete(get_uri(f"credential/{cred_id}/"))
     try:
         r.raise_for_status()
-        typer.echo(f"Successfully deleted credential ID = {cred_id}")
+        typer.echo(f"Successfully deleted credential Name = {name}")
     except HTTPError:
         secho_error_and_exit(f"Delete failed... Error Code = {r.status_code}, Detail = {r.text}")
 
