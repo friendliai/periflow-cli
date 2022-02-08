@@ -60,9 +60,8 @@ def list(cred_type: str = typer.Option(...)):
 
 
 @app.command()
-def update(cred_id: str = typer.Option(...),
+def update(name: str = typer.Option(...),
            cred_type: Optional[str] = typer.Option(None),
-           name: Optional[str] = typer.Option(None),
            type_version: int = typer.Option(None),
            config_file: Optional[typer.FileText] = typer.Option(None)):
     request_data = {}
