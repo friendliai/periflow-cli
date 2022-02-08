@@ -184,7 +184,7 @@ def template_list():
         for template in r.json():
             prop_string = ""
             for prop in template["data_schema"]["properties"]:
-                prop_string = prop_string + "    " + template["data_schema"]["properties"][prop]["type"] + " (" + str(template["data_example"][prop]) + ")\n"
+                prop_string = prop_string + "    " + prop + ": " + template["data_schema"]["properties"][prop]["type"] + " (" + str(template["data_example"][prop]) + ")\n"
             typer.echo("------------------------------")
             typer.echo("name: " + template["name"])
             typer.echo("model code: " + template["model_code"])
