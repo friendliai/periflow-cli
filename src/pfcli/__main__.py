@@ -58,7 +58,8 @@ def login(username: str = typer.Option(..., prompt="Enter Username"),
         typer.echo("|  __ \___ _ __(_)|  ___| | _____      __")
         typer.echo("|  ___/ _ \ '__| || |__ | |/ _ \ \ /\ / /")
         typer.echo("| |  |  __/ |  | ||  __|| | (_) | V  V / ")
-        typer.echo("|_|   \___|_|  |_||_|   |_|\___/ \_/\_/  \n")
+        typer.echo("|_|   \___|_|  |_||_|   |_|\___/ \_/\_/  ")
+        typer.echo("\n\n")
     except HTTPError:
         secho_error_and_exit("Login failed... Please check your username and password.")
 
