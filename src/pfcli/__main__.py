@@ -37,8 +37,8 @@ def group():
     r = autoauth.get(get_uri("user/group/"), headers=get_auth_header())
     try:
         r.raise_for_status()
-        results = [[g["name"]] for g in r.json()["results"]]
-        typer.echo(tabulate.tabulate(results, headers=["group_name"]))
+        results = [[g["id"], g["name"]] for g in r.json()["results"]]
+        typer.echo(tabulate.tabulate(results, headers=["id", "group name"]))
     except HTTPError:
         secho_error_and_exit(f"Error Code = {r.status_code}, Detail = {r.json()['detail']}")
 
