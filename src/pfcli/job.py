@@ -194,7 +194,7 @@ def template_list():
 @template_app.command("get")
 def template_get(template_name: str = typer.Option(...),
                  download_file: Optional[typer.FileTextWrite] = typer.Option(None, "--download-file", "-f")):
-    r = autoauth.get(get_uri(f"job_template/"))
+    r = autoauth.get(get_uri("job_template/"))
     try:
         r.raise_for_status()
         chosen = []
