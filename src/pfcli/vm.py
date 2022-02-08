@@ -126,13 +126,9 @@ def config_detail(vm_config_id: int = typer.Option(...)):
 
 
 @config_app.command("create")
-def config_create(vm_config_type_id: Optional[int] = typer.Option(None),
-                  vm_config_type_code: Optional[str] = typer.Option(None),
+def config_create(vm_config_type_code: str = typer.Option(...),
                   template_data_file: typer.FileText = typer.Option(...)):
     group_id = get_group_id()
-
-    if vm_config_type_id is None and vm_config_type_code is None:
-        secho_error_and_exit("Either VMConfigTypeId or VMConfigTypeNAme should be specified")
 
     try:
         template_data = yaml.safe_load(template_data_file)
@@ -140,10 +136,7 @@ def config_create(vm_config_type_id: Optional[int] = typer.Option(None),
         secho_error_and_exit(f"Error occurred while parsing template file... {exc}")
 
     request_data = {}
-    if vm_config_type_id is None:
-        request_data["vm_config_type_code"] = vm_config_type_code
-    else:
-        request_data["vm_config_type_id"] = vm_config_type_id
+    request_data["vm_config_type_code"] = vm_config_type_code
     request_data["template_data"] = template_data
 
     response = autoauth.post(get_uri(f"group/{group_id}/vm_config/"), json=request_data)
@@ -156,10 +149,8 @@ def config_create(vm_config_type_id: Optional[int] = typer.Option(None),
             f"detail = {response.text}.")
 
     result = response.json()
-    typer.echo(f"id: {result['id']}")
-    typer.echo(f"group id: {result['group_id']}")
     typer.echo("config type:")
-    typer.echo(f"    id: {result['vm_config_type']['id']}")
+    typer.echo(f"    code: {result['vm_config_type']['code']}")
     typer.echo(f"    name: {result['vm_config_type']['name']}")
     typer.echo("template data:")
     typer.echo(json.dumps(result["template_data"], indent=4))
