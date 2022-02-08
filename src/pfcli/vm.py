@@ -40,6 +40,7 @@ def quota_list():
     results = []
     for quota in quotas:
         sub_result = []
+        quota_result = ""
         for header in headers:
             if header == "vm_instance_type":
                 type_details = {
@@ -51,11 +52,14 @@ def quota_list():
                 }
                 instance_type_spec = yaml.dump(type_details)
                 sub_result.append(instance_type_spec)
-            else:
-                sub_result.append(quota[header])
+            elif header == "initial_quota":
+                quota_result = quota_result + " (" + str(quota[header]) + ")"
+            elif header == "quota":
+                quota_result = str(quota[header]) + quota_result
+        sub_result.append(quota_result)
         results.append(sub_result)
 
-    headers = [x.replace("_", " ") for x in headers]
+    headers = ["vm instance type", "quota (initial)"]
     typer.echo(tabulate.tabulate(results, headers=headers, tablefmt='fancy_grid'))
 
 
