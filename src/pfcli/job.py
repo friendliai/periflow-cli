@@ -207,7 +207,7 @@ def template_get(template_name: str = typer.Option(...),
         del(chosen['created_at'])
         del(chosen['data_schema'])
         template_details = yaml.dump(chosen, sort_keys=False, indent=4)
-        if download_file != None:
+        if download_file is not None:
             download_file.write(template_details)
             typer.echo("Template File Download Success!\n")
         else:
