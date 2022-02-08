@@ -19,6 +19,24 @@ app.add_typer(quota_app, name="quota")
 app.add_typer(config_app, name="config")
 
 
+def config_id_by_type_code(vm_config_code: str):
+    group_id = get_group_id()
+
+    response = autoauth.get(get_uri(f"group/{group_id}/vm_config/"))
+    try:
+        response.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(
+            f"Failed to get VM configs. Error code = {response.status_code} "
+            f"detail = {response.text}.")
+    vm_configs = response.json()
+    try:
+        config_id = next(vm_config['id'] for vm_config in vm_configs if vm_config['vm_config_type']['code'] == vm_config_code)
+        return config_id
+    except:
+        secho_error_and_exit(f"Cannot find a vm config with such code")
+
+
 @quota_app.command("list")
 def quota_list():
     """List all VM quota information.
@@ -157,13 +175,14 @@ def config_create(vm_config_type_code: str = typer.Option(...),
 
 
 @config_app.command("update")
-def config_update(vm_config_id: int = typer.Option(...),
+def config_update(vm_config_type_code: str = typer.Option(...),
                   template_data_file: typer.FileText = typer.Option(...)):
     try:
         template_data = yaml.safe_load(template_data_file)
     except yaml.YAMLError as exc:
         secho_error_and_exit(f"Error occurred while parsing template file... {exc}")
 
+    vm_config_id = config_id_by_type_code(vm_config_type_code)
     request_data = {}
     request_data["template_data"] = template_data
     response = autoauth.patch(get_uri(f"vm_config/{vm_config_id}/"), json=request_data)
@@ -173,14 +192,14 @@ def config_update(vm_config_id: int = typer.Option(...),
         secho_error_and_exit(
             f"Failed to update VM config. Error code = {response.status_code} "
             f"detail = {response.text}.")
-    result = response.json()
-    typer.echo(f"id: {result['id']}")
-    typer.echo(f"group id: {result['group_id']}")
-    typer.echo("config type:")
-    typer.echo(f"    id: {result['vm_config_type']['id']}")
-    typer.echo(f"    name: {result['vm_config_type']['name']}")
-    typer.echo("template data:")
-    typer.echo(json.dumps(result["template_data"], indent=4))
+    result = {
+        "config type": {
+            "name": response.json()['vm_config_type']['name'],
+            "code": response.json()['vm_config_type']['code']
+        },
+        "template data": response.json()['template_data']
+    }
+    typer.echo(yaml.dump(result, indent=4))
 
 
 @config_app.command("delete")
