@@ -197,7 +197,6 @@ def template_get(template_name: str = typer.Option(...),
     r = autoauth.get(get_uri("job_template/"))
     try:
         r.raise_for_status()
-<<<<<<< HEAD
         try:
             chosen = next(template for template in r.json() if template['name'] == template_name)
         except:
