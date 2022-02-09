@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import math
+import json
 
 import typer
 from pfcli import autoauth
@@ -81,3 +82,33 @@ def get_group_id() -> int:
         secho_error_and_exit(
             "Currently we do not support users with more than two groups... Please contact admin")
     return groups[0]['id']
+
+
+def cred_id_by_name(cred_name: str, cred_type: str):
+    creds = []
+    
+    request_data = {"type": cred_type}
+    r_user = autoauth.get(get_uri("credential/"), params=request_data)
+    try:
+        r_user.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(f"Credential listing failed... Error Code = {r_user.status_code}, Detail = {r_user.text}")
+    creds_user = r_user.json()
+    for cred_user in creds_user:
+        creds.append(cred_user) 
+    
+    group_id = get_group_id()
+    r_group = autoauth.get(get_uri(f"group/{group_id}/credential/"))
+    try:
+        r_group.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(f"Credential listing failed... Error Code = {r_group.status_code}, Detail = {r_group.text}")
+    creds_group = r_group.json()
+    for cred_group in creds_group:
+        creds.append(cred_group) 
+
+    try:
+        cred_id = next(cred["id"] for cred in creds if cred["name"] == cred_name)
+        return cred_id
+    except:
+        secho_error_and_exit(f"Cannot find a credential with such name")

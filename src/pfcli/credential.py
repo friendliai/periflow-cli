@@ -7,24 +7,10 @@ import yaml
 from requests import HTTPError
 
 from pfcli import autoauth
-from pfcli.utils import get_uri, secho_error_and_exit, get_group_id
+from pfcli.utils import get_uri, secho_error_and_exit, get_group_id, cred_id_by_name
 
 
 app = typer.Typer()
-
-def cred_id_by_name(cred_name: str, cred_type: str):
-    request_data = {"type": cred_type}
-    r = autoauth.get(get_uri("credential/"), params=request_data)
-    try:
-        r.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit(f"Credential listing failed... Error Code = {r.status_code}, Detail = {r.text}")
-    creds = r.json()
-    try:
-        cred_id = next(cred["id"] for cred in creds if cred["name"] == cred_name)
-        return cred_id
-    except:
-        secho_error_and_exit(f"Cannot find a credential with such name")
 
     
 def _print_cred_list(cred_list: List[Dict]):
@@ -98,7 +84,7 @@ def update(name: str = typer.Option(...),
     try:
         r.raise_for_status()
         typer.echo(tabulate.tabulate(
-            [cred["name"], cred["type"], cred["type_version"], cred["created_at"]]],
+            [[cred["name"], cred["type"], cred["type_version"], cred["created_at"]]],
             headers=["name", "type", "type_version", "created_at"]))
     except HTTPError:
         secho_error_and_exit(f"Update Failed... Error Code = {r.status_code}, Detail = {r.text}")
