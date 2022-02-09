@@ -14,10 +14,10 @@ app = typer.Typer()
 
 
 def _print_cred_list(cred_list: List[Dict]):
-    headers = ["id", "name", "type", "type_version", "created_at"]
+    headers = ["id", "name", "type", "type_version", "created_at", "owner type"]
     results = []
     for cred in cred_list:
-        results.append([cred["id"], cred["name"], cred["type"], cred["type_version"], cred["created_at"]])
+        results.append([cred["id"], cred["name"], cred["type"], cred["type_version"], cred["created_at"], cred["owner_type"]])
     typer.echo(tabulate.tabulate(results, headers=headers))
 
 
@@ -49,14 +49,33 @@ def create(cred_type: str = typer.Option(...),
 
 @app.command()
 def list(cred_type: str = typer.Option(...)):
+    creds = []
+
     request_data = {"type": cred_type}
-    r = autoauth.get(get_uri("credential/"),
+    r_user = autoauth.get(get_uri("credential/"),
                      params=request_data)
     try:
-        r.raise_for_status()
-        _print_cred_list(r.json())
+        r_user.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(f"Credential listing failed... Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"Credential listing failed... Error Code = {r_user.status_code}, Detail = {r_user.text}")
+    creds_user = r_user.json()
+    for cred_user in creds_user:
+        cred_user["owner_type"] = "user"
+        creds.append(cred_user)
+
+    group_id = get_group_id()
+    r_group = autoauth.get(get_uri(f"group/{group_id}/credential/"))
+    try:
+        r_group.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(f"Credential listing failed... Error Code = {r_group.status_code}, Detail = {r_group.text}")
+    creds_group = r_group.json()
+    for cred_group in creds_group:
+        if cred_group["type"] == cred_type:
+            cred_group["owner_type"] = "group"
+            creds.append(cred_group) 
+            
+    _print_cred_list(creds)
 
 
 @app.command()
