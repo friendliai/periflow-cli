@@ -181,7 +181,18 @@ def template_list():
     try:
         r.raise_for_status()
         # TODO: Elaborate
-        typer.echo(json.dumps(r.json(), sort_keys=True, indent=2))
+        for template in r.json():
+            prop_string = ""
+            for prop in template["data_schema"]["properties"]:
+                template["data_schema"]["properties"][prop] = f"{template['data_schema']['properties'][prop]['type']} ({template['data_example'][prop]})"
+            result = {
+                "name" : template["name"],
+                "model code" : template["model_code"],
+                "engine code" : template["engine_code"],
+                "data schema (example)" : template["data_schema"]["properties"]
+            }
+            typer.echo("------------------------------")
+            typer.echo(yaml.dump(result, sort_keys=False, indent=4))
     except HTTPError:
         secho_error_and_exit(f"Listing failed! Error Code = {r.status_code}, Detail = {r.text}")
 
@@ -192,7 +203,17 @@ def template_view(template_id: int = typer.Option(...)):
     try:
         r.raise_for_status()
         # TODO: Elaborate
-        typer.echo(r.text)
+        template = r.json()
+        for prop in template["data_schema"]["properties"]:
+            template["data_schema"]["properties"][prop] = f"{template['data_schema']['properties'][prop]['type']} ({template['data_example'][prop]})"
+        result = {
+            "id" : template["id"],
+            "name" : template["name"],
+            "model code" : template["model_code"],
+            "engine code" : template["engine_code"],
+            "data schema (example)" : template["data_schema"]["properties"]
+        }
+        typer.echo(yaml.dump(result, sort_keys=False, indent=4))
     except HTTPError:
         secho_error_and_exit(f"View failed! Error Code = {r.status_code}, Detail = {r.text}")
 
