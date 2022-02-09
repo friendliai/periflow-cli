@@ -25,7 +25,8 @@ def _print_cred_list(cred_list: List[Dict]):
 def create(cred_type: str = typer.Option(...),
            name: str = typer.Option(...),
            config_file: typer.FileText = typer.Option(...),
-           type_version: int = typer.Option(1)):
+           type_version: int = typer.Option(1),
+           owner_type: str = typer.Option(...)):
     request_data = {
         "type": cred_type,
         "name": name,
@@ -38,13 +39,24 @@ def create(cred_type: str = typer.Option(...),
     group_id = get_group_id()
     request_data.update({"value": value})
 
-    r = autoauth.post(get_uri(f"group/{group_id}/credential/"),
-                      json=request_data)
-    try:
-        r.raise_for_status()
-        typer.echo(f"Credential registered... ID = {r.json()['id']}")
-    except HTTPError:
-        secho_error_and_exit(f"Credential register failed... Code = {r.status_code}, Msg = {r.text}")
+    if owner_type == 'user':
+        r = autoauth.post(get_uri(f"credential/"),
+                        json=request_data)
+        try:
+            r.raise_for_status()
+            typer.echo(f"Credential registered... Name = {r.json()['name']}")
+        except HTTPError:
+            secho_error_and_exit(f"Credential register failed... Code = {r.status_code}, Msg = {r.text}")
+    elif owner_type == 'group':
+        r = autoauth.post(get_uri(f"group/{group_id}/credential/"),
+                        json=request_data)
+        try:
+            r.raise_for_status()
+            typer.echo(f"Credential registered... Name = {r.json()['name']}")
+        except HTTPError:
+            secho_error_and_exit(f"Credential register failed... Code = {r.status_code}, Msg = {r.text}")
+    else:
+        secho_error_and_exit(f"Please write 'user' or 'group' for owner-type.")
 
 
 @app.command()
@@ -74,7 +86,7 @@ def list(cred_type: str = typer.Option(...)):
         if cred_group["type"] == cred_type:
             cred_group["owner_type"] = "group"
             creds.append(cred_group) 
-            
+
     _print_cred_list(creds)
 
 
