@@ -197,6 +197,36 @@ def template_list():
         secho_error_and_exit(f"Listing failed! Error Code = {r.status_code}, Detail = {r.text}")
 
 
+@template_app.command("get")
+def template_get(template_name: str = typer.Option(...),
+                 download_file: Optional[typer.FileTextWrite] = typer.Option(None, "--download-file", "-f")):
+    r = autoauth.get(get_uri("job_template/"))
+    try:
+        r.raise_for_status()
+        try:
+            chosen = next(template for template in r.json() if template['name'] == template_name)
+        except:
+            typer.echo("\nNo matching template found! :(\n")
+            return
+        for prop in chosen["data_schema"]["properties"]:
+            chosen["data_schema"]["properties"][prop] = chosen["data_schema"]["properties"][prop]["type"]+ " (" + str(chosen["data_example"][prop]) + ")"
+        result = {
+            "name" : chosen["name"],
+            "model code" : chosen["model_code"],
+            "engine code" : chosen["engine_code"],
+            "data schema (example)" : chosen["data_schema"]["properties"]
+        }
+        result_yaml = yaml.dump(result, sort_keys=False, indent=4)
+        if download_file is not None:
+            download_file.write(result_yaml)
+            typer.echo("\nTemplate File Download Success!\n")
+        else:
+            typer.echo(result_yaml)
+    except HTTPError:
+        # TODO: Hide Status Code from Users
+        secho_error_and_exit(f"Get failed! Error Code = {r.status_code}, Detail = {r.text}")
+
+
 @template_app.command("view")
 def template_view(template_id: int = typer.Option(...)):
     r = autoauth.get(get_uri(f"job_template/{template_id}/"))
