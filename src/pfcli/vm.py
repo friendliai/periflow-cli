@@ -40,14 +40,27 @@ def quota_list():
     results = []
     for quota in quotas:
         sub_result = []
+        quota_result = ""
         for header in headers:
             if header == "vm_instance_type":
-                sub_result.append(json.dumps(quota[header], indent=2))
-            else:
-                sub_result.append(quota[header])
+                type_details = {
+                    'name' : quota[header]['name'],
+                    'code' : quota[header]['code'],
+                    'vendor' : quota[header]['vendor'],
+                    'region' : quota[header]['region'],
+                    'device type' : quota[header]['device_type']
+                }
+                instance_type_spec = yaml.dump(type_details)
+                sub_result.append(instance_type_spec)
+            elif header == "initial_quota":
+                quota_result = f"{quota_result} ({quota[header]})"
+            elif header == "quota":
+                quota_result = f"{quota[header]}{quota_result}"
+        sub_result.append(quota_result)
         results.append(sub_result)
 
-    typer.echo(tabulate.tabulate(results, headers=[x.replace("_", " ") for x in headers]))
+    headers = ["vm instance type", "quota (initial)"]
+    typer.echo(tabulate.tabulate(results, headers=headers, tablefmt='fancy_grid'))
 
 
 @config_app.command("type")
@@ -106,7 +119,7 @@ def config_list():
 
 
 @config_app.command("view")
-def config_detail(vm_config_id: int = typer.Option(...)):
+def config_detail(vm_config_id: int = typer.Option(...), detail: bool = typer.Option(False, help="View all available fields of vm configs")):
     response = autoauth.get(get_uri(f"vm_config/{vm_config_id}/"))
     try:
         response.raise_for_status()
@@ -115,14 +128,14 @@ def config_detail(vm_config_id: int = typer.Option(...)):
             f"Failed to get VM config. Error code = {response.status_code} "
             f"detail = {response.text}.")
 
-    result = response.json()
-    typer.echo(f"id: {result['id']}")
-    typer.echo(f"group id: {result['group_id']}")
-    typer.echo("config type:")
-    typer.echo(f"    id: {result['vm_config_type']['id']}")
-    typer.echo(f"    name: {result['vm_config_type']['name']}")
-    typer.echo("template data:")
-    typer.echo(json.dumps(result["template_data"], indent=4))
+    result = response.json()   
+    if detail is False:
+        result = {
+            "group id": result["group_id"],
+            "vm config type (code)": result["vm_config_type"]["code"],
+            "template data": result["template_data"]
+        }
+    typer.echo(yaml.dump(result, indent=4))
 
 
 @config_app.command("create")
