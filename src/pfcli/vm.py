@@ -80,14 +80,12 @@ def config_type_list():
 
     vm_config_types = response.json()
 
-    headers = ["name", "code", "data_schema", "vm_instance_type", "num_devices_per_vm"]
+    headers = ["name", "code", "vm_instance_type", "num_devices_per_vm"]
     results = []
     for vm_config_type in vm_config_types:
         sub_result = []
         for header in headers:
-            if header == "data_schema":
-                sub_result.append(yaml.dump(vm_config_type[header], indent=2))
-            elif header == "vm_instance_type":
+            if header == "vm_instance_type":
                 type_detail = {
                     "code": vm_config_type[header]["code"],
                     "name": vm_config_type[header]["name"], 
