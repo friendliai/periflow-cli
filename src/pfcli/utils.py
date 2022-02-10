@@ -72,11 +72,10 @@ def secho_error_and_exit(text: str, color=typer.colors.RED):
 def get_group_id() -> int:
     r = autoauth.get(get_uri("user/group/"))
     if r.status_code != 200:
-        secho_error_and_exit(
-            f"Cannot acquire group info. Error Code = {r.status_code} detail = {r.text}")
+        secho_error_and_exit(f"Cannot acquire group info.")
     groups = r.json()["results"]
     if len(groups) == 0:
-        secho_error_and_exit("You are not assigned to any group... Please contact to admin")
+        secho_error_and_exit("You are not assigned to any group... Please contact admin")
     if len(groups) > 1:
         secho_error_and_exit(
             "Currently we do not support users with more than two groups... Please contact admin")

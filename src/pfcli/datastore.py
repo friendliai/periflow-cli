@@ -118,7 +118,7 @@ def delete(datastore_id: str = typer.Option(...)):
         r.raise_for_status()
         typer.echo(f"Successfully deleted datastore.")
     except HTTPError:
-        secho_error_and_exit(f"Failed to delete datastore...")
+        secho_error_and_exit(f"Datastore delete failed...")
 
 
 if __name__ == '__main__':

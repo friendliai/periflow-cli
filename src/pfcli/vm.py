@@ -137,7 +137,7 @@ def config_create(vm_config_type_id: Optional[int] = typer.Option(None),
     group_id = get_group_id()
 
     if vm_config_type_id is None and vm_config_type_code is None:
-        secho_error_and_exit("Either VMConfigTypeId or VMConfigTypeNAme should be specified")
+        secho_error_and_exit("Either VMConfigTypeId or VMConfigTypeName should be specified")
 
     try:
         template_data = yaml.safe_load(template_data_file)

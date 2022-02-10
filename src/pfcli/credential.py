@@ -79,7 +79,7 @@ def update(cred_id: str = typer.Option(...),
             secho_error_and_exit(f"Error occurred while parsing config file... {e}")
         request_data["value"] = value
     if not request_data:
-        secho_error_and_exit("No properties to be updated...")
+        secho_error_and_exit("You need to specify at least one properties to update credential")
     r = autoauth.patch(get_uri(f"credential/{cred_id}/"), json=request_data)
     cred = r.json()
     try:
