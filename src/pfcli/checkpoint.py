@@ -51,8 +51,7 @@ def checkpoint_list(category: Optional[str] = typer.Option(None),
     try:
         response.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(
-            f"Cannot retrieve checkpoints. Error code = {response.status_code} detail = {response.text}")
+        secho_error_and_exit(f"Cannot retrieve checkpoints.")
     checkpoints = response.json()["results"]
     next_cursor = response.json()["next_cursor"]
 
@@ -74,8 +73,7 @@ def checkpoint_detail(checkpoint_id: str = typer.Option(...)):
     try:
         response.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(
-            f"Cannot retrieve checkpoint. Error code = {response.status_code} detail = {response.text}")
+        secho_error_and_exit(f"Cannot retrieve checkpoint.")
 
     checkpoint_json = response.json()
     _echo_checkpoint_detail(checkpoint_json)
@@ -217,9 +215,7 @@ def checkpoint_create(file_or_dir: Path = typer.Option(...),
     try:
         response.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(
-            "Cannot retrieve credential. "
-            f"Error code = {response.status_code} detail = {response.text}")
+        secho_error_and_exit("Cannot retrieve credential.")
 
     credential_json = response.json()
     if credential_json["type"] != vendor:
@@ -235,9 +231,7 @@ def checkpoint_create(file_or_dir: Path = typer.Option(...),
         response.raise_for_status()
         _echo_checkpoint_detail(response.json())
     except HTTPError:
-        secho_error_and_exit(
-            "Failed to create checkpoint. "
-            f"Error code = {response.status_code} detail = {response.text}")
+        secho_error_and_exit("Failed to create checkpoint.")
 
 
 @app.command("update")
@@ -256,9 +250,7 @@ def checkpoint_update(checkpoint_id: str = typer.Option(...),
     try:
         response.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(
-            "Cannot retrieve checkpoint. "
-            f"Error code = {response.status_code} detail = {response.text}")
+        secho_error_and_exit("Cannot retrieve checkpoint. ")
     checkpoint_json = response.json()
 
     request_data = {}
@@ -281,14 +273,11 @@ def checkpoint_update(checkpoint_id: str = typer.Option(...),
     try:
         response.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(
-            "Cannot retrieve credential. "
-            f"Error code = {response.status_code} detail = {response.text}")
+        secho_error_and_exit("Cannot retrieve credential. ")
 
     credential_json = response.json()
     if credential_json["type"] != vendor:
-        secho_error_and_exit(
-            f"Credential type and vendor mismatch: {credential_json['type']} and {vendor}")
+        secho_error_and_exit(f"Credential type and vendor mismatch: {credential_json['type']} and {vendor}")
 
     storage_helper = CloudStorageHelper(
         file_or_dir, credential_json["value"], vendor, storage_name)
@@ -300,9 +289,7 @@ def checkpoint_update(checkpoint_id: str = typer.Option(...),
         response.raise_for_status()
         _echo_checkpoint_detail(response.json())
     except HTTPError:
-        secho_error_and_exit(
-            "Failed to update checkpoint. "
-            f"Error code = {response.status_code} detail = {response.text}")
+        secho_error_and_exit("Failed to update checkpoint. ")
 
 
 @app.command("delete")
@@ -316,8 +303,7 @@ def checkpoint_delete(checkpoint_id: str = typer.Option(...)):
         response.raise_for_status()
         typer.echo(f"Successfully deleted checkpoint (ID = {checkpoint_id})")
     except HTTPError:
-        secho_error_and_exit(
-            f"Delete failed. Error code = {response.status_code}, Detail = {response.text}")
+        secho_error_and_exit(f"Delete failed.")
 
 
 if __name__ == '__main__':

@@ -44,7 +44,7 @@ def create(cred_type: str = typer.Option(...),
         r.raise_for_status()
         typer.echo(f"Credential registered... ID = {r.json()['id']}")
     except HTTPError:
-        secho_error_and_exit(f"Credential register failed... Code = {r.status_code}, Msg = {r.text}")
+        secho_error_and_exit(f"Credential register failed...")
 
 
 @app.command()
@@ -56,7 +56,7 @@ def list(cred_type: str = typer.Option(...)):
         r.raise_for_status()
         _print_cred_list(r.json())
     except HTTPError:
-        secho_error_and_exit(f"Credential listing failed... Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"Credential listing failed...")
 
 
 @app.command()
@@ -88,7 +88,7 @@ def update(cred_id: str = typer.Option(...),
             [[cred["id"], cred["name"], cred["type"], cred["type_version"], cred["created_at"]]],
             headers=["id", "name", "type", "type_version", "created_at"]))
     except HTTPError:
-        secho_error_and_exit(f"Update Failed... Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"Update Failed...")
 
 
 @app.command()
@@ -98,7 +98,7 @@ def delete(cred_id: str = typer.Option(...)):
         r.raise_for_status()
         typer.echo(f"Successfully deleted credential ID = {cred_id}")
     except HTTPError:
-        secho_error_and_exit(f"Delete failed... Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"Delete failed...")
 
 
 if __name__ == '__main__':
