@@ -39,6 +39,7 @@ def create(cred_type: str = typer.Option(...),
     group_id = get_group_id()
     request_data.update({"value": value})
 
+
     if owner_type == 'user':
         r = autoauth.post(get_uri(f"credential/"),
                         json=request_data)
@@ -46,7 +47,7 @@ def create(cred_type: str = typer.Option(...),
             r.raise_for_status()
             typer.echo(f"Credential registered... Name = {r.json()['name']}")
         except HTTPError:
-            secho_error_and_exit(f"Credential register failed... Code = {r.status_code}, Msg = {r.text}")
+            secho_error_and_exit(f"Credential register failed...")
     elif owner_type == 'group':
         r = autoauth.post(get_uri(f"group/{group_id}/credential/"),
                         json=request_data)
@@ -54,7 +55,7 @@ def create(cred_type: str = typer.Option(...),
             r.raise_for_status()
             typer.echo(f"Credential registered... Name = {r.json()['name']}")
         except HTTPError:
-            secho_error_and_exit(f"Credential register failed... Code = {r.status_code}, Msg = {r.text}")
+            secho_error_and_exit(f"Credential register failed...")
     else:
         secho_error_and_exit(f"Please write 'user' or 'group' for owner-type.")
 
@@ -80,7 +81,7 @@ def list(cred_type: str = typer.Option(...)):
     try:
         r_group.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(f"Credential listing failed... Error Code = {r_group.status_code}, Detail = {r_group.text}")
+        secho_error_and_exit(f"Credential listing failed...")
     creds_group = r_group.json()
     for cred_group in creds_group:
         if cred_group["type"] == cred_type:
@@ -110,7 +111,7 @@ def update(cred_id: str = typer.Option(...),
             secho_error_and_exit(f"Error occurred while parsing config file... {e}")
         request_data["value"] = value
     if not request_data:
-        secho_error_and_exit("No properties to be updated...")
+        secho_error_and_exit("You need to specify at least one properties to update credential")
     r = autoauth.patch(get_uri(f"credential/{cred_id}/"), json=request_data)
     cred = r.json()
     try:
@@ -119,7 +120,7 @@ def update(cred_id: str = typer.Option(...),
             [[cred["id"], cred["name"], cred["type"], cred["type_version"], cred["created_at"]]],
             headers=["id", "name", "type", "type_version", "created_at"]))
     except HTTPError:
-        secho_error_and_exit(f"Update Failed... Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"Update Failed...")
 
 
 @app.command()
@@ -129,7 +130,7 @@ def delete(cred_id: str = typer.Option(...)):
         r.raise_for_status()
         typer.echo(f"Successfully deleted credential ID = {cred_id}")
     except HTTPError:
-        secho_error_and_exit(f"Delete failed... Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"Delete failed...")
 
 
 if __name__ == '__main__':

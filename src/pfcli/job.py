@@ -78,7 +78,7 @@ def run(vm_config_id: int = typer.Option(...),
                                        r.json()["workspace_signature"],
                                        r.json()["workspace_id"]]], headers=headers))
     except HTTPError:
-        secho_error_and_exit(f"Failed to run the specified job! Error Code = {r.status_code} Detail = {r.text}")
+        secho_error_and_exit(f"Failed to run the specified job!")
 
 
 @app.command()
@@ -92,7 +92,7 @@ def list(long_list: bool = typer.Option(False, "--long-list", "-l")):
     try:
         r.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(f"List failed! Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"Job listing failed!")
     for job in r.json()["results"]:
         if job.get("started_at") is not None:
             start = datetime_to_pretty_str(parse(job["started_at"]), long_list=long_list)
@@ -121,7 +121,7 @@ def stop(job_id: int = typer.Option(...)):
     try:
         r.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(f"Cannot fetch job info... Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"Cannot fetch job info...")
     job_status = r.json()["status"]
     if job_status == "waiting":
         r = autoauth.post(get_uri(f"job/{job_id}/cancel/"))
@@ -130,14 +130,14 @@ def stop(job_id: int = typer.Option(...)):
             typer.echo("Job is now cancelling...")
         except HTTPError:
             # TODO: Handle synchronization error if necessary...
-            secho_error_and_exit(f"Job stop failed! Error Code = {r.status_code}, Detail = {r.text}")
+            secho_error_and_exit(f"Job stop failed!")
     elif job_status == "running" or job_status == "enqueued":
         r = autoauth.post(get_uri(f"job/{job_id}/terminate/"))
         try:
             r.raise_for_status()
             typer.echo("Job is now terminating...")
         except HTTPError:
-            secho_error_and_exit(f"Job stop failed! Error Code = {r.status_code}, Detail = {r.text}")
+            secho_error_and_exit(f"Job stop failed!")
     else:
         secho_error_and_exit(f"No need to stop {job_status} job...")
 
@@ -172,7 +172,7 @@ def view(job_id: int = typer.Option(...),
                 headers=["id", "status", "vm_name", "device", "# devices", "datastore",
                          "start", "duration", "err_msg"]))
     except HTTPError:
-        secho_error_and_exit(f"View failed! Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"View failed!")
 
 
 @template_app.command("list")
@@ -194,7 +194,36 @@ def template_list():
             typer.echo("------------------------------")
             typer.echo(yaml.dump(result, sort_keys=False, indent=4))
     except HTTPError:
-        secho_error_and_exit(f"Listing failed! Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"Listing failed!")
+
+
+@template_app.command("get")
+def template_get(template_name: str = typer.Option(...),
+                 download_file: Optional[typer.FileTextWrite] = typer.Option(None, "--download-file", "-f")):
+    r = autoauth.get(get_uri("job_template/"))
+    try:
+        r.raise_for_status()
+        try:
+            chosen = next(template for template in r.json() if template['name'] == template_name)
+        except:
+            typer.echo("\nNo matching template found! :(\n")
+            return
+        for prop in chosen["data_schema"]["properties"]:
+            chosen["data_schema"]["properties"][prop] = chosen["data_schema"]["properties"][prop]["type"]+ " (" + str(chosen["data_example"][prop]) + ")"
+        result = {
+            "name" : chosen["name"],
+            "model code" : chosen["model_code"],
+            "engine code" : chosen["engine_code"],
+            "data schema (example)" : chosen["data_schema"]["properties"]
+        }
+        result_yaml = yaml.dump(result, sort_keys=False, indent=4)
+        if download_file is not None:
+            download_file.write(result_yaml)
+            typer.echo("\nTemplate File Download Success!\n")
+        else:
+            typer.echo(result_yaml)
+    except HTTPError:
+        secho_error_and_exit(f"Get failed!")
 
 
 @template_app.command("view")
@@ -215,7 +244,7 @@ def template_view(template_id: int = typer.Option(...)):
         }
         typer.echo(yaml.dump(result, sort_keys=False, indent=4))
     except HTTPError:
-        secho_error_and_exit(f"View failed! Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"View failed!")
 
 
 class LogType(Enum):
@@ -318,7 +347,7 @@ def log_view(job_id: int = typer.Option(...),
             except KeyboardInterrupt:
                 secho_error_and_exit(f"Keyboard Interrupt...", color=typer.colors.MAGENTA)
     except HTTPError:
-        secho_error_and_exit(f"Log fetching failed! Error Code = {init_r.status_code}, Detail = {init_r.text}")
+        secho_error_and_exit(f"Log fetching failed!")
 
 
 if __name__ == '__main__':
