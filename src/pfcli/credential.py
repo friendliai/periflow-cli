@@ -26,7 +26,7 @@ def create(cred_type: str = typer.Option(...),
            name: str = typer.Option(...),
            config_file: typer.FileText = typer.Option(...),
            type_version: int = typer.Option(1),
-           owner_type: str = typer.Option(...)):
+           owner_type: Optional[str] = typer.Option("group")):
     request_data = {
         "type": cred_type,
         "name": name,
