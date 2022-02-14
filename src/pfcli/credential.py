@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Optional, List, Dict
+from enum import Enum
 
 import tabulate
 import typer
@@ -11,6 +12,11 @@ from pfcli.utils import get_uri, secho_error_and_exit, get_group_id
 
 
 app = typer.Typer()
+
+
+class OwnerType(str, Enum):
+    group = "group"
+    user = "user"
 
 
 def _print_cred_list(cred_list: List[Dict]):
@@ -26,7 +32,7 @@ def create(cred_type: str = typer.Option(...),
            name: str = typer.Option(...),
            config_file: typer.FileText = typer.Option(...),
            type_version: int = typer.Option(1),
-           owner_type: Optional[str] = typer.Option("group")):
+           owner_type: OwnerType = OwnerType.group):
     request_data = {
         "type": cred_type,
         "name": name,
@@ -39,8 +45,7 @@ def create(cred_type: str = typer.Option(...),
     group_id = get_group_id()
     request_data.update({"value": value})
 
-
-    if owner_type == 'user':
+    if owner_type.value == 'user':
         r = autoauth.post(get_uri(f"credential/"),
                         json=request_data)
         try:
@@ -48,7 +53,7 @@ def create(cred_type: str = typer.Option(...),
             typer.echo(f"Credential registered... Name = {r.json()['name']}")
         except HTTPError:
             secho_error_and_exit(f"Credential register failed...")
-    elif owner_type == 'group':
+    else:
         r = autoauth.post(get_uri(f"group/{group_id}/credential/"),
                         json=request_data)
         try:
@@ -56,8 +61,6 @@ def create(cred_type: str = typer.Option(...),
             typer.echo(f"Credential registered... Name = {r.json()['name']}")
         except HTTPError:
             secho_error_and_exit(f"Credential register failed...")
-    else:
-        secho_error_and_exit(f"Please write 'user' or 'group' for owner-type.")
 
 
 @app.command()
