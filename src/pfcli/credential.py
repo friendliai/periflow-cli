@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Optional, List, Dict
+from enum import Enum
 
 import tabulate
 import typer
@@ -13,11 +14,16 @@ from pfcli.utils import get_uri, secho_error_and_exit, get_group_id
 app = typer.Typer()
 
 
+class OwnerType(str, Enum):
+    GROUP = "group"
+    USER = "user"
+
+
 def _print_cred_list(cred_list: List[Dict]):
-    headers = ["id", "name", "type", "type_version", "created_at"]
+    headers = ["id", "name", "type", "type_version", "created_at", "owner type"]
     results = []
     for cred in cred_list:
-        results.append([cred["id"], cred["name"], cred["type"], cred["type_version"], cred["created_at"]])
+        results.append([cred["id"], cred["name"], cred["type"], cred["type_version"], cred["created_at"], cred["owner_type"]])
     typer.echo(tabulate.tabulate(results, headers=headers))
 
 
@@ -25,7 +31,8 @@ def _print_cred_list(cred_list: List[Dict]):
 def create(cred_type: str = typer.Option(...),
            name: str = typer.Option(...),
            config_file: typer.FileText = typer.Option(...),
-           type_version: int = typer.Option(1)):
+           type_version: int = typer.Option(1),
+           owner_type: OwnerType = OwnerType.GROUP):
     request_data = {
         "type": cred_type,
         "name": name,
@@ -38,25 +45,53 @@ def create(cred_type: str = typer.Option(...),
     group_id = get_group_id()
     request_data.update({"value": value})
 
-    r = autoauth.post(get_uri(f"group/{group_id}/credential/"),
-                      json=request_data)
-    try:
-        r.raise_for_status()
-        typer.echo(f"Credential registered... ID = {r.json()['id']}")
-    except HTTPError:
-        secho_error_and_exit(f"Credential register failed...")
+    if owner_type.value == 'user':
+        r = autoauth.post(get_uri(f"credential/"),
+                        json=request_data)
+        try:
+            r.raise_for_status()
+            typer.echo(f"Credential registered... Name = {r.json()['name']}")
+        except HTTPError:
+            secho_error_and_exit(f"Credential register failed...")
+    else:
+        r = autoauth.post(get_uri(f"group/{group_id}/credential/"),
+                        json=request_data)
+        try:
+            r.raise_for_status()
+            typer.echo(f"Credential registered... Name = {r.json()['name']}")
+        except HTTPError:
+            secho_error_and_exit(f"Credential register failed...")
 
 
 @app.command()
 def list(cred_type: str = typer.Option(...)):
+    creds = []
+
     request_data = {"type": cred_type}
-    r = autoauth.get(get_uri("credential/"),
+    r_user = autoauth.get(get_uri("credential/"),
                      params=request_data)
     try:
-        r.raise_for_status()
-        _print_cred_list(r.json())
+        r_user.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(f"Credential listing failed... Error Code = {r_user.status_code}, Detail = {r_user.text}")
+    creds_user = r_user.json()
+    for cred_user in creds_user:
+        cred_user["owner_type"] = "user"
+        creds.append(cred_user)
+
+    group_id = get_group_id()
+    r_group = autoauth.get(get_uri(f"group/{group_id}/credential/"))
+    try:
+        r_group.raise_for_status()
     except HTTPError:
         secho_error_and_exit(f"Credential listing failed...")
+    creds_group = r_group.json()
+    for cred_group in creds_group:
+        if cred_group["type"] == cred_type:
+            cred_group["owner_type"] = "group"
+            creds.append(cred_group) 
+
+    _print_cred_list(creds)
 
 
 @app.command()
