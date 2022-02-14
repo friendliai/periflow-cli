@@ -15,8 +15,8 @@ app = typer.Typer()
 
 
 class OwnerType(str, Enum):
-    group = "group"
-    user = "user"
+    GROUP = "group"
+    USER = "user"
 
 
 def _print_cred_list(cred_list: List[Dict]):
@@ -32,7 +32,7 @@ def create(cred_type: str = typer.Option(...),
            name: str = typer.Option(...),
            config_file: typer.FileText = typer.Option(...),
            type_version: int = typer.Option(1),
-           owner_type: OwnerType = OwnerType.group):
+           owner_type: OwnerType = OwnerType.GROUP):
     request_data = {
         "type": cred_type,
         "name": name,
