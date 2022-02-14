@@ -29,9 +29,7 @@ def quota_list():
     try:
         response.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(
-            f"Failed to get VM quota. Error code = {response.status_code} "
-            f"detail = {response.text}.")
+        secho_error_and_exit(f"Failed to get VM quota.")
 
     quotas = response.json()
 
@@ -69,9 +67,7 @@ def config_type_list():
     try:
         response.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(
-            f"Failed to get VM config. Error code = {response.status_code} "
-            f"detail = {response.text}.")
+        secho_error_and_exit(f"Failed to get VM config.")
 
     vm_config_types = response.json()
 
@@ -97,9 +93,7 @@ def config_list():
     try:
         response.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(
-            f"Failed to get VM configs. Error code = {response.status_code} "
-            f"detail = {response.text}.")
+        secho_error_and_exit(f"Failed to get VM configs.")
 
     vm_configs = response.json()
 
@@ -124,9 +118,7 @@ def config_detail(vm_config_id: int = typer.Option(...), detail: bool = typer.Op
     try:
         response.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(
-            f"Failed to get VM config. Error code = {response.status_code} "
-            f"detail = {response.text}.")
+        secho_error_and_exit(f"Failed to get VM config.")
 
     result = response.json()   
     if detail is False:
@@ -145,7 +137,7 @@ def config_create(vm_config_type_id: Optional[int] = typer.Option(None),
     group_id = get_group_id()
 
     if vm_config_type_id is None and vm_config_type_code is None:
-        secho_error_and_exit("Either VMConfigTypeId or VMConfigTypeNAme should be specified")
+        secho_error_and_exit("Either VMConfigTypeId or VMConfigTypeName should be specified")
 
     try:
         template_data = yaml.safe_load(template_data_file)
@@ -164,9 +156,7 @@ def config_create(vm_config_type_id: Optional[int] = typer.Option(None),
     try:
         response.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(
-            f"Failed to create VM config. Error code = {response.status_code} "
-            f"detail = {response.text}.")
+        secho_error_and_exit(f"Failed to create VM config.")
 
     result = response.json()
     typer.echo(f"id: {result['id']}")
@@ -192,9 +182,7 @@ def config_update(vm_config_id: int = typer.Option(...),
     try:
         response.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(
-            f"Failed to update VM config. Error code = {response.status_code} "
-            f"detail = {response.text}.")
+        secho_error_and_exit(f"Failed to update VM config.")
     result = response.json()
     typer.echo(f"id: {result['id']}")
     typer.echo(f"group id: {result['group_id']}")
@@ -211,7 +199,5 @@ def config_delete(vm_config_id: int = typer.Option(...)):
     try:
         response.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(
-            f"Failed to delete VM config. Error code = {response.status_code} "
-            f"detail = {response.text}.")
+        secho_error_and_exit(f"Failed to delete VM config.")
     typer.echo(f"Successfully deleted vm config (ID = {vm_config_id})")

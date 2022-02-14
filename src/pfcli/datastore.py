@@ -49,7 +49,7 @@ def create(name: str = typer.Option(...),
             ]]
         typer.echo(tabulate.tabulate(results, headers="firstrow"))
     except HTTPError:
-        secho_error_and_exit(f"Datastore create failed... Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"Datastore create failed...")
 
 
 @app.command()
@@ -86,7 +86,7 @@ def update(datastore_id: str = typer.Option(...),
             ]]
         typer.echo(tabulate.tabulate(results, headers="firstrow"))
     except HTTPError:
-        secho_error_and_exit(f"Datastore update failed... Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"Datastore update failed...")
 
 
 @app.command()
@@ -108,7 +108,7 @@ def delete(datastore_id: str = typer.Option(...)):
             ]]
         typer.echo(tabulate.tabulate(results, headers="firstrow"))
     except HTTPError:
-        secho_error_and_exit(f"Datastore delete failed... Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"Datastore delete failed...")
     datastore_delete = typer.confirm("Are you sure want to delete the datastore? This cannot be undone")
     if not datastore_delete:
         typer.Exit(1)
@@ -118,7 +118,7 @@ def delete(datastore_id: str = typer.Option(...)):
         r.raise_for_status()
         typer.echo(f"Successfully deleted datastore.")
     except HTTPError:
-        secho_error_and_exit(f"Failed to delete datastore... Error Code = {r.status_code}, Detail = {r.text}")
+        secho_error_and_exit(f"Datastore delete failed...")
 
 
 if __name__ == '__main__':
