@@ -382,7 +382,16 @@ async def _consume_and_print_logs(websocket: websockets.WebSocketClientProtocol,
                 if node_rank == -1:
                     node_rank = "vm"
                 log_list.append(f"💻 #{node_rank}")
-            log_list.append("\n".join(textwrap.wrap(decoded_response['content'], os.get_terminal_size().columns - 45)))
+            log_list.append(
+                "\n".join(
+                    textwrap.wrap(
+                        decoded_response['content'],
+                        width=os.get_terminal_size().columns - 45,
+                        break_long_words=False,
+                        replace_whitespace=False
+                    )
+                )
+            )
             typer.echo(
                 tabulate.tabulate(
                     [log_list],
@@ -558,7 +567,16 @@ def log_view(
                     if node_rank == -1:
                         node_rank = "vm"
                     log_list.append(f"💻 #{node_rank}")
-                log_list.append("\n".join(textwrap.wrap(record['content'], os.get_terminal_size().columns - 45)))
+                log_list.append(
+                    "\n".join(
+                        textwrap.wrap(
+                            record['content'],
+                            width=os.get_terminal_size().columns - 45,
+                            break_long_words=False,
+                            replace_whitespace=False
+                        )
+                    )
+                )
                 typer.echo(
                     tabulate.tabulate(
                         [log_list],
