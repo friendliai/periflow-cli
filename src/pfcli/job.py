@@ -1,13 +1,16 @@
 """PeriFlow Job
 """
 
+import os
 import asyncio
 import json
 import zipfile
+import textwrap
 from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
 from typing import Optional, List
+from dateutil import parser
 
 import tabulate
 import typer
@@ -17,6 +20,7 @@ from dateutil.parser import parse
 from requests import HTTPError
 
 from pfcli import autoauth
+from pfcli.errors import InvalidParamError
 from pfcli.utils import (get_uri,
                          get_wss_uri,
                          secho_error_and_exit,
@@ -339,12 +343,16 @@ def template_get(
 class LogType(str, Enum):
     STDOUT = "stdout"
     STDERR = "stderr"
+    VMLOG = "vmlog"
 
 
-async def _subscribe(websocket: websockets.WebSocketClientProtocol, sources: List[str]):
+async def _subscribe(websocket: websockets.WebSocketClientProtocol,
+                     sources: List[str],
+                     node_ranks: List[int]):
     subscribe_json = {
         "type": "subscribe",
-        "sources": sources
+        "sources": sources,
+        "node_ranks": node_ranks
     }
     await websocket.send(json.dumps(subscribe_json))
     r = await websocket.recv()
@@ -358,28 +366,72 @@ async def _subscribe(websocket: websockets.WebSocketClientProtocol, sources: Lis
         secho_error_and_exit(f"Invalid websocket response... {r}")
 
 
-async def _consume_and_print_logs(websocket: websockets.WebSocketClientProtocol):
+async def _consume_and_print_logs(websocket: websockets.WebSocketClientProtocol,
+                                  show_time: bool = False,
+                                  show_machine_id: bool = False):
     try:
         while True:
             r = await websocket.recv()
             decoded_response = json.loads(r)
             assert "content" in decoded_response
-            typer.echo(f"[{decoded_response['timestamp']}] {decoded_response['content']}")
+            log_list = []
+            if show_time:
+                log_list.append(f"⏰ {parser.parse(decoded_response['timestamp'])}")
+            if show_machine_id:
+                node_rank = decoded_response['node_rank']
+                if node_rank == -1:
+                    node_rank = "vm"
+                log_list.append(f"💻 #{node_rank}")
+            log_list.append("\n".join(textwrap.wrap(decoded_response['content'], os.get_terminal_size().columns - 45)))
+            typer.echo(
+                tabulate.tabulate(
+                    [log_list],
+                    tablefmt='plain'
+                )
+            )
     except json.JSONDecodeError:
         secho_error_and_exit(f"Error occurred while decoding websocket response...")
     except AssertionError:
         secho_error_and_exit(f"Response format error...")
 
 
-async def _monitor_job_logs_via_ws(uri: str, log_type: Optional[LogType]):
-    if log_type is None:
+async def _monitor_job_logs_via_ws(uri: str,
+                                   log_types: Optional[str],
+                                   machines: Optional[str],
+                                   show_time: bool = False,
+                                   show_machine_id: bool = False):
+    if log_types is None:
         sources = [f"process.{x.value}" for x in LogType]
     else:
-        sources = [f"process.{log_type.value}"]
+        sources = [f"process.{log_type}" for log_type in log_types]
+
+    if machines is None:
+        node_ranks = []
+    else:
+        node_ranks = machines
 
     async with autoauth.connect_with_auth(uri) as conn:
-        await _subscribe(conn, sources)
-        await _consume_and_print_logs(conn)
+        await _subscribe(conn, sources, node_ranks)
+        await _consume_and_print_logs(conn, show_time, show_machine_id)
+
+
+def validate_log_types(value: Optional[str]) -> Optional[List[LogType]]:
+    if value is None:
+        return value
+    log_types = value.split(",")
+    for log_type in log_types:
+        assert log_type in [ e for e in LogType ]
+    return log_types
+
+
+def validate_machine_ids(value: Optional[str]) -> Optional[List[int]]:
+    if value is None:
+        return value
+    machine_ids = value.split(",")
+    try:
+        return [int(machine_id) for machine_id in machine_ids]
+    except ValueError as exc:
+        raise InvalidParamError("Machine index should be integer. (e.g., --machine 0,1,2)") from exc
 
 
 # TODO: Implement since/until if necessary
@@ -403,11 +455,21 @@ def log_view(
         "-c",
         help="Filter logs by content"
     ),
-    log_type: Optional[LogType] = typer.Option(
+    log_types: str = typer.Option(
         None,
         "--log-type",
         "-l",
-        help="Filter logs by type. One of 'stdout' and 'stderr'"
+        callback=validate_log_types,
+        help="Filter logs by type. Comma-separated string of 'stdout', 'stderr' and 'vmlog'. "
+             "By default, it will print logs for all types"
+    ),
+    machines: str = typer.Option(
+        None,
+        "--machine",
+        "-m",
+        callback=validate_machine_ids,
+        help="Filter logs by machine ID. Comma-separated indices of machine to print logs (e.g., 0,1,2,3). "
+             "By default, it will print logs from all machines."
     ),
     head: bool = typer.Option(
         False,
@@ -430,15 +492,7 @@ def log_view(
     show_time: bool = typer.Option(
         False,
         "--show-time",
-        "-t",
         help="Print logs with timestamp"
-    ),
-    machines: str = typer.Option(
-        None,
-        "--machine",
-        "-m",
-        help="Comma-separated indices of machine to print logs (e.g., 0,1,2,3). "
-             "By default, it will print logs from all machines."
     ),
     show_machine_id: bool = typer.Option(
         False,
@@ -463,10 +517,10 @@ def log_view(
     request_data['limit'] = num_records
     if content is not None:
         request_data['content'] = content
-    if log_type is not None:
-        request_data['log_types'] = log_type
+    if log_types is not None:
+        request_data['log_types'] = ",".join(log_types)
     if machines is not None:
-        request_data['node_ranks'] = machines
+        request_data['node_ranks'] = ",".join([str(machine) for machine in machines])
     init_r = autoauth.get(get_uri(f"job/{job_id}/text_log/"), params=request_data)
     fetched_lines = 0
 
@@ -481,9 +535,12 @@ def log_view(
                 for record in logs:
                     log_list = []
                     if show_time:
-                        log_list.append(f"⏰ {record['timestamp']}")
+                        log_list.append(f"⏰ {parser.parse(record['timestamp'])}")
                     if show_machine_id:
-                        log_list.append(f"💻 #{record['node_rank']}")
+                        node_rank = record['node_rank']
+                        if node_rank == -1:
+                            node_rank = "vm"
+                        log_list.append(f"💻 #{node_rank}")
                     log_list.append(record['content'])
                     export_file.write(
                         tabulate.tabulate(
@@ -495,22 +552,27 @@ def log_view(
             for record in logs:
                 log_list = []
                 if show_time:
-                    log_list.append(f"⏰ {record['timestamp']}")
+                    log_list.append(f"⏰ {parser.parse(record['timestamp'])}")
                 if show_machine_id:
-                    log_list.append(f"💻 #{record['node_rank']}")
-                log_list.append(record['content'])
+                    node_rank = record['node_rank']
+                    if node_rank == -1:
+                        node_rank = "vm"
+                    log_list.append(f"💻 #{node_rank}")
+                log_list.append("\n".join(textwrap.wrap(record['content'], os.get_terminal_size().columns - 45)))
                 typer.echo(
                     tabulate.tabulate(
-                        [ log_list ],
+                        [log_list],
                         tablefmt='plain'
                     )
                 )
-        # TODO: [PFT-162] Use WebSockets when following logs.
+
         if follow:
             try:
                 uri = f"job/{job_id}/"
                 # Subscribe job log
-                asyncio.run(_monitor_job_logs_via_ws(get_wss_uri(uri), log_type))
+                asyncio.run(
+                    _monitor_job_logs_via_ws(get_wss_uri(uri), log_types, machines, show_time, show_machine_id)
+                )
             except KeyboardInterrupt:
                 secho_error_and_exit(f"Keyboard Interrupt...", color=typer.colors.MAGENTA)
     except HTTPError:
