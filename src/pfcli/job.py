@@ -479,13 +479,18 @@ def log_view(
         if export_path is not None:
             with export_path.open("w") as export_file:
                 for record in logs:
-                    log_str = f"{record['content']}"
-                    if show_machine_id:
-                        log_str = f"💻 {record['node_rank']} | " + log_str
+                    log_list = []
                     if show_time:
-                        log_str = f"⏰ {record['timestamp']} | " + log_str
-                    log_str += "\n"
-                    export_file.write(log_str)
+                        log_list.append(f"⏰ {record['timestamp']}")
+                    if show_machine_id:
+                        log_list.append(f"💻 #{record['node_rank']}")
+                    log_list.append(record['content'])
+                    export_file.write(
+                        tabulate.tabulate(
+                            [ log_list ],
+                            tablefmt='plain'
+                        ) + "\n"
+                    )
         else:
             for record in logs:
                 log_list = []
