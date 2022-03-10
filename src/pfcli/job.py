@@ -21,12 +21,15 @@ from requests import HTTPError
 
 from pfcli import autoauth
 from pfcli.errors import InvalidParamError
-from pfcli.utils import (get_uri,
-                         get_wss_uri,
-                         secho_error_and_exit,
-                         get_group_id,
-                         datetime_to_pretty_str,
-                         timedelta_to_pretty_str)
+from pfcli.utils import (
+    get_remaining_terminal_columns,
+    get_uri,
+    get_wss_uri,
+    secho_error_and_exit,
+    get_group_id,
+    datetime_to_pretty_str,
+    timedelta_to_pretty_str
+)
 
 app = typer.Typer()
 template_app = typer.Typer()
@@ -386,7 +389,9 @@ async def _consume_and_print_logs(websocket: websockets.WebSocketClientProtocol,
                 "\n".join(
                     textwrap.wrap(
                         decoded_response['content'],
-                        width=os.get_terminal_size().columns - 45,
+                        width=get_remaining_terminal_columns(
+                            len(tabulate.tabulate([log_list], tablefmt='plain')) + 3
+                        ),
                         break_long_words=False,
                         replace_whitespace=False
                     )
@@ -571,7 +576,9 @@ def log_view(
                     "\n".join(
                         textwrap.wrap(
                             record['content'],
-                            width=os.get_terminal_size().columns - 45,
+                            width=get_remaining_terminal_columns(
+                                len(tabulate.tabulate([log_list], tablefmt='plain')) + 3
+                            ),
                             break_long_words=False,
                             replace_whitespace=False
                         )

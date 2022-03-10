@@ -1,9 +1,10 @@
+import os
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Optional
-import math
 
 import typer
+
 from pfcli import autoauth
 
 # Variables
@@ -80,3 +81,7 @@ def get_group_id() -> int:
         secho_error_and_exit(
             "Currently we do not support users with more than two groups... Please contact admin")
     return groups[0]['id']
+
+
+def get_remaining_terminal_columns(occupied: int) -> int:
+    return os.get_terminal_size().columns - occupied
