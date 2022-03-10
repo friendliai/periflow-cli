@@ -1,17 +1,20 @@
+"""PeriFlow Job
+"""
+
+import asyncio
+import json
+import zipfile
 from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
 from typing import Optional, List
-import asyncio
-import json
-import zipfile
 
-from requests import HTTPError
 import tabulate
 import typer
 import yaml
-from dateutil.parser import parse
 import websockets
+from dateutil.parser import parse
+from requests import HTTPError
 
 from pfcli import autoauth
 from pfcli.utils import (get_uri,
@@ -41,10 +44,32 @@ def _zip_dir(dir_path: Path, zip_path: Path):
 
 
 @app.command()
-def run(vm_config_id: int = typer.Option(...),
-        config_file: typer.FileText = typer.Option(...),
-        num_devices: int = typer.Option(1),
-        training_dir: Optional[Path] = typer.Option(None)):
+def run(
+    vm_config_id: int = typer.Option(
+        ...,
+        "--vm-config-id",
+        "-v",
+        help="ID of VM Config"
+    ),
+    config_file: typer.FileText = typer.Option(
+        ...,
+        "--config-file",
+        "-f",
+        help="Path to configuration file"
+    ),
+    num_devices: int = typer.Option(
+        1,
+        "--num-devices",
+        "-n",
+        help="The number of devices to use"
+    ),
+    training_dir: Optional[Path] = typer.Option(
+        None,
+        "--training-dir",
+        "-d",
+        help="Path to training workspace directory"
+    )
+):
     # TODO: Support template.
     # TODO: Support datastore.
     request_data = {
@@ -82,13 +107,38 @@ def run(vm_config_id: int = typer.Option(...),
 
 
 @app.command()
-def list(long_list: bool = typer.Option(False, "--long-list", "-l")):
+def list(
+    long_list: bool = typer.Option(
+        False,
+        "--long-list",
+        "-l",
+        help="View job list with detail"
+    ),
+    tail: Optional[int] = typer.Option(
+        None,
+        "--tail",
+        "-t",
+        help="The number of job list to view at the tail"
+    ),
+    head: Optional[int] = typer.Option(
+        None,
+        "--head",
+        "-h",
+        help="The number of job list to view at the head"
+    ),
+    show_group_job: bool = typer.Option(
+        False,
+        "--show-group-job",
+        "-g",
+        help="Show all jobs in my group including jobs launched by other users"
+    )
+):
     group_id = get_group_id()
-    # TODO: Solve discrepancy in "limit"
     job_list = []
     request_data = {}
     request_data.update({"group_id": group_id})
-    r = autoauth.get(get_uri("job/"), params=request_data)
+    request_url = f"group/{group_id}/job" if show_group_job else "job/"
+    r = autoauth.get(get_uri(request_url), params=request_data)
     try:
         r.raise_for_status()
     except HTTPError:
@@ -102,21 +152,45 @@ def list(long_list: bool = typer.Option(False, "--long-list", "-l")):
             duration = timedelta_to_pretty_str(parse(job["started_at"]), parse(job["finished_at"]), long_list=long_list)
         else:
             duration = None
-        job_list.append([job["id"],
-                         job["status"],
-                         job["vm_config"]["vm_config_type"]["name"],
-                         job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
-                         job["num_desired_devices"],
-                         job["data_store"]['storage_name'] if job["data_store"] is not None else None,
-                         start,
-                         duration])
-    typer.echo(tabulate.tabulate(
-        job_list,
-        headers=["id", "status", "vm_name", "device", "# devices", "data_name", "start", "duration"]))
+        job_list.append(
+            [
+                job["id"],
+                job["status"],
+                job["vm_config"]["vm_config_type"]["name"],
+                job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
+                job["num_desired_devices"],
+                job["data_store"]['storage_name'] if job["data_store"] is not None else None,
+                start,
+                duration
+            ]
+        )
+    if tail is not None or head is not None:
+        target_job_list = []
+        if tail:
+            target_job_list.extend(job_list[:tail])
+            target_job_list.append(["..."])
+        if head:
+            target_job_list.append(["..."])
+            target_job_list.extend(job_list[-head:]) 
+    else:
+        target_job_list = job_list
+    typer.echo(
+        tabulate.tabulate(
+            target_job_list,
+            headers=["id", "status", "vm_name", "device", "# devices", "data_name", "start", "duration"]
+        )
+    )
 
 
 @app.command()
-def stop(job_id: int = typer.Option(...)):
+def stop(
+    job_id: int = typer.Option(
+        ...,
+        "--job-id",
+        "-i",
+        help="ID of job to stop"
+    )
+):
     r = autoauth.get(get_uri(f"job/{job_id}/"))
     try:
         r.raise_for_status()
@@ -143,8 +217,20 @@ def stop(job_id: int = typer.Option(...)):
 
 
 @app.command()
-def view(job_id: int = typer.Option(...),
-         long_list: bool = typer.Option(False, "--long-list", "-l")):
+def view(
+    job_id: int = typer.Option(
+        ...,
+        "--job-id",
+        "-i",
+        help="ID of job to view log"
+    ),
+    long_list: bool = typer.Option(
+        False,
+        "--long-list",
+        "-l",
+        help="View job info with detail"
+    )
+):
     r = autoauth.get(get_uri(f"job/{job_id}/"))
     try:
         r.raise_for_status()
@@ -157,20 +243,27 @@ def view(job_id: int = typer.Option(...),
             duration = timedelta_to_pretty_str(parse(job["started_at"]), parse(job["finished_at"]), long_list=long_list)
         else:
             duration = None
-        job_list = [[job["id"],
-                     job["status"],
-                     job["vm_config"]["vm_config_type"]["name"],
-                     job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
-                     job["num_desired_devices"],
-                     job["data_store"]['storage_name'] if job["data_store"] is not None else None,
-                     start,
-                     duration,
-                     job["error_message"]]]
+        job_list = [
+            [
+                job["id"],
+                job["status"],
+                job["vm_config"]["vm_config_type"]["name"],
+                job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
+                job["num_desired_devices"],
+                job["data_store"]['storage_name'] if job["data_store"] is not None else None,
+                start,
+                duration,
+                job["error_message"]
+            ]
+        ]
         typer.echo(
             tabulate.tabulate(
                 job_list,
-                headers=["id", "status", "vm_name", "device", "# devices", "datastore",
-                         "start", "duration", "err_msg"]))
+                headers=[
+                    "id", "status", "vm_name", "device", "# devices", "datastore", "start", "duration", "err_msg"
+                ]
+            )
+        )
     except HTTPError:
         secho_error_and_exit(f"View failed!")
 
@@ -180,26 +273,43 @@ def template_list():
     r = autoauth.get(get_uri(f"job_template/"))
     try:
         r.raise_for_status()
-        # TODO: Elaborate
+        template_list = []
         for template in r.json():
-            prop_string = ""
-            for prop in template["data_schema"]["properties"]:
-                template["data_schema"]["properties"][prop] = f"{template['data_schema']['properties'][prop]['type']} ({template['data_example'][prop]})"
             result = {
-                "name" : template["name"],
-                "model code" : template["model_code"],
-                "engine code" : template["engine_code"],
-                "data schema (example)" : template["data_schema"]["properties"]
+                "job_setting": {
+                    "type": "predefined",
+                    "model_code": template["model_code"],
+                    "engine_code": template["engine_code"],
+                    "model_config": template["data_example"]
+                }
             }
-            typer.echo("------------------------------")
-            typer.echo(yaml.dump(result, sort_keys=False, indent=4))
+            template_list.append((template["name"], yaml.dump(result, sort_keys=False, indent=2)))
+        typer.echo(
+            tabulate.tabulate(
+                template_list,
+                headers=["id", "status", "vm_name", "device", "# devices", "data_name", "start", "duration"],
+                tablefmt="grid"
+            )
+        )
     except HTTPError:
         secho_error_and_exit(f"Listing failed!")
 
 
 @template_app.command("get")
-def template_get(template_name: str = typer.Option(...),
-                 download_file: Optional[typer.FileTextWrite] = typer.Option(None, "--download-file", "-f")):
+def template_get(
+    template_name: str = typer.Option(
+        ...,
+        "--template-name",
+        "-n",
+        help="Name of job template"
+    ),
+    download_file: Optional[typer.FileTextWrite] = typer.Option(
+        None,
+        "--download-file",
+        "-f",
+        help="Path to save job template YAML configuration file"
+    )
+):
     r = autoauth.get(get_uri("job_template/"))
     try:
         r.raise_for_status()
@@ -208,13 +318,13 @@ def template_get(template_name: str = typer.Option(...),
         except:
             typer.echo("\nNo matching template found! :(\n")
             return
-        for prop in chosen["data_schema"]["properties"]:
-            chosen["data_schema"]["properties"][prop] = chosen["data_schema"]["properties"][prop]["type"]+ " (" + str(chosen["data_example"][prop]) + ")"
         result = {
-            "name" : chosen["name"],
-            "model code" : chosen["model_code"],
-            "engine code" : chosen["engine_code"],
-            "data schema (example)" : chosen["data_schema"]["properties"]
+            "job_setting": {
+                "type": "predefined",
+                "model_code": chosen["model_code"],
+                "engine_code": chosen["engine_code"],
+                "model_config": chosen["data_example"]
+            }
         }
         result_yaml = yaml.dump(result, sort_keys=False, indent=4)
         if download_file is not None:
@@ -226,28 +336,7 @@ def template_get(template_name: str = typer.Option(...),
         secho_error_and_exit(f"Get failed!")
 
 
-@template_app.command("view")
-def template_view(template_id: int = typer.Option(...)):
-    r = autoauth.get(get_uri(f"job_template/{template_id}/"))
-    try:
-        r.raise_for_status()
-        # TODO: Elaborate
-        template = r.json()
-        for prop in template["data_schema"]["properties"]:
-            template["data_schema"]["properties"][prop] = f"{template['data_schema']['properties'][prop]['type']} ({template['data_example'][prop]})"
-        result = {
-            "id" : template["id"],
-            "name" : template["name"],
-            "model code" : template["model_code"],
-            "engine code" : template["engine_code"],
-            "data schema (example)" : template["data_schema"]["properties"]
-        }
-        typer.echo(yaml.dump(result, sort_keys=False, indent=4))
-    except HTTPError:
-        secho_error_and_exit(f"View failed!")
-
-
-class LogType(Enum):
+class LogType(str, Enum):
     STDOUT = "stdout"
     STDERR = "stderr"
 
@@ -295,14 +384,68 @@ async def _monitor_job_logs_via_ws(uri: str, log_type: Optional[LogType]):
 
 # TODO: Implement since/until if necessary
 @log_app.command("view")
-def log_view(job_id: int = typer.Option(...),
-             num_records: int = typer.Option(100),
-             content: Optional[str] = typer.Option(None),
-             log_type: Optional[LogType] = typer.Option(None),
-             head: bool = typer.Option(False),
-             export_path: Optional[Path] = typer.Option(None),
-             follow: bool = typer.Option(False)
-             ):
+def log_view(
+    job_id: int = typer.Option(
+        ...,
+        "--job-id",
+        "-i",
+        help="ID of job to view log"
+    ),
+    num_records: int = typer.Option(
+        100,
+        "--num-records",
+        "-n",
+        help="The number of recent records to view"
+    ),
+    content: Optional[str] = typer.Option(
+        None,
+        "--content",
+        "-c",
+        help="Filter logs by content"
+    ),
+    log_type: Optional[LogType] = typer.Option(
+        None,
+        "--log-type",
+        "-l",
+        help="Filter logs by type. One of 'stdout' and 'stderr'"
+    ),
+    head: bool = typer.Option(
+        False,
+        "--head",
+        "-h",
+        help="View logs from the oldest one"
+    ),
+    export_path: Optional[Path] = typer.Option(
+        None,
+        "--export-path",
+        "-e",
+        help="Path to export logs"
+    ),
+    follow: bool = typer.Option(
+        False,
+        "--follow",
+        "-f",
+        help="Follow logs"
+    ),
+    show_time: bool = typer.Option(
+        False,
+        "--show-time",
+        "-t",
+        help="Print logs with timestamp"
+    ),
+    machines: str = typer.Option(
+        None,
+        "--machine",
+        "-m",
+        help="Comma-separated indices of machine to print logs (e.g., 0,1,2,3). "
+             "By default, it will print logs from all machines."
+    ),
+    show_machine_id: bool = typer.Option(
+        False,
+        "--show-machine-id",
+        help="Print logs with machine index"
+    )
+):
     if num_records <= 0 or num_records > 10000:
         secho_error_and_exit("'num_records' should be a positive integer, equal or smaller than 10000")
 
@@ -321,7 +464,9 @@ def log_view(job_id: int = typer.Option(...),
     if content is not None:
         request_data['content'] = content
     if log_type is not None:
-        request_data['log_type'] = log_type
+        request_data['log_types'] = log_type
+    if machines is not None:
+        request_data['node_ranks'] = machines
     init_r = autoauth.get(get_uri(f"job/{job_id}/text_log/"), params=request_data)
     fetched_lines = 0
 
@@ -334,10 +479,27 @@ def log_view(job_id: int = typer.Option(...),
         if export_path is not None:
             with export_path.open("w") as export_file:
                 for record in logs:
-                    export_file.write(f"[{record['timestamp']}] {record['content']}\n")
+                    log_str = f"{record['content']}"
+                    if show_machine_id:
+                        log_str = f"💻 {record['node_rank']} | " + log_str
+                    if show_time:
+                        log_str = f"⏰ {record['timestamp']} | " + log_str
+                    log_str += "\n"
+                    export_file.write(log_str)
         else:
             for record in logs:
-                typer.echo(f"[{record['timestamp']}] {record['content']}")
+                log_list = []
+                if show_time:
+                    log_list.append(f"⏰ {record['timestamp']}")
+                if show_machine_id:
+                    log_list.append(f"💻 #{record['node_rank']}")
+                log_list.append(record['content'])
+                typer.echo(
+                    tabulate.tabulate(
+                        [ log_list ],
+                        tablefmt='plain'
+                    )
+                )
         # TODO: [PFT-162] Use WebSockets when following logs.
         if follow:
             try:
