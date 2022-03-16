@@ -11,6 +11,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional, List
 from dateutil import parser
+from datetime import datetime
 
 import tabulate
 import typer
@@ -77,8 +78,6 @@ def run(
         help="Path to training workspace directory"
     )
 ):
-    # TODO: Support template.
-    # TODO: Support datastore.
     request_data = {
         "vm_config_id": vm_config_id,
         "num_devices": num_devices
@@ -151,12 +150,18 @@ def list(
     except HTTPError:
         secho_error_and_exit(f"Job listing failed!")
     for job in r.json()["results"]:
-        if job.get("started_at") is not None:
+        started_at = job.get("started_at")
+        finished_at = job.get("finished_at")
+        if started_at is not None:
             start = datetime_to_pretty_str(parse(job["started_at"]), long_list=long_list)
         else:
             start = None
-        if job.get("started_at") is not None and job.get("finished_at") is not None:
-            duration = timedelta_to_pretty_str(parse(job["started_at"]), parse(job["finished_at"]), long_list=long_list)
+        if started_at is not None and finished_at is not None:
+            duration = timedelta_to_pretty_str(parse(started_at), parse(finished_at), long_list=long_list)
+        elif started_at is not None and job["status"] == "running":
+            start_time = parse(started_at)
+            curr_time = datetime.now(start_time.tzinfo)
+            duration = timedelta_to_pretty_str(start_time, curr_time, long_list=long_list)
         else:
             duration = None
         job_list.append(
@@ -238,18 +243,32 @@ def view(
         help="View job info with detail"
     )
 ):
-    r = autoauth.get(get_uri(f"job/{job_id}/"))
+    job_r = autoauth.get(get_uri(f"job/{job_id}/"))
+    job_checkpoint_r = autoauth.get(get_uri(f"job/{job_id}/checkpoint/"))
+    job_artifact_r = autoauth.get(get_uri(f"job/{job_id}/artifact/"))
     try:
-        r.raise_for_status()
-        job = r.json()
-        if job.get("started_at") is not None:
+        job_r.raise_for_status()
+        job_checkpoint_r.raise_for_status()
+        job_artifact_r.raise_for_status()
+        job = job_r.json()
+        job_checkpoints = json.loads(job_checkpoint_r.content)
+        job_artifacts = json.loads(job_artifact_r.content)
+
+        started_at = job.get("started_at")
+        finished_at = job.get("finished_at")
+        if started_at is not None:
             start = datetime_to_pretty_str(parse(job["started_at"]), long_list=long_list)
         else:
             start = None
-        if job.get("started_at") is not None and job.get("finished_at") is not None:
-            duration = timedelta_to_pretty_str(parse(job["started_at"]), parse(job["finished_at"]), long_list=long_list)
+        if started_at is not None and finished_at is not None:
+            duration = timedelta_to_pretty_str(parse(started_at), parse(finished_at), long_list=long_list)
+        elif started_at is not None and job["status"] == "running":
+            start_time = parse(started_at)
+            curr_time = datetime.now(start_time.tzinfo)
+            duration = timedelta_to_pretty_str(start_time, curr_time, long_list=long_list)
         else:
             duration = None
+
         job_list = [
             [
                 job["id"],
@@ -263,12 +282,46 @@ def view(
                 job["error_message"]
             ]
         ]
+
+        checkpoint_list = []
+        for checkpoint in job_checkpoints:
+            checkpoint_list.append(
+                [
+                    checkpoint["id"],
+                    checkpoint["vendor"],
+                    checkpoint["region"],
+                    checkpoint["iteration"],
+                    checkpoint["created_at"]
+                ]
+            )
+
+        artifact_list = []
+        for artifact in job_artifacts:
+            artifact_list.append(
+                [
+                    artifact["id"],
+                    artifact["name"],
+                    artifact["path"],
+                    artifact["mtime"],
+                    artifact["mime_type"]
+                ]
+            )
+
         typer.echo(
+            "OVERVIEW\n\n" + \
             tabulate.tabulate(
                 job_list,
-                headers=[
-                    "id", "status", "vm_name", "device", "# devices", "datastore", "start", "duration", "err_msg"
-                ]
+                headers=["id", "status", "vm_name", "device", "# devices", "datastore", "start", "duration", "err_msg"]
+            ) + \
+            "\n\nCHECKPOINTS\n\n" + \
+            tabulate.tabulate(
+                checkpoint_list,
+                headers=["id", "vendor", "region", "iteration", "created_at"]
+            ) + \
+            "\n\nARTIFACTS\n\n" + \
+            tabulate.tabulate(
+                artifact_list,
+                headers=["id", "name", "path", "mtime", "type"]
             )
         )
     except HTTPError:
@@ -390,7 +443,7 @@ async def _consume_and_print_logs(websocket: websockets.WebSocketClientProtocol,
                     textwrap.wrap(
                         decoded_response['content'],
                         width=get_remaining_terminal_columns(
-                            len(tabulate.tabulate([log_list], tablefmt='plain')) + 3
+                            len(tabulate.tabulate([log_list], tablefmt='plain')) + 5
                         ),
                         break_long_words=False,
                         replace_whitespace=False
@@ -577,7 +630,7 @@ def log_view(
                         textwrap.wrap(
                             record['content'],
                             width=get_remaining_terminal_columns(
-                                len(tabulate.tabulate([log_list], tablefmt='plain')) + 3
+                                len(tabulate.tabulate([log_list], tablefmt='plain')) + 5
                             ),
                             break_long_words=False,
                             replace_whitespace=False
