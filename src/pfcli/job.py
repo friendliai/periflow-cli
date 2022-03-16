@@ -284,7 +284,7 @@ def view(
         ]
 
         checkpoint_list = []
-        for checkpoint in job_checkpoints:
+        for checkpoint in reversed(job_checkpoints):
             checkpoint_list.append(
                 [
                     checkpoint["id"],
@@ -296,7 +296,7 @@ def view(
             )
 
         artifact_list = []
-        for artifact in job_artifacts:
+        for artifact in reversed(job_artifacts):
             artifact_list.append(
                 [
                     artifact["id"],
