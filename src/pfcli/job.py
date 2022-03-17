@@ -1,7 +1,6 @@
 """PeriFlow Job
 """
 
-import os
 import asyncio
 import json
 import zipfile
