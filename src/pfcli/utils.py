@@ -1,6 +1,5 @@
 import os
-from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import typer
@@ -85,3 +84,11 @@ def get_group_id() -> int:
 
 def get_remaining_terminal_columns(occupied: int) -> int:
     return os.get_terminal_size().columns - occupied
+
+
+def utc_to_local(dt: datetime) -> datetime:
+    return dt.replace(tzinfo=timezone.utc).astimezone(tz=None)
+
+
+def datetime_to_simple_string(dt: datetime) -> str:
+    return dt.strftime("%Y-%d-%m %H:%M:%S")

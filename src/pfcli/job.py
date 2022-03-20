@@ -20,7 +20,6 @@ from dateutil.parser import parse
 from requests import HTTPError
 
 from pfcli import autoauth
-from pfcli.errors import InvalidParamError
 from pfcli.utils import (
     get_remaining_terminal_columns,
     get_uri,
@@ -28,7 +27,9 @@ from pfcli.utils import (
     secho_error_and_exit,
     get_group_id,
     datetime_to_pretty_str,
-    timedelta_to_pretty_str
+    timedelta_to_pretty_str,
+    utc_to_local,
+    datetime_to_simple_string
 )
 
 app = typer.Typer()
@@ -290,7 +291,7 @@ def view(
                     checkpoint["vendor"],
                     checkpoint["region"],
                     checkpoint["iteration"],
-                    checkpoint["created_at"]
+                    datetime_to_pretty_str(parse(checkpoint["created_at"]), long_list=long_list),
                 ]
             )
 
@@ -431,7 +432,7 @@ async def _consume_and_print_logs(websocket: websockets.WebSocketClientProtocol,
             assert "content" in decoded_response
             log_list = []
             if show_time:
-                log_list.append(f"⏰ {parser.parse(decoded_response['timestamp'])}")
+                log_list.append(f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(decoded_response['timestamp'])))}")
             if show_machine_id:
                 node_rank = decoded_response['node_rank']
                 if node_rank == -1:
@@ -484,20 +485,19 @@ async def _monitor_job_logs_via_ws(uri: str,
 def validate_log_types(value: Optional[str]) -> Optional[List[LogType]]:
     if value is None:
         return value
-    log_types = value.split(",")
-    for log_type in log_types:
-        assert log_type in [ e for e in LogType ]
+    log_types = [ x.lower() for x in value.split(",") ]
+    if not all(x in set(LogType) for x in log_types):
+        secho_error_and_exit("Log type should be one of 'stdout', 'stderr' and 'vmlog'.")
     return log_types
 
 
 def validate_machine_ids(value: Optional[str]) -> Optional[List[int]]:
     if value is None:
         return value
-    machine_ids = value.split(",")
     try:
-        return [int(machine_id) for machine_id in machine_ids]
+        return [ int(machine_id) for machine_id in value.split(",") ]
     except ValueError as exc:
-        raise InvalidParamError("Machine index should be integer. (e.g., --machine 0,1,2)") from exc
+        secho_error_and_exit("Machine index should be integer. (e.g., --machine 0,1,2)")
 
 
 # TODO: Implement since/until if necessary
@@ -601,7 +601,9 @@ def log_view(
                 for record in logs:
                     log_list = []
                     if show_time:
-                        log_list.append(f"⏰ {parser.parse(record['timestamp'])}")
+                        log_list.append(
+                            f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))}"
+                        )
                     if show_machine_id:
                         node_rank = record['node_rank']
                         if node_rank == -1:
@@ -618,7 +620,7 @@ def log_view(
             for record in logs:
                 log_list = []
                 if show_time:
-                    log_list.append(f"⏰ {parser.parse(record['timestamp'])}")
+                    log_list.append(f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))}")
                 if show_machine_id:
                     node_rank = record['node_rank']
                     if node_rank == -1:
