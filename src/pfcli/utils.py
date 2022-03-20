@@ -25,7 +25,7 @@ def datetime_to_pretty_str(past: Optional[datetime], long_list: bool):
             return f'{delta.days}d {delta.seconds // 3600}h ' \
                    f'{round((delta.seconds % 3600) / 60)}m ago'
         else:
-            return past.astimezone(tz=cur.tzinfo).strftime("%Y-%d-%m %H:%M:%S")
+            return past.astimezone(tz=cur.tzinfo).strftime("%Y-%m-%d %H:%M:%S")
     else:
         if delta < timedelta(hours=1):
             return f'{round((delta.seconds % 3600) / 60)} mins ago'
@@ -91,4 +91,4 @@ def utc_to_local(dt: datetime) -> datetime:
 
 
 def datetime_to_simple_string(dt: datetime) -> str:
-    return dt.strftime("%Y-%d-%m %H:%M:%S")
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
