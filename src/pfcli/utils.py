@@ -1,9 +1,9 @@
-from contextlib import contextmanager
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-import math
 
 import typer
+
 from pfcli import autoauth
 
 # Variables
@@ -25,7 +25,7 @@ def datetime_to_pretty_str(past: Optional[datetime], long_list: bool):
             return f'{delta.days}d {delta.seconds // 3600}h ' \
                    f'{round((delta.seconds % 3600) / 60)}m ago'
         else:
-            return past.astimezone(tz=cur.tzinfo).strftime("%Y-%d-%m %H:%M:%S")
+            return past.astimezone(tz=cur.tzinfo).strftime("%Y-%m-%d %H:%M:%S")
     else:
         if delta < timedelta(hours=1):
             return f'{round((delta.seconds % 3600) / 60)} mins ago'
@@ -80,3 +80,15 @@ def get_group_id() -> int:
         secho_error_and_exit(
             "Currently we do not support users with more than two groups... Please contact admin")
     return groups[0]['id']
+
+
+def get_remaining_terminal_columns(occupied: int) -> int:
+    return os.get_terminal_size().columns - occupied
+
+
+def utc_to_local(dt: datetime) -> datetime:
+    return dt.replace(tzinfo=timezone.utc).astimezone(tz=None)
+
+
+def datetime_to_simple_string(dt: datetime) -> str:
+    return dt.strftime("%Y-%m-%d %H:%M:%S")

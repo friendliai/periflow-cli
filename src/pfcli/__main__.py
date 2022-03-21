@@ -14,11 +14,11 @@ from pfcli.autoauth import update_token, get_auth_header
 from pfcli.utils import get_uri, secho_error_and_exit
 
 app = typer.Typer()
-app.add_typer(credential.app, name="credential")
-app.add_typer(job.app, name="job")
-app.add_typer(checkpoint.app, name="checkpoint")
-app.add_typer(datastore.app, name="datastore")
-app.add_typer(vm.app, name="vm")
+app.add_typer(credential.app, name="credential", help="Manage credentials")
+app.add_typer(job.app, name="job", help="Manage jobs")
+app.add_typer(checkpoint.app, name="checkpoint", help="Manage checkpoints")
+app.add_typer(datastore.app, name="datastore", help="Manage datasets")
+app.add_typer(vm.app, name="vm", help="Manage VMs")
 
 
 @app.command()
