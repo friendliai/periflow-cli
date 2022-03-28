@@ -3,9 +3,7 @@
 
 import asyncio
 import json
-import zipfile
 import textwrap
-from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
 from typing import Optional, List
@@ -29,47 +27,46 @@ from pfcli.utils import (
     datetime_to_pretty_str,
     timedelta_to_pretty_str,
     utc_to_local,
-    datetime_to_simple_string
+    datetime_to_simple_string,
+    zip_dir
 )
 
 app = typer.Typer()
 template_app = typer.Typer()
 log_app = typer.Typer()
 
-app.add_typer(template_app, name="template")
-app.add_typer(log_app, name="log")
+app.add_typer(template_app, name="template", help="Manager job templates.")
+app.add_typer(log_app, name="log", help="Manage job logs.")
 
 
-@contextmanager
-def _zip_dir(dir_path: Path, zip_path: Path):
-    typer.secho("Compressing training directory...", fg=typer.colors.MAGENTA)
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zip_file:
-        for e in dir_path.rglob("*"):
-            zip_file.write(e, e.relative_to(dir_path.parent))
-    typer.secho("Compressing finished... Now uploading...", fg=typer.colors.MAGENTA)
-    yield zip_path.open("rb")
-    zip_path.unlink()
+def lint_config(config: dict) -> None:
+    assert "vm" in config
+    assert "num_devices" in config
+    assert "experiment" in config
 
 
-@app.command()
+def infer_vm_config_id_from_name(name: str) -> int:
+    group_id = get_group_id()
+    r = autoauth.get(get_uri(f"group/{group_id}/vm_config/"))
+    try:
+        r.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(f"Failed to get VM configs.")
+    vm_configs = r.json()
+    for vm_config in vm_configs:
+        if name == vm_config['vm_config_type']['vm_instance_type']['code']:
+            return vm_config['id']
+
+    secho_error_and_exit(f"Vm with name: {name} is not supported.")
+
+
+@app.command("run", help="Run a new job.")
 def run(
-    vm_config_id: int = typer.Option(
-        ...,
-        "--vm-config-id",
-        "-v",
-        help="ID of VM Config"
-    ),
     config_file: typer.FileText = typer.Option(
         ...,
         "--config-file",
         "-f",
         help="Path to configuration file"
-    ),
-    num_devices: int = typer.Option(
-        1,
-        "--num-devices",
-        "-n",
-        help="The number of devices to use"
     ),
     training_dir: Optional[Path] = typer.Option(
         None,
@@ -78,25 +75,20 @@ def run(
         help="Path to training workspace directory"
     )
 ):
-    request_data = {
-        "vm_config_id": vm_config_id,
-        "num_devices": num_devices
-    }
-
     try:
-        config: dict = yaml.safe_load(config_file)
+        request_data: dict = yaml.safe_load(config_file)
     except yaml.YAMLError as e:
         secho_error_and_exit(f"Error occurred while parsing config file... {e}")
 
-    for k, v in config.items():
-        request_data.update({k: v})
+    lint_config(request_data)
+
     if training_dir is not None:
         if not training_dir.exists():
             secho_error_and_exit(f"Specified workspace does not exist...")
         if not training_dir.is_dir():
             secho_error_and_exit(f"Specified workspace is not directory...")
         workspace_zip = Path(training_dir.parent / (training_dir.name + ".zip"))
-        with _zip_dir(training_dir, workspace_zip) as zip_file:
+        with zip_dir(training_dir, workspace_zip) as zip_file:
             files = {'workspace_zip': ('workspace.zip', zip_file)}
             r = autoauth.post(get_uri("job/"), data={"data": json.dumps(request_data)}, files=files)
     else:
@@ -105,14 +97,23 @@ def run(
     try:
         r.raise_for_status()
         headers = ["id", "workspace_signature", "workspace_id"]
-        typer.echo(tabulate.tabulate([[r.json()["id"],
-                                       r.json()["workspace_signature"],
-                                       r.json()["workspace_id"]]], headers=headers))
+        typer.echo(
+            tabulate.tabulate(
+                [
+                    [
+                        r.json()["id"],
+                        r.json()["workspace_signature"],
+                        r.json()["workspace_id"]
+                    ]
+                ],
+                headers=headers
+            )
+        )
     except HTTPError:
         secho_error_and_exit(f"Failed to run the specified job!")
 
 
-@app.command()
+@app.command("list", help="List jobs.")
 def list(
     long_list: bool = typer.Option(
         False,
@@ -194,7 +195,7 @@ def list(
     )
 
 
-@app.command()
+@app.command("stop", help="Stop running job.")
 def stop(
     job_id: int = typer.Option(
         ...,
@@ -228,7 +229,7 @@ def stop(
         secho_error_and_exit(f"No need to stop {job_status} job...")
 
 
-@app.command()
+@app.command("view", help="See the job detail.")
 def view(
     job_id: int = typer.Option(
         ...,
@@ -501,7 +502,7 @@ def validate_machine_ids(value: Optional[str]) -> Optional[List[int]]:
 
 
 # TODO: Implement since/until if necessary
-@log_app.command("view")
+@log_app.command("view", help="Watch the job logs.")
 def log_view(
     job_id: int = typer.Option(
         ...,

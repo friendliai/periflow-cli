@@ -1,5 +1,8 @@
 import os
+import zipfile
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional
 
 import typer
@@ -56,15 +59,15 @@ def timedelta_to_pretty_str(start: datetime, finish: datetime, long_list: bool):
             return f'{delta.days + round(delta.seconds / (3600 * 24))} days'
 
 
-def get_uri(path):
+def get_uri(path: str):
     return periflow_api_server + path
 
 
-def get_wss_uri(path):
+def get_wss_uri(path: str):
     return periflow_ws_server + path
 
 
-def secho_error_and_exit(text: str, color=typer.colors.RED):
+def secho_error_and_exit(text: str, color: str = typer.colors.RED):
     typer.secho(text, err=True, fg=color)
     raise typer.Exit(1)
 
@@ -92,3 +95,16 @@ def utc_to_local(dt: datetime) -> datetime:
 
 def datetime_to_simple_string(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S")
+
+
+@contextmanager
+def zip_dir(dir_path: Path, zip_path: Path):
+    typer.secho("Compressing training directory...", fg=typer.colors.MAGENTA)
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zip_file:
+        for e in dir_path.rglob("*"):
+            zip_file.write(e, e.relative_to(dir_path.parent))
+    typer.secho("Compressing finished... Now uploading...", fg=typer.colors.MAGENTA)
+    try:
+        yield zip_path.open("rb")
+    finally:
+        zip_path.unlink()
