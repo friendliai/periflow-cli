@@ -436,18 +436,90 @@ name:
 
 # The name of vm type
 vm:
+
+# The number of GPU devices
+num_devices:
 """
 
-DATA_CONFIG_WO_MOUNT_PATH= """
+DATA_CONFIG = """
 # Configure dataset
 data:
   # The name of dataset
   name:
 """
 
-DATA_CONFIG_W_MOUNT_PATH = DATA_CONFIG_WO_MOUNT_PATH + """
+DATA_MOUNT_CONFIG = """\
   # Path to mount your dataset volume
   mount_path:
+"""
+
+
+JOB_SETTING_CONFIG = """
+# Configure your job!
+job_setting:
+"""
+
+CUSTOM_JOB_SETTING_CONFIG = JOB_SETTING_CONFIG + """\
+  type: custom
+
+  # Docker config
+  docker:
+    # Docker image you want to use in the job
+    image:
+    # Bash shell command to run the job
+    command:
+"""
+
+PRIVATE_DOCKER_IMG_CONFIG = """\
+    credential_id:
+"""
+
+PREDEFINED_JOB_SETTING_CONFIG = JOB_SETTING_CONFIG + """\
+  type: predefined
+"""
+
+DIST_CONFIG = """
+# Distributed training config
+dist:
+  dp_degree:
+  pp_degree:
+  mp_degree:
+"""
+
+CHECKPOINT_CONFIG = """
+# Checkpoint config
+checkpoint:
+"""
+
+INPUT_CHECKPOINT_CONFIG = """\
+  input:
+    # UUID of input checkpoint
+    id:
+"""
+
+INPUT_CHECKPOINT_MOUNT_PATH = """\
+    # Input checkpoint mount path
+    mount_path:
+"""
+
+OUTPUT_CHECKPOINT_CONFIG = """\
+  # Path to output checkpoint
+  output_checkpoint_dir:
+"""
+
+PLUGIN_CONFIG = """
+plugin:
+"""
+
+WANDB_PLUGIN_CONFIG = """\
+  wandb:
+    credential_id:
+"""
+
+SLACK_PLUGIN_CONFIG = """\
+  slack:
+    credential_id:
+    channel:
 """
 
 
@@ -467,17 +539,24 @@ def template_create(
         "Options: 'predefined', 'custom'"
     )
     if job_type == "custom":
-        use_private_img: typer.confirm(
+        yaml_str += CUSTOM_JOB_SETTING_CONFIG
+        use_private_img = typer.confirm(
             "Will you use your private docker image? (You should provide credential)."
         )
-        use_dist: typer.confirm(
+        if use_private_img:
+            yaml_str += PRIVATE_DOCKER_IMG_CONFIG
+        use_dist = typer.confirm(
             "Will you run distributed training job?"
         )
+        if use_dist:
+            yaml_str += DIST_CONFIG
     elif job_type == "predefined":
         job_template_name = typer.prompt(
             "Which job do you want to run? Choose one in the following catalog:\n",
             f"Options: {', '.join(list_template_names())}"
         )
+        yaml_str += PREDEFINED_JOB_SETTING_CONFIG
+        yaml_str += f"  template_name: {job_template_name}\n"
     else:
         secho_error_and_exit("Invalid job type...!")
     use_data = typer.confirm(
@@ -485,22 +564,43 @@ def template_create(
     )
     if use_data:
         if job_type == "custom":
-            yaml_str += DATA_CONFIG_W_MOUNT_PATH
+            yaml_str += DATA_CONFIG
+            yaml_str += DATA_MOUNT_CONFIG
         else:
-            yaml_str += DATA_CONFIG_WO_MOUNT_PATH
+            yaml_str += DATA_CONFIG
 
     use_input_checkpoint = typer.confirm(
         "Will you use input checkpoint for the job?"
     )
-    use_output_checkpoint = typer.confirm(
-        "Does your job generate model checkpoint file?"
-    )
-    use_wandb_credential = typer.confirm(
+    if job_type == "custom":
+        use_output_checkpoint = typer.confirm(
+            "Does your job generate model checkpoint file?"
+        )
+    else:
+        use_output_checkpoint = False
+
+    if any((use_input_checkpoint, use_output_checkpoint)):
+        yaml_str += CHECKPOINT_CONFIG
+        if use_input_checkpoint:
+            yaml_str += INPUT_CHECKPOINT_CONFIG
+            if job_type == "custom":
+                yaml_str += INPUT_CHECKPOINT_MOUNT_PATH
+        if use_output_checkpoint:
+            yaml_str += OUTPUT_CHECKPOINT_CONFIG
+
+    use_wandb = typer.confirm(
         "Will you use W&B monitoring for the job?"
     )
-    use_slack_credential = typer.confirm(
+    use_slack = typer.confirm(
         "Do you want to get slack notifaction for the job?"
     )
+    if any((use_wandb, use_slack)):
+        yaml_str += PLUGIN_CONFIG
+        if use_wandb:
+            yaml_str += WANDB_PLUGIN_CONFIG
+        if use_slack:
+            yaml_str += SLACK_PLUGIN_CONFIG
+
     # TODO: Support workspace, artifact
 
     yaml = ruamel.yaml.YAML()
