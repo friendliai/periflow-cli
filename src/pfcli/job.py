@@ -8,21 +8,23 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional, List
 from dateutil import parser
+from dateutil.parser import parse
 from datetime import datetime
-from subprocess import check_call
 
 import tabulate
 import typer
 import yaml
 import websockets
-from dateutil.parser import parse
+import ruamel.yaml
 from requests import HTTPError
 
 from pfcli import autoauth
 from pfcli.utils import (
+    get_default_editor,
     get_remaining_terminal_columns,
     get_uri,
     get_wss_uri,
+    open_editor,
     secho_error_and_exit,
     get_group_id,
     datetime_to_pretty_str,
@@ -65,8 +67,27 @@ def refine_config(config: dict) -> None:
 
     if config["job_setting"]["type"] == "custom":
         config["job_setting"]["launch_mode"] = "node"
-        # TODO: handle /tmp:/tmp mount at core
-        config["mount"] = {"/tmp": "/tmp"}
+    else:
+        job_template_name = config["job_setting"]["template_name"]
+        job_template_config = infer_job_template_config_from_name(job_template_name)
+        del config["job_setting"]["template_name"]
+        config["job_setting"]["engine_code"] = job_template_config["engine_code"]
+        config["job_setting"]["model_code"] = job_template_config["model_code"]
+        config["job_setting"]["model_config"] = {}
+
+
+def infer_job_template_config_from_name(name: str) -> dict:
+    r = autoauth.get(get_uri(f"job_template/"))
+    try:
+        r.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(f"Listing failed!")
+
+    for template in r.json():
+        if template["name"] == name:
+            return template
+
+    secho_error_and_exit(f"Predefined job template with name ({name}) is not found.")
 
 
 def infer_vm_config_id_from_name(name: str) -> int:
@@ -81,7 +102,7 @@ def infer_vm_config_id_from_name(name: str) -> int:
         if name == vm_config["vm_config_type"]["vm_instance_type"]["code"]:
             return vm_config["id"]
 
-    secho_error_and_exit(f"VM with name: {name} is not supported.")
+    secho_error_and_exit(f"VM with name ({name}) is not supported.")
 
 
 def infer_data_id_from_name(name: str) -> int:
@@ -96,7 +117,7 @@ def infer_data_id_from_name(name: str) -> int:
         if name == datastore["name"]:
             return datastore["id"]
 
-    secho_error_and_exit(f"Datastore with name: {name} is not found.")
+    secho_error_and_exit(f"Datastore with name ({name}) is not found.")
 
 
 def infer_experiment_id_from_name(name: str) -> int:
@@ -158,7 +179,6 @@ def run(
 
     lint_config(config)
     refine_config(config)
-    breakpoint()
 
     if training_dir is not None:
         if not training_dir.exists():
@@ -407,33 +427,6 @@ def view(
         secho_error_and_exit(f"View failed!")
 
 
-@template_app.command("list")
-def template_list():
-    r = autoauth.get(get_uri(f"job_template/"))
-    try:
-        r.raise_for_status()
-        template_list = []
-        for template in r.json():
-            result = {
-                "job_setting": {
-                    "type": "predefined",
-                    "model_code": template["model_code"],
-                    "engine_code": template["engine_code"],
-                    "model_config": template["data_example"]
-                }
-            }
-            template_list.append((template["name"], yaml.dump(result, sort_keys=False, indent=2)))
-        typer.echo(
-            tabulate.tabulate(
-                template_list,
-                headers=["id", "status", "vm_name", "device", "# devices", "data_name", "start", "duration"],
-                tablefmt="grid"
-            )
-        )
-    except HTTPError:
-        secho_error_and_exit(f"Listing failed!")
-
-
 DEFAULT_TEMPLATE_CONFIG = """\
 # The name of experiment
 experiment:
@@ -445,18 +438,29 @@ name:
 vm:
 """
 
+DATA_CONFIG_WO_MOUNT_PATH= """
+# Configure dataset
+data:
+  # The name of dataset
+  name:
+"""
+
+DATA_CONFIG_W_MOUNT_PATH = DATA_CONFIG_WO_MOUNT_PATH + """
+  # Path to mount your dataset volume
+  mount_path:
+"""
+
 
 @template_app.command("create")
 def template_create(
-    save_path: str = typer.Option(
+    save_path: typer.FileTextWrite = typer.Option(
         ...,
         "--save-path",
         "-s",
         help="Path to save job YAML configruation file."
     )
 ):
-    use_private_img: bool = False
-    use_dist: bool = False
+    yaml_str = DEFAULT_TEMPLATE_CONFIG
 
     job_type = typer.prompt(
         "What kind job do you want?\n",
@@ -466,14 +470,25 @@ def template_create(
         use_private_img: typer.confirm(
             "Will you use your private docker image? (You should provide credential)."
         )
-
         use_dist: typer.confirm(
             "Will you run distributed training job?"
         )
-
-    use_data: typer.confirm(
+    elif job_type == "predefined":
+        job_template_name = typer.prompt(
+            "Which job do you want to run? Choose one in the following catalog:\n",
+            f"Options: {', '.join(list_template_names())}"
+        )
+    else:
+        secho_error_and_exit("Invalid job type...!")
+    use_data = typer.confirm(
         "Will you use dataset for the job?"
     )
+    if use_data:
+        if job_type == "custom":
+            yaml_str += DATA_CONFIG_W_MOUNT_PATH
+        else:
+            yaml_str += DATA_CONFIG_WO_MOUNT_PATH
+
     use_input_checkpoint = typer.confirm(
         "Will you use input checkpoint for the job?"
     )
@@ -482,6 +497,58 @@ def template_create(
     )
     use_wandb_credential = typer.confirm(
         "Will you use W&B monitoring for the job?"
+    )
+    use_slack_credential = typer.confirm(
+        "Do you want to get slack notifaction for the job?"
+    )
+    # TODO: Support workspace, artifact
+
+    yaml = ruamel.yaml.YAML()
+    code = yaml.load(yaml_str)
+    yaml.dump(code, save_path)
+
+    continue_edit = typer.confirm(
+        f"Do you want to open editor to configure the job YAML file? (default editor: {get_default_editor()})"
+    )
+    if continue_edit:
+        open_editor(save_path.name)
+
+
+def list_template_names() -> List[str]:
+    r = autoauth.get(get_uri(f"job_template/"))
+    try:
+        r.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(f"Failed to get job templates.")
+
+    return [ template["name"] for template in r.json() ]
+
+
+@template_app.command("list")
+def template_list():
+    r = autoauth.get(get_uri(f"job_template/"))
+    try:
+        r.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit(f"Listing failed!")
+
+    template_list = []
+    for template in r.json():
+        result = {
+            "job_setting": {
+                "type": "predefined",
+                "model_code": template["model_code"],
+                "engine_code": template["engine_code"],
+                "model_config": template["data_example"]
+            }
+        }
+        template_list.append((template["name"], yaml.dump(result, sort_keys=False, indent=2)))
+    typer.echo(
+        tabulate.tabulate(
+            template_list,
+            headers=["name", "model_config"],
+            tablefmt="grid"
+        )
     )
 
 
@@ -503,27 +570,28 @@ def template_get(
     r = autoauth.get(get_uri("job_template/"))
     try:
         r.raise_for_status()
-        try:
-            chosen = next(template for template in r.json() if template['name'] == template_name)
-        except:
-            typer.echo("\nNo matching template found! :(\n")
-            return
-        result = {
-            "job_setting": {
-                "type": "predefined",
-                "model_code": chosen["model_code"],
-                "engine_code": chosen["engine_code"],
-                "model_config": chosen["data_example"]
-            }
-        }
-        result_yaml = yaml.dump(result, sort_keys=False, indent=4)
-        if download_file is not None:
-            download_file.write(result_yaml)
-            typer.echo("\nTemplate File Download Success!\n")
-        else:
-            typer.echo(result_yaml)
     except HTTPError:
         secho_error_and_exit(f"Get failed!")
+
+    try:
+        chosen = next(template for template in r.json() if template['name'] == template_name)
+    except:
+        typer.echo("\nNo matching template found! :(\n")
+        return
+    result = {
+        "job_setting": {
+            "type": "predefined",
+            "model_code": chosen["model_code"],
+            "engine_code": chosen["engine_code"],
+            "model_config": chosen["data_example"]
+        }
+    }
+    result_yaml = yaml.dump(result, sort_keys=False, indent=4)
+    if download_file is not None:
+        download_file.write(result_yaml)
+        typer.echo("\nTemplate File Download Success!\n")
+    else:
+        typer.echo(result_yaml)
 
 
 class LogType(str, Enum):

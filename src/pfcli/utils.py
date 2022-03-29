@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
+from subprocess import CalledProcessError, check_call
 
 import typer
 
@@ -108,3 +109,15 @@ def zip_dir(dir_path: Path, zip_path: Path):
         yield zip_path.open("rb")
     finally:
         zip_path.unlink()
+
+
+def open_editor(path: str):
+    default_editor = get_default_editor()
+    try:
+        check_call([default_editor, path])
+    except CalledProcessError:
+        typer.secho("", fg=typer.colors.RED)
+
+
+def get_default_editor() -> str:
+    return os.environ.get("PERIFLOW_CLI_EDITOR", "vim")
