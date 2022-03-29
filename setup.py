@@ -33,6 +33,7 @@ COMMON_DEPS = [
     "tabulate>=0.8.0",
     "websockets>=10.1",
     "PyYaml>=6.0",
+    "ruamel.yaml>=0.17.21",
     "typer>=0.4.0",
     "boto3>=1.20.*",
     "botocore>=1.23.*",

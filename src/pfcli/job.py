@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional, List
 from dateutil import parser
 from datetime import datetime
+from subprocess import check_call
 
 import tabulate
 import typer
@@ -45,19 +46,94 @@ def lint_config(config: dict) -> None:
     assert "experiment" in config
 
 
+def refine_config(config: dict) -> None:
+    experiment_name = config["experiment"]
+    experiment_id = infer_experiment_id_from_name(experiment_name)
+    del config["experiment"]
+    config["experiment"] = {"id": experiment_id}
+
+    vm_name = config["vm"]
+    vm_config_id = infer_vm_config_id_from_name(vm_name)
+    del config["vm"]
+    config["vm_config_id"] = vm_config_id
+
+    if "data" in config:
+        data_name = config["data"]["name"]
+        data_id = infer_data_id_from_name(data_name)
+        del config["data"]["name"]
+        config["data"]["id"] = data_id
+
+    if config["job_setting"]["type"] == "custom":
+        config["job_setting"]["launch_mode"] = "node"
+        # TODO: handle /tmp:/tmp mount at core
+        config["mount"] = {"/tmp": "/tmp"}
+
+
 def infer_vm_config_id_from_name(name: str) -> int:
     group_id = get_group_id()
     r = autoauth.get(get_uri(f"group/{group_id}/vm_config/"))
     try:
         r.raise_for_status()
     except HTTPError:
-        secho_error_and_exit(f"Failed to get VM configs.")
+        secho_error_and_exit("Failed to get VM configs.")
     vm_configs = r.json()
     for vm_config in vm_configs:
-        if name == vm_config['vm_config_type']['vm_instance_type']['code']:
-            return vm_config['id']
+        if name == vm_config["vm_config_type"]["vm_instance_type"]["code"]:
+            return vm_config["id"]
 
-    secho_error_and_exit(f"Vm with name: {name} is not supported.")
+    secho_error_and_exit(f"VM with name: {name} is not supported.")
+
+
+def infer_data_id_from_name(name: str) -> int:
+    group_id = get_group_id()
+    r = autoauth.get(get_uri(f"group/{group_id}/datastore/"))
+    try:
+        r.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit("Failed to get Datastores.")
+    datastores = r.json()
+    for datastore in datastores:
+        if name == datastore["name"]:
+            return datastore["id"]
+
+    secho_error_and_exit(f"Datastore with name: {name} is not found.")
+
+
+def infer_experiment_id_from_name(name: str) -> int:
+    group_id = get_group_id()
+    r = autoauth.get(get_uri(f"group/{group_id}/experiment/"))
+    try:
+        r.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit("Failed to get experiments.")
+    experiments = r.json()
+    for experiment in experiments:
+        if name == experiment["name"]:
+            return experiment["id"]
+
+    create_new = typer.confirm(
+        f"Experiment with the name ({name}) is not found.\n"
+        "Do you want to proceed with creating a new experiment? "
+        f"If yes, a new experiment will be created with the name: {name}"
+    )
+    if not create_new:
+        typer.echo("Please run the job after creating an experiment first.")
+        raise typer.Abort()
+
+    experiment_data = create_experiment(name)
+    typer.echo(f"A new experiment ({name}) is created.")
+    return experiment_data["id"]
+
+
+def create_experiment(name: str) -> dict:
+    group_id = get_group_id()
+    r = autoauth.post(get_uri(f"group/{group_id}/experiment/"), data={"name": name})
+    try:
+        r.raise_for_status()
+    except HTTPError:
+        secho_error_and_exit("Failed to create experiment.")
+
+    return r.json()
 
 
 @app.command("run", help="Run a new job.")
@@ -76,11 +152,13 @@ def run(
     )
 ):
     try:
-        request_data: dict = yaml.safe_load(config_file)
+        config: dict = yaml.safe_load(config_file)
     except yaml.YAMLError as e:
         secho_error_and_exit(f"Error occurred while parsing config file... {e}")
 
-    lint_config(request_data)
+    lint_config(config)
+    refine_config(config)
+    breakpoint()
 
     if training_dir is not None:
         if not training_dir.exists():
@@ -90,9 +168,9 @@ def run(
         workspace_zip = Path(training_dir.parent / (training_dir.name + ".zip"))
         with zip_dir(training_dir, workspace_zip) as zip_file:
             files = {'workspace_zip': ('workspace.zip', zip_file)}
-            r = autoauth.post(get_uri("job/"), data={"data": json.dumps(request_data)}, files=files)
+            r = autoauth.post(get_uri("job/"), data={"data": json.dumps(config)}, files=files)
     else:
-        r = autoauth.post(get_uri("job/"), json=request_data)
+        r = autoauth.post(get_uri("job/"), json=config)
         typer.echo(r.request.body)
     try:
         r.raise_for_status()
@@ -354,6 +432,57 @@ def template_list():
         )
     except HTTPError:
         secho_error_and_exit(f"Listing failed!")
+
+
+DEFAULT_TEMPLATE_CONFIG = """\
+# The name of experiment
+experiment:
+
+# The name of job
+name:
+
+# The name of vm type
+vm:
+"""
+
+
+@template_app.command("create")
+def template_create(
+    save_path: str = typer.Option(
+        ...,
+        "--save-path",
+        "-s",
+        help="Path to save job YAML configruation file."
+    )
+):
+    use_private_img: bool = False
+    use_dist: bool = False
+
+    job_type = typer.prompt(
+        "What kind job do you want?\n",
+        "Options: 'predefined', 'custom'"
+    )
+    if job_type == "custom":
+        use_private_img: typer.confirm(
+            "Will you use your private docker image? (You should provide credential)."
+        )
+
+        use_dist: typer.confirm(
+            "Will you run distributed training job?"
+        )
+
+    use_data: typer.confirm(
+        "Will you use dataset for the job?"
+    )
+    use_input_checkpoint = typer.confirm(
+        "Will you use input checkpoint for the job?"
+    )
+    use_output_checkpoint = typer.confirm(
+        "Does your job generate model checkpoint file?"
+    )
+    use_wandb_credential = typer.confirm(
+        "Will you use W&B monitoring for the job?"
+    )
 
 
 @template_app.command("get")
