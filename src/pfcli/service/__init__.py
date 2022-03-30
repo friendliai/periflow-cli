@@ -1,6 +1,10 @@
 # Copyright (C) 2021 FriendliAI
 
-"""PeriFlow CLI Service"""
+from enum import Enum
 
-class CLIService:
-    ...
+class ServiceType(str, Enum):
+    USER_GROUP = "USER_GROUP"
+    JOB = "JOB"
+    JOB_CHECKPOINT = "JOB_CHECKPOINT"
+    JOB_ARTIFACT = "JOB_ARTIFACT"
+    GROUP_JOB = "GROUP_JOB"

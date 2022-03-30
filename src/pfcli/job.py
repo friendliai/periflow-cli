@@ -19,6 +19,13 @@ import ruamel.yaml
 from requests import HTTPError
 
 from pfcli import autoauth
+from pfcli.service import ServiceType
+from pfcli.service.client import (
+    JobArtifactService,
+    JobCheckpointService,
+    JobClientService,
+    build_client
+)
 from pfcli.utils import (
     get_default_editor,
     get_remaining_terminal_columns,
@@ -237,17 +244,15 @@ def list(
         help="Show all jobs in my group including jobs launched by other users"
     )
 ):
-    group_id = get_group_id()
+    request_type = ServiceType.JOB
+    if show_group_job:
+        request_type = ServiceType.GROUP_JOB
+
+    client = build_client(request_type)
+    jobs = client.list_jobs()
+
     job_list = []
-    request_data = {}
-    request_data.update({"group_id": group_id})
-    request_url = f"group/{group_id}/job" if show_group_job else "job/"
-    r = autoauth.get(get_uri(request_url), params=request_data)
-    try:
-        r.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit(f"Job listing failed!")
-    for job in r.json()["results"]:
+    for job in jobs:
         started_at = job.get("started_at")
         finished_at = job.get("finished_at")
         if started_at is not None:
@@ -341,89 +346,84 @@ def view(
         help="View job info with detail"
     )
 ):
-    job_r = autoauth.get(get_uri(f"job/{job_id}/"))
-    job_checkpoint_r = autoauth.get(get_uri(f"job/{job_id}/checkpoint/"))
-    job_artifact_r = autoauth.get(get_uri(f"job/{job_id}/artifact/"))
-    try:
-        job_r.raise_for_status()
-        job_checkpoint_r.raise_for_status()
-        job_artifact_r.raise_for_status()
-        job = job_r.json()
-        job_checkpoints = json.loads(job_checkpoint_r.content)
-        job_artifacts = json.loads(job_artifact_r.content)
+    job_client: JobClientService = build_client(ServiceType.JOB)
+    job_checkpoint_client: JobCheckpointService = build_client(ServiceType.JOB_CHECKPOINT, job_id=job_id)
+    job_artifact_client: JobArtifactService = build_client(ServiceType.JOB_ARTIFACT, job_id=job_id)
 
-        started_at = job.get("started_at")
-        finished_at = job.get("finished_at")
-        if started_at is not None:
-            start = datetime_to_pretty_str(parse(job["started_at"]), long_list=long_list)
-        else:
-            start = None
-        if started_at is not None and finished_at is not None:
-            duration = timedelta_to_pretty_str(parse(started_at), parse(finished_at), long_list=long_list)
-        elif started_at is not None and job["status"] == "running":
-            start_time = parse(started_at)
-            curr_time = datetime.now(start_time.tzinfo)
-            duration = timedelta_to_pretty_str(start_time, curr_time, long_list=long_list)
-        else:
-            duration = None
+    job = job_client.get_job(job_id)
+    job_checkpoints = job_checkpoint_client.list_checkpoints()
+    job_artifacts = job_artifact_client.list_artifacts() 
 
-        job_list = [
-            [
-                job["id"],
-                job["status"],
-                job["vm_config"]["vm_config_type"]["name"],
-                job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
-                job["num_desired_devices"],
-                job["data_store"]['storage_name'] if job["data_store"] is not None else None,
-                start,
-                duration,
-                job["error_message"]
-            ]
+    started_at = job.get("started_at")
+    finished_at = job.get("finished_at")
+    if started_at is not None:
+        start = datetime_to_pretty_str(parse(job["started_at"]), long_list=long_list)
+    else:
+        start = None
+    if started_at is not None and finished_at is not None:
+        duration = timedelta_to_pretty_str(parse(started_at), parse(finished_at), long_list=long_list)
+    elif started_at is not None and job["status"] == "running":
+        start_time = parse(started_at)
+        curr_time = datetime.now(start_time.tzinfo)
+        duration = timedelta_to_pretty_str(start_time, curr_time, long_list=long_list)
+    else:
+        duration = None
+
+    job_list = [
+        [
+            job["id"],
+            job["status"],
+            job["vm_config"]["vm_config_type"]["name"],
+            job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
+            job["num_desired_devices"],
+            job["data_store"]['storage_name'] if job["data_store"] is not None else None,
+            start,
+            duration,
+            job["error_message"]
         ]
+    ]
 
-        checkpoint_list = []
-        for checkpoint in reversed(job_checkpoints):
-            checkpoint_list.append(
-                [
-                    checkpoint["id"],
-                    checkpoint["vendor"],
-                    checkpoint["region"],
-                    checkpoint["iteration"],
-                    datetime_to_pretty_str(parse(checkpoint["created_at"]), long_list=long_list),
-                ]
-            )
-
-        artifact_list = []
-        for artifact in reversed(job_artifacts):
-            artifact_list.append(
-                [
-                    artifact["id"],
-                    artifact["name"],
-                    artifact["path"],
-                    artifact["mtime"],
-                    artifact["mime_type"]
-                ]
-            )
-
-        typer.echo(
-            "OVERVIEW\n\n" + \
-            tabulate.tabulate(
-                job_list,
-                headers=["id", "status", "vm_name", "device", "# devices", "datastore", "start", "duration", "err_msg"]
-            ) + \
-            "\n\nCHECKPOINTS\n\n" + \
-            tabulate.tabulate(
-                checkpoint_list,
-                headers=["id", "vendor", "region", "iteration", "created_at"]
-            ) + \
-            "\n\nARTIFACTS\n\n" + \
-            tabulate.tabulate(
-                artifact_list,
-                headers=["id", "name", "path", "mtime", "type"]
-            )
+    checkpoint_list = []
+    for checkpoint in reversed(job_checkpoints):
+        checkpoint_list.append(
+            [
+                checkpoint["id"],
+                checkpoint["vendor"],
+                checkpoint["region"],
+                checkpoint["iteration"],
+                datetime_to_pretty_str(parse(checkpoint["created_at"]), long_list=long_list),
+            ]
         )
-    except HTTPError:
-        secho_error_and_exit(f"View failed!")
+
+    artifact_list = []
+    for artifact in reversed(job_artifacts):
+        artifact_list.append(
+            [
+                artifact["id"],
+                artifact["name"],
+                artifact["path"],
+                artifact["mtime"],
+                artifact["mime_type"]
+            ]
+        )
+
+    typer.echo(
+        "OVERVIEW\n\n" + \
+        tabulate.tabulate(
+            job_list,
+            headers=["id", "status", "vm_name", "device", "# devices", "datastore", "start", "duration", "err_msg"]
+        ) + \
+        "\n\nCHECKPOINTS\n\n" + \
+        tabulate.tabulate(
+            checkpoint_list,
+            headers=["id", "vendor", "region", "iteration", "created_at"]
+        ) + \
+        "\n\nARTIFACTS\n\n" + \
+        tabulate.tabulate(
+            artifact_list,
+            headers=["id", "name", "path", "mtime", "type"]
+        )
+    )
 
 
 DEFAULT_TEMPLATE_CONFIG = """\
