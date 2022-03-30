@@ -1,3 +1,7 @@
+# Copyright (C) 2021 FriendliAI
+
+"""PeriFlow CLI"""
+
 import requests
 import tabulate
 from requests import HTTPError

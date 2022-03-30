@@ -52,7 +52,7 @@ def refine_config(config: dict) -> None:
     experiment_name = config["experiment"]
     experiment_id = infer_experiment_id_from_name(experiment_name)
     del config["experiment"]
-    config["experiment"] = {"id": experiment_id}
+    config["experiment_id"] = experiment_id
 
     vm_name = config["vm"]
     vm_config_id = infer_vm_config_id_from_name(vm_name)
@@ -73,7 +73,6 @@ def refine_config(config: dict) -> None:
         del config["job_setting"]["template_name"]
         config["job_setting"]["engine_code"] = job_template_config["engine_code"]
         config["job_setting"]["model_code"] = job_template_config["model_code"]
-        config["job_setting"]["model_config"] = {}
 
 
 def infer_job_template_config_from_name(name: str) -> dict:
@@ -508,11 +507,13 @@ OUTPUT_CHECKPOINT_CONFIG = """\
 """
 
 PLUGIN_CONFIG = """
+# Additional plugin for job monitoring and push notification
 plugin:
 """
 
 WANDB_PLUGIN_CONFIG = """\
   wandb:
+    # W&B API key
     credential_id:
 """
 
@@ -551,12 +552,19 @@ def template_create(
         if use_dist:
             yaml_str += DIST_CONFIG
     elif job_type == "predefined":
+        template_names = list_template_names()
         job_template_name = typer.prompt(
             "Which job do you want to run? Choose one in the following catalog:\n",
-            f"Options: {', '.join(list_template_names())}"
+            f"Options: {', '.join(template_names)}"
         )
+        if job_template_name not in template_names:
+            secho_error_and_exit("Invalid job template name...!")
         yaml_str += PREDEFINED_JOB_SETTING_CONFIG
         yaml_str += f"  template_name: {job_template_name}\n"
+        yaml_str += f"  model_config:\n"
+        model_config: dict = infer_job_template_config_from_name(job_template_name)["data_example"]
+        for k, v in model_config.items():
+            yaml_str += f"    {k}: {v}\n"
     else:
         secho_error_and_exit("Invalid job type...!")
     use_data = typer.confirm(

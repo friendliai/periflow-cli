@@ -53,7 +53,6 @@ def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable:
     def inner(*args, **kwargs) -> requests.Response:
         r = func(*args, **kwargs)
         if r.status_code == 401 or r.status_code == 403:
-            typer.echo("Refresh access token...")
             refresh_token = get_token(TokenType.REFRESH)
             if refresh_token is not None:
                 refresh_r = requests.post(get_uri("token/refresh/"), data={"refresh": refresh_token})
