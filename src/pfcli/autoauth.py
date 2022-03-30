@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Callable, Union
 
 import requests
-import typer
 import websockets
 
 from pfcli.utils import get_uri, secho_error_and_exit
