@@ -2,9 +2,7 @@
 """
 
 import asyncio
-import json
 import textwrap
-from enum import Enum
 from pathlib import Path
 from typing import Optional, List
 from dateutil import parser
@@ -14,31 +12,30 @@ from datetime import datetime
 import tabulate
 import typer
 import yaml
-import websockets
 import ruamel.yaml
-from requests import HTTPError
 
-from pfcli import autoauth
-from pfcli.service import ServiceType
+from pfcli.service import LogType, ServiceType
 from pfcli.service.client import (
-    JobArtifactService,
-    JobCheckpointService,
+    GroupDataClientService,
+    GroupExperimentClientService,
+    GroupVMClientService,
+    JobArtifactClientService,
+    JobCheckpointClientService,
     JobClientService,
+    JobTemplateClientService,
+    JobWebSocketClientService,
     build_client
 )
+from pfcli.service.config import build_job_template_configurator
 from pfcli.utils import (
     get_default_editor,
     get_remaining_terminal_columns,
-    get_uri,
-    get_wss_uri,
     open_editor,
     secho_error_and_exit,
-    get_group_id,
     datetime_to_pretty_str,
     timedelta_to_pretty_str,
     utc_to_local,
     datetime_to_simple_string,
-    zip_dir
 )
 
 app = typer.Typer()
@@ -49,26 +46,45 @@ app.add_typer(template_app, name="template", help="Manager job templates.")
 app.add_typer(log_app, name="log", help="Manage job logs.")
 
 
-def lint_config(config: dict) -> None:
+def refine_config(config: dict) -> None:
     assert "vm" in config
     assert "num_devices" in config
     assert "experiment" in config
 
+    experiment_client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
+    data_client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
+    vm_client: GroupVMClientService = build_client(ServiceType.GROUP_VM)
+    job_template_client: JobTemplateClientService = build_client(ServiceType.JOB_TEMPLATE)
 
-def refine_config(config: dict) -> None:
     experiment_name = config["experiment"]
-    experiment_id = infer_experiment_id_from_name(experiment_name)
+    experiment_id = experiment_client.get_id_by_name(experiment_name)
+    if experiment_id is None:
+        create_new = typer.confirm(
+            f"Experiment with the name ({experiment_name}) is not found.\n"
+            "Do you want to proceed with creating a new experiment? "
+            f"If yes, a new experiment will be created with the name: {experiment_name}"
+        )
+        if not create_new:
+            typer.echo("Please run the job after creating an experiment first.")
+            raise typer.Abort()
+        experiment_id = experiment_client.create_experiment(experiment_name)["id"]
+        typer.echo(f"A new experiment ({experiment_name}) is created.")
+
     del config["experiment"]
     config["experiment_id"] = experiment_id
 
     vm_name = config["vm"]
-    vm_config_id = infer_vm_config_id_from_name(vm_name)
+    vm_config_id = vm_client.get_id_by_name(vm_name)
+    if vm_config_id is None:
+        secho_error_and_exit(f"VM ({vm_name}) is not found.")
     del config["vm"]
     config["vm_config_id"] = vm_config_id
 
     if "data" in config:
         data_name = config["data"]["name"]
-        data_id = infer_data_id_from_name(data_name)
+        data_id = data_client.get_id_by_name(data_name)
+        if data_id is None:
+            secho_error_and_exit(f"Dataset ({data_name}) is not found.")
         del config["data"]["name"]
         config["data"]["id"] = data_id
 
@@ -76,91 +92,12 @@ def refine_config(config: dict) -> None:
         config["job_setting"]["launch_mode"] = "node"
     else:
         job_template_name = config["job_setting"]["template_name"]
-        job_template_config = infer_job_template_config_from_name(job_template_name)
+        job_template_config = job_template_client.get_job_template_by_name(job_template_name)
+        if job_template_config is None:
+            secho_error_and_exit(f"Predefined job template ({job_template_name}) is not found.")
         del config["job_setting"]["template_name"]
         config["job_setting"]["engine_code"] = job_template_config["engine_code"]
         config["job_setting"]["model_code"] = job_template_config["model_code"]
-
-
-def infer_job_template_config_from_name(name: str) -> dict:
-    r = autoauth.get(get_uri(f"job_template/"))
-    try:
-        r.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit(f"Listing failed!")
-
-    for template in r.json():
-        if template["name"] == name:
-            return template
-
-    secho_error_and_exit(f"Predefined job template with name ({name}) is not found.")
-
-
-def infer_vm_config_id_from_name(name: str) -> int:
-    group_id = get_group_id()
-    r = autoauth.get(get_uri(f"group/{group_id}/vm_config/"))
-    try:
-        r.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit("Failed to get VM configs.")
-    vm_configs = r.json()
-    for vm_config in vm_configs:
-        if name == vm_config["vm_config_type"]["vm_instance_type"]["code"]:
-            return vm_config["id"]
-
-    secho_error_and_exit(f"VM with name ({name}) is not supported.")
-
-
-def infer_data_id_from_name(name: str) -> int:
-    group_id = get_group_id()
-    r = autoauth.get(get_uri(f"group/{group_id}/datastore/"))
-    try:
-        r.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit("Failed to get Datastores.")
-    datastores = r.json()
-    for datastore in datastores:
-        if name == datastore["name"]:
-            return datastore["id"]
-
-    secho_error_and_exit(f"Datastore with name ({name}) is not found.")
-
-
-def infer_experiment_id_from_name(name: str) -> int:
-    group_id = get_group_id()
-    r = autoauth.get(get_uri(f"group/{group_id}/experiment/"))
-    try:
-        r.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit("Failed to get experiments.")
-    experiments = r.json()
-    for experiment in experiments:
-        if name == experiment["name"]:
-            return experiment["id"]
-
-    create_new = typer.confirm(
-        f"Experiment with the name ({name}) is not found.\n"
-        "Do you want to proceed with creating a new experiment? "
-        f"If yes, a new experiment will be created with the name: {name}"
-    )
-    if not create_new:
-        typer.echo("Please run the job after creating an experiment first.")
-        raise typer.Abort()
-
-    experiment_data = create_experiment(name)
-    typer.echo(f"A new experiment ({name}) is created.")
-    return experiment_data["id"]
-
-
-def create_experiment(name: str) -> dict:
-    group_id = get_group_id()
-    r = autoauth.post(get_uri(f"group/{group_id}/experiment/"), data={"name": name})
-    try:
-        r.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit("Failed to create experiment.")
-
-    return r.json()
 
 
 @app.command("run", help="Run a new job.")
@@ -183,7 +120,6 @@ def run(
     except yaml.YAMLError as e:
         secho_error_and_exit(f"Error occurred while parsing config file... {e}")
 
-    lint_config(config)
     refine_config(config)
 
     if training_dir is not None:
@@ -191,30 +127,19 @@ def run(
             secho_error_and_exit(f"Specified workspace does not exist...")
         if not training_dir.is_dir():
             secho_error_and_exit(f"Specified workspace is not directory...")
-        workspace_zip = Path(training_dir.parent / (training_dir.name + ".zip"))
-        with zip_dir(training_dir, workspace_zip) as zip_file:
-            files = {'workspace_zip': ('workspace.zip', zip_file)}
-            r = autoauth.post(get_uri("job/"), data={"data": json.dumps(config)}, files=files)
-    else:
-        r = autoauth.post(get_uri("job/"), json=config)
-        typer.echo(r.request.body)
-    try:
-        r.raise_for_status()
-        headers = ["id", "workspace_signature", "workspace_id"]
-        typer.echo(
-            tabulate.tabulate(
-                [
-                    [
-                        r.json()["id"],
-                        r.json()["workspace_signature"],
-                        r.json()["workspace_id"]
-                    ]
-                ],
-                headers=headers
-            )
+
+    client: JobClientService = build_client(ServiceType.JOB)
+    job_data = client.run_job(config, training_dir)
+
+    headers = ["id", "workspace_signature", "workspace_id"]
+    typer.echo(
+        tabulate.tabulate(
+            [
+                (job_data["id"], job_data["workspace_signature"], job_data["workspace_id"])
+            ],
+            headers=headers
         )
-    except HTTPError:
-        secho_error_and_exit(f"Failed to run the specified job!")
+    )
 
 
 @app.command("list", help="List jobs.")
@@ -306,27 +231,13 @@ def stop(
         help="ID of job to stop"
     )
 ):
-    r = autoauth.get(get_uri(f"job/{job_id}/"))
-    try:
-        r.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit(f"Cannot fetch job info...")
-    job_status = r.json()["status"]
+    client: JobClientService = build_client(ServiceType.JOB)
+    job_status = client.get_job(job_id)["status"]
+
     if job_status == "waiting":
-        r = autoauth.post(get_uri(f"job/{job_id}/cancel/"))
-        try:
-            r.raise_for_status()
-            typer.echo("Job is now cancelling...")
-        except HTTPError:
-            # TODO: Handle synchronization error if necessary...
-            secho_error_and_exit(f"Job stop failed!")
-    elif job_status == "running" or job_status == "enqueued":
-        r = autoauth.post(get_uri(f"job/{job_id}/terminate/"))
-        try:
-            r.raise_for_status()
-            typer.echo("Job is now terminating...")
-        except HTTPError:
-            secho_error_and_exit(f"Job stop failed!")
+        client.cancel_job(job_id)
+    elif job_status in ("running", "enqueued"):
+        client.terminate_job(job_id)
     else:
         secho_error_and_exit(f"No need to stop {job_status} job...")
 
@@ -347,8 +258,8 @@ def view(
     )
 ):
     job_client: JobClientService = build_client(ServiceType.JOB)
-    job_checkpoint_client: JobCheckpointService = build_client(ServiceType.JOB_CHECKPOINT, job_id=job_id)
-    job_artifact_client: JobArtifactService = build_client(ServiceType.JOB_ARTIFACT, job_id=job_id)
+    job_checkpoint_client: JobCheckpointClientService = build_client(ServiceType.JOB_CHECKPOINT, job_id=job_id)
+    job_artifact_client: JobArtifactClientService = build_client(ServiceType.JOB_ARTIFACT, job_id=job_id)
 
     job = job_client.get_job(job_id)
     job_checkpoints = job_checkpoint_client.list_checkpoints()
@@ -426,104 +337,6 @@ def view(
     )
 
 
-DEFAULT_TEMPLATE_CONFIG = """\
-# The name of experiment
-experiment:
-
-# The name of job
-name:
-
-# The name of vm type
-vm:
-
-# The number of GPU devices
-num_devices:
-"""
-
-DATA_CONFIG = """
-# Configure dataset
-data:
-  # The name of dataset
-  name:
-"""
-
-DATA_MOUNT_CONFIG = """\
-  # Path to mount your dataset volume
-  mount_path:
-"""
-
-
-JOB_SETTING_CONFIG = """
-# Configure your job!
-job_setting:
-"""
-
-CUSTOM_JOB_SETTING_CONFIG = JOB_SETTING_CONFIG + """\
-  type: custom
-
-  # Docker config
-  docker:
-    # Docker image you want to use in the job
-    image:
-    # Bash shell command to run the job
-    command:
-"""
-
-PRIVATE_DOCKER_IMG_CONFIG = """\
-    credential_id:
-"""
-
-PREDEFINED_JOB_SETTING_CONFIG = JOB_SETTING_CONFIG + """\
-  type: predefined
-"""
-
-DIST_CONFIG = """
-# Distributed training config
-dist:
-  dp_degree:
-  pp_degree:
-  mp_degree:
-"""
-
-CHECKPOINT_CONFIG = """
-# Checkpoint config
-checkpoint:
-"""
-
-INPUT_CHECKPOINT_CONFIG = """\
-  input:
-    # UUID of input checkpoint
-    id:
-"""
-
-INPUT_CHECKPOINT_MOUNT_PATH = """\
-    # Input checkpoint mount path
-    mount_path:
-"""
-
-OUTPUT_CHECKPOINT_CONFIG = """\
-  # Path to output checkpoint
-  output_checkpoint_dir:
-"""
-
-PLUGIN_CONFIG = """
-# Additional plugin for job monitoring and push notification
-plugin:
-"""
-
-WANDB_PLUGIN_CONFIG = """\
-  wandb:
-    # W&B API key
-    credential_id:
-"""
-
-SLACK_PLUGIN_CONFIG = """\
-  slack:
-    credential_id:
-    channel:
-"""
-
-
 @template_app.command("create")
 def template_create(
     save_path: typer.FileTextWrite = typer.Option(
@@ -533,83 +346,12 @@ def template_create(
         help="Path to save job YAML configruation file."
     )
 ):
-    yaml_str = DEFAULT_TEMPLATE_CONFIG
-
     job_type = typer.prompt(
         "What kind job do you want?\n",
         "Options: 'predefined', 'custom'"
     )
-    if job_type == "custom":
-        yaml_str += CUSTOM_JOB_SETTING_CONFIG
-        use_private_img = typer.confirm(
-            "Will you use your private docker image? (You should provide credential)."
-        )
-        if use_private_img:
-            yaml_str += PRIVATE_DOCKER_IMG_CONFIG
-        use_dist = typer.confirm(
-            "Will you run distributed training job?"
-        )
-        if use_dist:
-            yaml_str += DIST_CONFIG
-    elif job_type == "predefined":
-        template_names = list_template_names()
-        job_template_name = typer.prompt(
-            "Which job do you want to run? Choose one in the following catalog:\n",
-            f"Options: {', '.join(template_names)}"
-        )
-        if job_template_name not in template_names:
-            secho_error_and_exit("Invalid job template name...!")
-        yaml_str += PREDEFINED_JOB_SETTING_CONFIG
-        yaml_str += f"  template_name: {job_template_name}\n"
-        yaml_str += f"  model_config:\n"
-        model_config: dict = infer_job_template_config_from_name(job_template_name)["data_example"]
-        for k, v in model_config.items():
-            yaml_str += f"    {k}: {v}\n"
-    else:
-        secho_error_and_exit("Invalid job type...!")
-    use_data = typer.confirm(
-        "Will you use dataset for the job?"
-    )
-    if use_data:
-        if job_type == "custom":
-            yaml_str += DATA_CONFIG
-            yaml_str += DATA_MOUNT_CONFIG
-        else:
-            yaml_str += DATA_CONFIG
-
-    use_input_checkpoint = typer.confirm(
-        "Will you use input checkpoint for the job?"
-    )
-    if job_type == "custom":
-        use_output_checkpoint = typer.confirm(
-            "Does your job generate model checkpoint file?"
-        )
-    else:
-        use_output_checkpoint = False
-
-    if any((use_input_checkpoint, use_output_checkpoint)):
-        yaml_str += CHECKPOINT_CONFIG
-        if use_input_checkpoint:
-            yaml_str += INPUT_CHECKPOINT_CONFIG
-            if job_type == "custom":
-                yaml_str += INPUT_CHECKPOINT_MOUNT_PATH
-        if use_output_checkpoint:
-            yaml_str += OUTPUT_CHECKPOINT_CONFIG
-
-    use_wandb = typer.confirm(
-        "Will you use W&B monitoring for the job?"
-    )
-    use_slack = typer.confirm(
-        "Do you want to get slack notifaction for the job?"
-    )
-    if any((use_wandb, use_slack)):
-        yaml_str += PLUGIN_CONFIG
-        if use_wandb:
-            yaml_str += WANDB_PLUGIN_CONFIG
-        if use_slack:
-            yaml_str += SLACK_PLUGIN_CONFIG
-
-    # TODO: Support workspace, artifact
+    configurator = build_job_template_configurator(job_type)
+    yaml_str = configurator.render()
 
     yaml = ruamel.yaml.YAML()
     code = yaml.load(yaml_str)
@@ -622,35 +364,11 @@ def template_create(
         open_editor(save_path.name)
 
 
-def list_template_names() -> List[str]:
-    r = autoauth.get(get_uri(f"job_template/"))
-    try:
-        r.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit(f"Failed to get job templates.")
-
-    return [ template["name"] for template in r.json() ]
-
-
 @template_app.command("list")
 def template_list():
-    r = autoauth.get(get_uri(f"job_template/"))
-    try:
-        r.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit(f"Listing failed!")
+    client: JobTemplateClientService = build_client(ServiceType.JOB_TEMPLATE)
+    template_list = client.list_job_templates()
 
-    template_list = []
-    for template in r.json():
-        result = {
-            "job_setting": {
-                "type": "predefined",
-                "model_code": template["model_code"],
-                "engine_code": template["engine_code"],
-                "model_config": template["data_example"]
-            }
-        }
-        template_list.append((template["name"], yaml.dump(result, sort_keys=False, indent=2)))
     typer.echo(
         tabulate.tabulate(
             template_list,
@@ -675,23 +393,17 @@ def template_get(
         help="Path to save job template YAML configuration file"
     )
 ):
-    r = autoauth.get(get_uri("job_template/"))
-    try:
-        r.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit(f"Get failed!")
+    client: JobTemplateClientService = build_client(ServiceType.JOB_TEMPLATE)
+    config = client.get_job_template_by_name(template_name)
+    if config is None:
+        secho_error_and_exit(f"Predefined job template with name ({template_name}) is not found.")
 
-    try:
-        chosen = next(template for template in r.json() if template['name'] == template_name)
-    except:
-        typer.echo("\nNo matching template found! :(\n")
-        return
     result = {
         "job_setting": {
             "type": "predefined",
-            "model_code": chosen["model_code"],
-            "engine_code": chosen["engine_code"],
-            "model_config": chosen["data_example"]
+            "model_code": config["model_code"],
+            "engine_code": config["engine_code"],
+            "model_config": config["data_example"]
         }
     }
     result_yaml = yaml.dump(result, sort_keys=False, indent=4)
@@ -700,92 +412,6 @@ def template_get(
         typer.echo("\nTemplate File Download Success!\n")
     else:
         typer.echo(result_yaml)
-
-
-class LogType(str, Enum):
-    STDOUT = "stdout"
-    STDERR = "stderr"
-    VMLOG = "vmlog"
-
-
-async def _subscribe(websocket: websockets.WebSocketClientProtocol,
-                     sources: List[str],
-                     node_ranks: List[int]):
-    subscribe_json = {
-        "type": "subscribe",
-        "sources": sources,
-        "node_ranks": node_ranks
-    }
-    await websocket.send(json.dumps(subscribe_json))
-    r = await websocket.recv()
-    decoded_r = json.loads(r)
-    try:
-        assert decoded_r.get("response_type") == "subscribe" and \
-            set(sources) == set(decoded_r["sources"])
-    except json.JSONDecodeError:
-        secho_error_and_exit("Error occurred while decoding websocket response...")
-    except AssertionError:
-        secho_error_and_exit(f"Invalid websocket response... {r}")
-
-
-async def _consume_and_print_logs(websocket: websockets.WebSocketClientProtocol,
-                                  show_time: bool = False,
-                                  show_machine_id: bool = False):
-    try:
-        while True:
-            r = await websocket.recv()
-            decoded_response = json.loads(r)
-            assert "content" in decoded_response
-            log_list = []
-            if show_time:
-                log_list.append(f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(decoded_response['timestamp'])))}")
-            if show_machine_id:
-                node_rank = decoded_response['node_rank']
-                if node_rank == -1:
-                    node_rank = "vm"
-                log_list.append(f"💻 #{node_rank}")
-            log_list.append(
-                "\n".join(
-                    textwrap.wrap(
-                        decoded_response['content'],
-                        width=get_remaining_terminal_columns(
-                            len(tabulate.tabulate([log_list], tablefmt='plain')) + 5
-                        ),
-                        break_long_words=False,
-                        replace_whitespace=False
-                    )
-                )
-            )
-            typer.echo(
-                tabulate.tabulate(
-                    [log_list],
-                    tablefmt='plain'
-                )
-            )
-    except json.JSONDecodeError:
-        secho_error_and_exit(f"Error occurred while decoding websocket response...")
-    except AssertionError:
-        secho_error_and_exit(f"Response format error...")
-
-
-async def _monitor_job_logs_via_ws(uri: str,
-                                   log_types: Optional[str],
-                                   machines: Optional[str],
-                                   show_time: bool = False,
-                                   show_machine_id: bool = False):
-    if log_types is None:
-        sources = [f"process.{x.value}" for x in LogType]
-    else:
-        sources = [f"process.{log_type}" for log_type in log_types]
-
-    if machines is None:
-        node_ranks = []
-    else:
-        node_ranks = machines
-
-    async with autoauth.connect_with_auth(uri) as conn:
-        await _subscribe(conn, sources, node_ranks)
-        await _consume_and_print_logs(conn, show_time, show_machine_id)
 
 
 def validate_log_types(value: Optional[str]) -> Optional[List[LogType]]:
@@ -804,6 +430,43 @@ def validate_machine_ids(value: Optional[str]) -> Optional[List[int]]:
         return [ int(machine_id) for machine_id in value.split(",") ]
     except ValueError as exc:
         secho_error_and_exit("Machine index should be integer. (e.g., --machine 0,1,2)")
+
+
+async def monitor_logs(job_id: int,
+                       log_types: Optional[List[str]],
+                       machines: Optional[List[str]],
+                       show_time: bool,
+                       show_machine_id: bool):
+    ws_client: JobWebSocketClientService = build_client(ServiceType.JOB_WS)
+
+    async with ws_client.open_connection(job_id, log_types, machines):
+        async for response in ws_client:
+            log_list = []
+            if show_time:
+                log_list.append(f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(response['timestamp'])))}")
+            if show_machine_id:
+                node_rank = response['node_rank']
+                if node_rank == -1:
+                    node_rank = "vm"
+                log_list.append(f"💻 #{node_rank}")
+            log_list.append(
+                "\n".join(
+                    textwrap.wrap(
+                        response['content'],
+                        width=get_remaining_terminal_columns(
+                            len(tabulate.tabulate([log_list], tablefmt='plain')) + 5
+                        ),
+                        break_long_words=False,
+                        replace_whitespace=False
+                    )
+                )
+            )
+            typer.echo(
+                tabulate.tabulate(
+                    [log_list],
+                    tablefmt='plain'
+                )
+            )
 
 
 # TODO: Implement since/until if necessary
@@ -881,87 +544,65 @@ def log_view(
     if export_path is not None and follow:
         secho_error_and_exit("'follow' cannot be set when 'export_path' is given")
 
-    request_data = dict()
-    if head:
-        request_data['ascending'] = 'true'
-    else:
-        request_data['ascending'] = 'false'
-    request_data['limit'] = num_records
-    if content is not None:
-        request_data['content'] = content
-    if log_types is not None:
-        request_data['log_types'] = ",".join(log_types)
-    if machines is not None:
-        request_data['node_ranks'] = ",".join([str(machine) for machine in machines])
-    init_r = autoauth.get(get_uri(f"job/{job_id}/text_log/"), params=request_data)
-    fetched_lines = 0
+    client: JobClientService = build_client(ServiceType.JOB)
+    logs = client.get_text_logs(job_id, num_records, head, log_types, machines, content)
 
-    try:
-        init_r.raise_for_status()
-        logs = init_r.json()['results']
-        fetched_lines += len(logs)
-        if not head:
-            logs.reverse()
-        if export_path is not None:
-            with export_path.open("w") as export_file:
-                for record in logs:
-                    log_list = []
-                    if show_time:
-                        log_list.append(
-                            f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))}"
-                        )
-                    if show_machine_id:
-                        node_rank = record['node_rank']
-                        if node_rank == -1:
-                            node_rank = "vm"
-                        log_list.append(f"💻 #{node_rank}")
-                    log_list.append(record['content'])
-                    export_file.write(
-                        tabulate.tabulate(
-                            [ log_list ],
-                            tablefmt='plain'
-                        ) + "\n"
-                    )
-        else:
+    if export_path is not None:
+        with export_path.open("w") as export_file:
             for record in logs:
                 log_list = []
                 if show_time:
-                    log_list.append(f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))}")
+                    log_list.append(
+                        f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))}"
+                    )
                 if show_machine_id:
                     node_rank = record['node_rank']
                     if node_rank == -1:
                         node_rank = "vm"
                     log_list.append(f"💻 #{node_rank}")
-                log_list.append(
-                    "\n".join(
-                        textwrap.wrap(
-                            record['content'],
-                            width=get_remaining_terminal_columns(
-                                len(tabulate.tabulate([log_list], tablefmt='plain')) + 5
-                            ),
-                            break_long_words=False,
-                            replace_whitespace=False
-                        )
-                    )
-                )
-                typer.echo(
+                log_list.append(record['content'])
+                export_file.write(
                     tabulate.tabulate(
-                        [log_list],
+                        [ log_list ],
                         tablefmt='plain'
+                    ) + "\n"
+                )
+    else:
+        for record in logs:
+            log_list = []
+            if show_time:
+                log_list.append(
+                    f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))}"
+                )
+            if show_machine_id:
+                node_rank = record['node_rank']
+                if node_rank == -1:
+                    node_rank = "vm"
+                log_list.append(f"💻 #{node_rank}")
+            log_list.append(
+                "\n".join(
+                    textwrap.wrap(
+                        record['content'],
+                        width=get_remaining_terminal_columns(
+                            len(tabulate.tabulate([log_list], tablefmt='plain')) + 5
+                        ),
+                        break_long_words=False,
+                        replace_whitespace=False
                     )
                 )
+            )
+            typer.echo(
+                tabulate.tabulate([log_list], tablefmt='plain')
+            )
 
-        if follow:
-            try:
-                uri = f"job/{job_id}/"
-                # Subscribe job log
-                asyncio.run(
-                    _monitor_job_logs_via_ws(get_wss_uri(uri), log_types, machines, show_time, show_machine_id)
-                )
-            except KeyboardInterrupt:
-                secho_error_and_exit(f"Keyboard Interrupt...", color=typer.colors.MAGENTA)
-    except HTTPError:
-        secho_error_and_exit(f"Log fetching failed!")
+    if follow:
+        try:
+            # Subscribe job log
+            asyncio.run(
+                monitor_logs(job_id, log_types, machines, show_time, show_machine_id)
+            )
+        except KeyboardInterrupt:
+            secho_error_and_exit(f"Keyboard Interrupt...", color=typer.colors.MAGENTA)
 
 
 if __name__ == '__main__':

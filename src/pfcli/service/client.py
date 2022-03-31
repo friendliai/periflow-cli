@@ -6,22 +6,28 @@ from __future__ import annotations
 
 import copy
 import json
-import functools
 from string import Template
-from typing import Callable, TypeVar, Type, Dict, Tuple, Optional, Union
+from typing import Iterator, TypeVar, Type, List, Dict, Tuple, Optional, Union
 from dataclasses import dataclass
+from contextlib import asynccontextmanager
+from pathlib import Path
 
+import yaml
 import requests
-from requests import Response, HTTPError
+from requests import HTTPError
+import websockets
+from websockets.client import WebSocketClientProtocol
+from websockets.exceptions import ConnectionClosed
+from requests import Response
 
 from pfcli.autoauth import (
     TokenType,
     get_auth_header,
     get_token,
-    update_token,
+    auto_token_refresh,
 )
-from pfcli.utils import get_uri, secho_error_and_exit
-from pfcli.service import ServiceType
+from pfcli.utils import get_uri, get_wss_uri, secho_error_and_exit, zip_dir
+from pfcli.service import ServiceType, LogType
 
 
 A = TypeVar('A', bound='ClientService')
@@ -30,87 +36,62 @@ T = TypeVar('T', bound=Union[int, str])
 
 @dataclass
 class URLTemplate:
-    template: Template
+    pattern: Template
 
     def render(self, pk: Optional[T] = None, **kwargs) -> str:
         if pk is not None:
-            t = copy.deepcopy(self.template)
-            t.template += '$id/'
-            return t.substitute(**kwargs, id=pk)
+            p = copy.deepcopy(self.pattern)
+            p.template += '$id/'
+            return p.substitute(**kwargs, id=pk)
 
-        return self.template.substitute(**kwargs)
+        return self.pattern.substitute(**kwargs)
+
+    def attach_pattern(self, pattern: str) -> None:
+        self.pattern.template += pattern
 
 
 class ClientService:
     def __init__(self, template: Template, **kwargs):
-        self.headers = get_auth_header()
         self.url_template = URLTemplate(template)
         self.url_kwargs = kwargs
 
-    def _auto_token_refresh(func: Callable[..., Response]) -> Callable:
-        @functools.wraps(func)
-        def inner(self, *args, **kwargs) -> Response:
-            r = func(self, *args, **kwargs)
-            if r.status_code == 401 or r.status_code == 403:
-                refresh_token = get_token(TokenType.REFRESH)
-                if refresh_token is not None:
-                    refresh_r = requests.post(get_uri("token/refresh/"), data={"refresh": refresh_token})
-                    try:
-                        refresh_r.raise_for_status()
-                        update_token(token_type="access", token=refresh_r.json()["access"])
-                        # We need to restore file offset if we want to transfer file objects
-                        if "files" in kwargs:
-                            files = kwargs["files"]
-                            for file_name, file_tuple in files.items():
-                                for element in file_tuple:
-                                    if hasattr(element, "seek"):
-                                        # Restore file offset
-                                        element.seek(0)
-                        r = func(self, *args, **kwargs)
-                    except HTTPError:
-                        secho_error_and_exit("Failed to refresh access token... Please login again")
-                else:
-                    secho_error_and_exit("Failed to refresh access token... Please login again")
-            return r
-        return inner
-
-    @_auto_token_refresh
+    @auto_token_refresh
     def list(self, **kwargs) -> Response:
         return requests.get(
             self.url_template.render(**self.url_kwargs),
-            headers=self.headers,
+            headers=get_auth_header(),
             **kwargs 
         )
 
-    @_auto_token_refresh
+    @auto_token_refresh
     def retrieve(self, pk: T, **kwargs) -> Response:
         return requests.get(
             self.url_template.render(pk, **self.url_kwargs),
-            headers=self.headers,
+            headers=get_auth_header(),
             **kwargs
         )
 
-    @_auto_token_refresh
-    def create(self, pk: T, **kwargs) -> Response:
+    @auto_token_refresh
+    def create(self, **kwargs) -> Response:
         return requests.post(
-            self.url_template.render(pk, **self.url_kwargs),
-            headers=self.headers,
+            self.url_template.render(**self.url_kwargs),
+            headers=get_auth_header(),
             **kwargs
         )
 
-    @_auto_token_refresh
+    @auto_token_refresh
     def partial_update(self, pk: T, **kwargs) -> Response:
         return requests.patch(
             self.url_template.render(pk, **self.url_kwargs),
-            headers=self.headers,
+            headers=get_auth_header(),
             **kwargs
         )
 
-    @_auto_token_refresh
+    @auto_token_refresh
     def delete(self, pk: T, **kwargs) -> Response:
         return requests.delete(
             self.url_template.render(pk, **self.url_kwargs),
-            headers=self.headers,
+            headers=get_auth_header(),
             **kwargs
         )
 
@@ -126,7 +107,10 @@ class GroupRequestMixin:
 
 class UserGroupClientService(ClientService):
     def get_group_id(self) -> int:
-        response = self.list()
+        try:
+            response = self.list()
+        except HTTPError:
+            secho_error_and_exit("Failed to get your group info.")
         if response.status_code != 200:
             secho_error_and_exit(f"Cannot acquire group info.")
         groups = response.json()["results"]
@@ -141,23 +125,182 @@ class UserGroupClientService(ClientService):
 
 class JobClientService(ClientService):
     def list_jobs(self) -> dict:
-        response = self.list()
-        return response.json()["results"]
+        try:
+            response = self.list()
+        except HTTPError:
+            secho_error_and_exit("Failed to list jobs.")
+        return response.json()['results']
 
-    def get_job(self, pk: int) -> dict:
-        response = self.retrieve(pk)
+    def get_job(self, job_id: int) -> dict:
+        try:
+            response = self.retrieve(job_id)
+        except HTTPError:
+            secho_error_and_exit(f"Job ({job_id}) is not found. You may enter wrong ID.")
         return response.json()
 
+    def run_job(self, config: dict, training_dir: Optional[Path]) -> dict:
+        try:
+            if training_dir is not None:
+                workspace_zip = Path(training_dir.parent / (training_dir.name + ".zip"))
+                with zip_dir(training_dir, workspace_zip) as zip_file:
+                    files = {'workspace_zip': ('workspace.zip', zip_file)}
+                    response = self.create(data={"data": json.dumps(config)}, files=files)
+            else:
+                response = self.create(json=config)
+        except HTTPError:
+            secho_error_and_exit("Failed to run job.")
+        return response.json()
 
-class JobCheckpointService(ClientService):
+    @auto_token_refresh
+    def cancel(self, job_id: int) -> Response:
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('$job_id/cancel/')
+        return requests.post(
+            url_template.render(job_id=job_id, **self.url_kwargs),
+            headers=get_auth_header(),
+        )
+
+    def cancel_job(self, job_id: int) -> None:
+        try:
+            self.cancel(job_id)
+        except HTTPError:
+            secho_error_and_exit(f"Failed to cancel job ({job_id})")
+
+    @auto_token_refresh
+    def terminate(self, job_id: int) -> Response:
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('$job_id/terminate/')
+        return requests.post(
+            url_template.render(job_id=job_id, **self.url_kwargs),
+            headers=get_auth_header(),
+        )
+
+    def terminate_job(self, job_id: int) -> None:
+        try:
+            self.terminate(job_id)
+        except HTTPError:
+            secho_error_and_exit(f"Failed to terminate job ({job_id})")
+
+    @auto_token_refresh
+    def text_logs(self, job_id: int, request_data: dict):
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('$job_id/text_log/')
+        return requests.get(
+            url_template.render(job_id=job_id, **self.url_kwargs),
+            headers=get_auth_header(),
+            params=request_data
+        )
+
+    def get_text_logs(self,
+                      job_id: int,
+                      num_records: int,
+                      head: bool = False,
+                      log_types: Optional[List[str]] = None,
+                      machines: Optional[List[int]] = None,
+                      content: Optional[str] = None) -> Response:
+        request_data = {'limit': num_records}
+        if head:
+            request_data['ascending'] = 'true'
+        else:
+            request_data['ascending'] = 'false'
+        if content is not None:
+            request_data['content'] = content
+        if log_types is not None:
+            request_data['log_types'] = ",".join(log_types)
+        if machines is not None:
+            request_data['node_ranks'] = ",".join([str(machine) for machine in machines])
+
+        try:
+            response = self.text_logs(job_id, request_data)
+        except HTTPError:
+            secho_error_and_exit("Failed to fetch text logs")
+        logs = response.json()['results']
+        if not head:
+            logs.reverse()
+
+        return logs
+
+
+class JobWebSocketClientService(ClientService):
+    @asynccontextmanager
+    async def _connect(self, job_id: int) -> Iterator[WebSocketClientProtocol]:
+        access_token = get_token(TokenType.ACCESS)
+        base_url = self.url_template.render(job_id)
+        url = f'{base_url}?token={access_token}'
+        async with websockets.connect(url) as websocket:
+            yield websocket
+
+    async def _subscribe(self,
+                         websocket: WebSocketClientProtocol,
+                         sources: List[str],
+                         node_ranks: List[int]):
+        subscribe_json = {
+            "type": "subscribe",
+            "sources": sources,
+            "node_ranks": node_ranks
+        }
+        await websocket.send(json.dumps(subscribe_json))
+        response = await websocket.recv()
+        decoded_response = json.loads(response)
+        try:
+            assert decoded_response.get("response_type") == "subscribe" and \
+                set(sources) == set(decoded_response["sources"])
+        except json.JSONDecodeError:
+            secho_error_and_exit("Error occurred while decoding websocket response...")
+        except AssertionError:
+            secho_error_and_exit(f"Invalid websocket response... {response}")
+
+    @asynccontextmanager
+    async def open_connection(self,
+                              job_id: int,
+                              log_types: Optional[List[str]],
+                              machines: Optional[List[str]]):
+        if log_types is None:
+            sources = [f"process.{x.value}" for x in LogType]
+        else:
+            sources = [f"process.{log_type}" for log_type in log_types]
+
+        if machines is None:
+            node_ranks = []
+        else:
+            node_ranks = machines
+
+        async with self._connect(job_id) as websocket:
+            websocket: WebSocketClientProtocol
+            await self._subscribe(websocket, sources, node_ranks)
+            self._websocket = websocket
+            yield
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            response = await self._websocket.recv()
+        except ConnectionClosed as exc:
+            raise StopAsyncIteration from exc
+
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError:
+            secho_error_and_exit(f"Error occurred while decoding websocket response...")
+
+
+class JobCheckpointClientService(ClientService):
     def list_checkpoints(self) -> dict:
-        response = self.list()
+        try:
+            response = self.list()
+        except HTTPError:
+            secho_error_and_exit("Failed to list checkpoints")
         return json.loads(response.content)
 
 
-class JobArtifactService(ClientService):
+class JobArtifactClientService(ClientService):
     def list_artifacts(self) -> dict:
-        response = self.list()
+        try:
+            response = self.list()
+        except HTTPError:
+            secho_error_and_exit("Failed to list artifacts")
         return json.loads(response.content)
 
 
@@ -167,16 +310,116 @@ class GroupJobClientService(ClientService, GroupRequestMixin):
         super().__init__(template, group_id=self.group_id, **kwargs)
 
     def list_jobs(self) -> dict:
-        response = self.list(params={"group_id": self.group_id})
+        try:
+            response = self.list(params={"group_id": self.group_id})
+        except HTTPError:
+            secho_error_and_exit("Failed to list jobs in your group")
         return response.json()['results']
+
+
+class JobTemplateClientService(ClientService):
+    def list_job_templates(self) -> List[Tuple[str, str]]:
+        try:
+            response = self.list()
+        except HTTPError:
+            secho_error_and_exit("Failed to list job templates")
+        template_list = []
+        for template in response.json():
+            result = {
+                "job_setting": {
+                    "type": "predefined",
+                    "model_code": template["model_code"],
+                    "engine_code": template["engine_code"],
+                    "model_config": template["data_example"]
+                }
+            }
+            template_list.append((template["name"], yaml.dump(result, sort_keys=False, indent=2)))
+        return template_list
+
+    def list_job_template_names(self) -> List[str]:
+        try:
+            response = self.list()
+        except HTTPError:
+            secho_error_and_exit("Failed to list job template names")
+        return [ template['name'] for template in response.json() ]
+
+    def get_job_template_by_name(self, name: str) -> Optional[dict]:
+        try:
+            response = self.list()
+        except HTTPError:
+            secho_error_and_exit("Failed to get job template")
+        for template in response.json():
+            if template['name'] == name:
+                return template
+        return None
+
+
+class GroupExperimentClientService(ClientService, GroupRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
+        super().__init__(template, group_id=self.group_id, **kwargs)
+
+    def get_id_by_name(self, name: str) -> Optional[int]:
+        try:
+            response = self.list()
+        except HTTPError:
+            secho_error_and_exit("Failed to get experiment info.")
+        for experiment in response.json():
+            if experiment['name'] == name:
+                return experiment['id']
+        return None
+
+    def create_experiment(self, name: str) -> dict:
+        try:
+            response = self.create(data={'name': name})
+        except HTTPError:
+            secho_error_and_exit("Failed to create new experiment")
+        return response.json()
+
+
+class GroupDataClientService(ClientService, GroupRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
+        super().__init__(template, group_id=self.group_id, **kwargs)
+
+    def get_id_by_name(self, name: str) -> Optional[int]:
+        try:
+            response = self.list()
+        except HTTPError:
+            secho_error_and_exit("Failed to get dataset info")
+        for datastore in response.json():
+            if datastore['name'] == name:
+                return datastore['id']
+        return None
+
+
+class GroupVMClientService(ClientService, GroupRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
+        super().__init__(template, group_id=self.group_id, **kwargs)
+
+    def get_id_by_name(self, name: str) -> Optional[int]:
+        try:
+            response = self.list()
+        except HTTPError:
+            secho_error_and_exit("Failed to get VM info")
+        for vm_config in response.json():
+            if vm_config['vm_config_type']['vm_instance_type']['code'] == name:
+                return vm_config['id']
+        return None
 
 
 client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.USER_GROUP: (UserGroupClientService, Template(get_uri('user/group/'))),
     ServiceType.JOB: (JobClientService, Template(get_uri('job/'))),
-    ServiceType.JOB_CHECKPOINT: (JobCheckpointService, Template(get_uri('job/$job_id/checkpoint/'))),
-    ServiceType.JOB_ARTIFACT: (JobArtifactService, Template(get_uri('job/$job_id/artifact/'))),
+    ServiceType.JOB_CHECKPOINT: (JobCheckpointClientService, Template(get_uri('job/$job_id/checkpoint/'))),
+    ServiceType.JOB_ARTIFACT: (JobArtifactClientService, Template(get_uri('job/$job_id/artifact/'))),
     ServiceType.GROUP_JOB: (GroupJobClientService, Template(get_uri('group/$group_id/job/'))),
+    ServiceType.JOB_TEMPLATE: (JobTemplateClientService, Template(get_uri('job_template/'))),
+    ServiceType.GROUP_EXPERIMENT: (GroupExperimentClientService, Template(get_uri('group/$group_id/experiment/'))),
+    ServiceType.GROUP_DATA: (GroupDataClientService, Template(get_uri('group/$group_id/datastore/'))),
+    ServiceType.GROUP_VM: (GroupVMClientService, Template(get_uri('group/$group_id/vm_config/'))),
+    ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri('job/'))),
 }
 
 
