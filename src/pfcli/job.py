@@ -1,3 +1,5 @@
+# Copyright (C) 2021 FriendliAI
+
 """PeriFlow Job
 """
 
@@ -24,7 +26,7 @@ from pfcli.service.client import (
     JobClientService,
     JobTemplateClientService,
     JobWebSocketClientService,
-    build_client
+    build_client,
 )
 from pfcli.service.config import build_job_template_configurator
 from pfcli.utils import (
@@ -414,21 +416,18 @@ def template_get(
         typer.echo(result_yaml)
 
 
-def validate_log_types(value: Optional[str]) -> Optional[List[LogType]]:
+def _split_log_types(value: Optional[str]) -> Optional[List[LogType]]:
     if value is None:
         return value
-    log_types = [ x.lower() for x in value.split(",") ]
-    if not all(x in set(LogType) for x in log_types):
-        secho_error_and_exit("Log type should be one of 'stdout', 'stderr' and 'vmlog'.")
-    return log_types
+    return [ x.lower() for x in value.split(",") ]
 
 
-def validate_machine_ids(value: Optional[str]) -> Optional[List[int]]:
+def _split_machine_ids(value: Optional[str]) -> Optional[List[int]]:
     if value is None:
         return value
     try:
         return [ int(machine_id) for machine_id in value.split(",") ]
-    except ValueError as exc:
+    except ValueError:
         secho_error_and_exit("Machine index should be integer. (e.g., --machine 0,1,2)")
 
 
@@ -490,11 +489,11 @@ def log_view(
         "-c",
         help="Filter logs by content"
     ),
-    log_types: str = typer.Option(
+    log_types: LogType = typer.Option(
         None,
         "--log-type",
         "-l",
-        callback=validate_log_types,
+        callback=_split_log_types,
         help="Filter logs by type. Comma-separated string of 'stdout', 'stderr' and 'vmlog'. "
              "By default, it will print logs for all types"
     ),
@@ -502,7 +501,7 @@ def log_view(
         None,
         "--machine",
         "-m",
-        callback=validate_machine_ids,
+        callback=_split_machine_ids,
         help="Filter logs by machine ID. Comma-separated indices of machine to print logs (e.g., 0,1,2,3). "
              "By default, it will print logs from all machines."
     ),

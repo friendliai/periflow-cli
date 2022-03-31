@@ -1,17 +1,22 @@
-"""CLI for Checkpoint
-"""
-from pathlib import Path
-from typing import Dict, List, Optional
+# Copyright (C) 2021 FriendliAI
 
-import boto3
-import botocore
+"""CLI for Checkpoint"""
+
+from pathlib import Path
+from typing import Optional, List
+
 import tabulate
 import typer
-from azure.storage.blob import BlobServiceClient
-from requests import HTTPError
 
-from pfcli.service import auth
-from pfcli.utils import get_group_id, get_uri, secho_error_and_exit
+from pfcli.service import CheckpointCategory, ServiceType, VendorType
+from pfcli.service.client import (
+    CheckpointClientService,
+    CredentialClientService,
+    GroupCheckpointClinetService,
+    build_client,
+)
+from pfcli.service.cloud import CloudStorageHelper
+from pfcli.utils import secho_error_and_exit
 
 app = typer.Typer()
 
@@ -31,279 +36,249 @@ def _echo_checkpoint_detail(checkpoint_json: dict):
     typer.echo(tabulate.tabulate(results, headers=headers))
 
 
+def _validate_parallelism_order(value: str) -> List[str]:
+    parallelism_order = value.split(",")
+    if {"pp", "dp", "mp"} != set(parallelism_order):
+        secho_error_and_exit("Invalid Argument: parallelism_order should contain 'pp', 'dp', 'mp'")
+    return parallelism_order
+
+
 @app.command("list")
-def checkpoint_list(category: Optional[str] = typer.Option(None),
-                    cursor: Optional[str] = typer.Option(None),
-                    limit: Optional[int] = typer.Option(None)):
+def checkpoint_list(
+    category: Optional[CheckpointCategory] = typer.Option(
+        None,
+        "--category",
+        "-c",
+        help="Category of checkpoints. One of 'user_provided' and 'job_generated'."
+    )
+):
     """List all checkpoints that belong to the user's group
     """
-    group_id = get_group_id()
-    request_data = {}
-
-    if category is not None:
-        request_data.update({"category": category})
-    if cursor is not None:
-        request_data.update({"cursor": cursor})
-    if limit is not None:
-        request_data.update({"limit": limit})
-
-    response = auth.get(get_uri(f"group/{group_id}/checkpoint/"), json=request_data)
-    try:
-        response.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit(f"Cannot retrieve checkpoints.")
-    checkpoints = response.json()["results"]
-    next_cursor = response.json()["next_cursor"]
+    client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
+    checkpoints = client.list_checkpoints(category)
 
     headers = ["id", "category", "vendor", "storage_name", "iteration", "created_at"]
     results = []
     for checkpoint in checkpoints:
         results.append([checkpoint[header] for header in headers])
 
-    typer.echo(f"Cursor: {next_cursor}")
     typer.echo(tabulate.tabulate(results, headers=headers))
 
 
 @app.command("view")
-def checkpoint_detail(checkpoint_id: str = typer.Option(...)):
+def checkpoint_detail(
+    checkpoint_id: str = typer.Option(
+        ...,
+        "--checkpoint-id",
+        "-i",
+        help="UUID of checkpoint to inspect detail."
+    )
+):
     """Show details of the given checkpoint_id
     """
-    group_id = get_group_id()
-    response = auth.get(get_uri(f"group/{group_id}/checkpoint/{checkpoint_id}/"))
-    try:
-        response.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit(f"Cannot retrieve checkpoint.")
-
-    checkpoint_json = response.json()
-    _echo_checkpoint_detail(checkpoint_json)
-
-
-class CloudStorageHelper:
-    def __init__(self,
-                 file_or_dir: Path,
-                 credential_json: Dict[str, str],
-                 vendor: str,
-                 storage_name: str):
-        self.file_or_dir = file_or_dir
-        self.credential_json = credential_json
-        self.storage_name = storage_name
-        self.vendor = vendor
-
-    def _get_checkpoint_file_list_gcp(self) -> List[dict]:
-        raise NotImplementedError
-
-    def _get_checkpoint_file_list_azure(self) -> List[dict]:
-        url = f"https://{self.credential_json['storage_account_name']}.blob.core.windows.net/"
-        blob_service_client = BlobServiceClient(
-            account_url=url,
-            credential=self.credential_json['storage_account_key'])
-
-        container_client = blob_service_client.get_container_client(self.storage_name)
-        if not container_client.exists():
-            secho_error_and_exit(f"Container {self.storage_name} does not exist")
-
-        file_list = []
-
-        object_contents = container_client.list_blobs(name_starts_with=str(self.file_or_dir))
-        for object_content in object_contents:
-            object_name = object_content['name']
-            file_list.append({
-                'name': object_name.split('/')[-1],
-                'path': object_name,
-                'mtime': object_content['last_modified'].isoformat(),
-                'size': object_content['size'],
-            })
-
-        if not file_list:
-            secho_error_and_exit(f"No file exists in Bucket {self.storage_name}")
-
-        return file_list
-
-    def _check_aws_bucket_exists(self, client) -> bool:
-        try:
-            client.head_bucket(Bucket=self.storage_name)
-            return True
-        except botocore.exceptions.ClientError:
-            # include both Forbidden access, Not Exists
-            return False
-
-    def _get_checkpoint_file_list_aws(self) -> List[dict]:
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=self.credential_json['aws_access_key_id'],
-            aws_secret_access_key=self.credential_json['aws_secret_access_key'],
-            region_name=self.credential_json.get('aws_default_region', None))
-
-        if not self._check_aws_bucket_exists(s3_client):
-            secho_error_and_exit(f"Bucket {self.storage_name} does not exist")
-
-        file_list = []
-
-        object_contents = s3_client.list_objects(
-            Bucket=self.storage_name, Prefix=str(self.file_or_dir))['Contents']
-        for object_content in object_contents:
-            object_key = object_content['Key']
-            file_list.append({
-                'name': object_key.split('/')[-1],
-                'path': object_key,
-                'mtime': object_content['LastModified'].isoformat(),
-                'size': object_content['Size']
-            })
-
-        if not file_list:
-            secho_error_and_exit(f"No file exists in Bucket {self.storage_name}")
-
-        return file_list
-
-    def get_checkpoint_file_list(self) -> List[dict]:
-        if self.vendor == "aws":
-            return self._get_checkpoint_file_list_aws()
-        if self.vendor == "azure":
-            return self._get_checkpoint_file_list_azure()
-        return self._get_checkpoint_file_list_gcp()
+    client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
+    info = client.get_checkpoint(checkpoint_id)
+    _echo_checkpoint_detail(info)
 
 
 @app.command("create")
-def checkpoint_create(file_or_dir: Path = typer.Option(...),
-                      iteration: int = typer.Option(...),
-                      vendor: str = typer.Option(...),
-                      storage_name: str = typer.Option(...),
-                      credential_id: str = typer.Option(...),
-                      # advanced arguments
-                      pp_degree: int = typer.Option(1),
-                      dp_degree: int = typer.Option(1),
-                      mp_degree: int = typer.Option(1),
-                      dp_mode: str = typer.Option('allreduce'),
-                      parallelism_order: str = typer.Option('pp,dp,mp')):
+def checkpoint_create(
+    file_or_dir: Path = typer.Option(
+        ...,
+        "--file-or-dir",
+        "-f",
+        help="File or direcotry path of cloud storage."
+    ),
+    iteration: int = typer.Option(
+        ...,
+        "--iteration",
+        "-i",
+        help="The iteration number of the checkpoint."
+    ),
+    vendor: VendorType = typer.Option(
+        ...,
+        "--vendor",
+        "-v",
+        help="The cloud storage vendor type where the checkpoint is uploaded."
+    ),
+    storage_name: str = typer.Option(
+        ...,
+        "--storage-name",
+        "-s",
+        help="The name cloud storage where the checkpoint is uploaded."
+    ),
+    credential_id: str = typer.Option(
+        ...,
+        "--credential-id",
+        "-c",
+        help="UUID of crendential to access cloud storage."
+    ),
+    # advanced arguments
+    pp_degree: int = typer.Option(
+        1,
+        "--pp-degree",
+        "-pp",
+        help="Pipelined model parallelism degree of the model checkpoint."
+    ),
+    dp_degree: int = typer.Option(
+        1,
+        "--dp-degree",
+        "-dp",
+        help="Data parallelism degree of the model checkpoint."
+    ),
+    mp_degree: int = typer.Option(
+        1,
+        "--mp-degree",
+        "-mp",
+        help="Tensor parallelism degree of the model checkpoint."
+    ),
+    parallelism_order: str = typer.Option(
+        'pp,dp,mp',
+        '--parallelism-order',
+        '-po',
+        callback=_validate_parallelism_order,
+        help="Order of device allocation in distributed training."
+    )
+):
     """Create the checkpoint.
     """
-    group_id = get_group_id()
-
-    parallelism_order = parallelism_order.split(",")
-    if {"pp", "dp", "mp"} != set(parallelism_order):
-        secho_error_and_exit("Invalid Argument: parallelism_order should contain 'pp', 'dp', 'mp'")
-
-    # dist_json
-    dist_json = {
+    dist_config = {
         "pp_degree": pp_degree,
         "dp_degree": dp_degree,
         "mp_degree": mp_degree,
-        "dp_mode": dp_mode,
+        "dp_mode": "allreduce",
         "parallelism_order": parallelism_order
     }
 
-    # TODO (TB): get job_setting_json from CLI
+    credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+    credential = credential_client.get_credential(credential_id)
+    if credential["type"] != vendor:
+        secho_error_and_exit(f"Credential type and vendor mismatch: {credential['type']} and {vendor}")
 
-    if credential_id is None:
-        secho_error_and_exit("Invalid Argument: credential_id should be provided")
+    storage_helper = CloudStorageHelper(file_or_dir, credential["value"], vendor, storage_name)
+    files = storage_helper.get_checkpoint_file_list()
 
-    if vendor not in ("aws", "azure", "gcp"):
-        secho_error_and_exit("Invalid Argument: vendor should be one of `azure`, `aws`, `gcp`.")
-
-    request_data = {
-        "category": "user_provided",
-        "vendor": vendor,
-        "iteration": iteration,
-        "storage_name": storage_name,
-        "dist_json": dist_json,
-        "credential_id": credential_id,
-        "job_setting_json": None,
-    }
-
-    response = auth.get(get_uri(f"credential/{credential_id}/"))
-    try:
-        response.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit("Cannot retrieve credential.")
-
-    credential_json = response.json()
-    if credential_json["type"] != vendor:
-        secho_error_and_exit(
-            f"Credential type and vendor mismatch: {credential_json['type']} and {vendor}")
-
-    storage_helper = CloudStorageHelper(
-        file_or_dir, credential_json["value"], vendor, storage_name)
-    request_data["files"] = storage_helper.get_checkpoint_file_list()
-
-    response = auth.post(get_uri(f"group/{group_id}/checkpoint/"), json=request_data)
-    try:
-        response.raise_for_status()
-        _echo_checkpoint_detail(response.json())
-    except HTTPError:
-        secho_error_and_exit("Failed to create checkpoint.")
+    checkpoint_client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
+    info = checkpoint_client.create_checkpoint(
+        vendor=vendor,
+        iteration=iteration,
+        storage_name=storage_name,
+        dist_config=dist_config,
+        credential_id=credential_id,
+        files=files
+    )
+    _echo_checkpoint_detail(info)
 
 
 @app.command("update")
-def checkpoint_update(checkpoint_id: str = typer.Option(...),
-                      file_or_dir: Path = typer.Option(...),
-                      iteration: Optional[int] = typer.Option(None),
-                      credential_id: Optional[str] = typer.Option(None),
-                      vendor: Optional[str] = typer.Option(None),
-                      storage_name: Optional[str] = typer.Option(None)):
+def checkpoint_update(
+    checkpoint_id: str = typer.Option(
+        ...,
+        "--checkpoint-id",
+        help="UUID of checkpoint to update."
+    ),
+    file_or_dir: Optional[Path] = typer.Option(
+        ...,
+        "--file-or-dir",
+        "-f",
+        help="File or direcotry path of cloud storage."
+    ),
+    iteration: Optional[int] = typer.Option(
+        ...,
+        "--iteration",
+        "-i",
+        help="The iteration number of the checkpoint."
+    ),
+    vendor: Optional[VendorType] = typer.Option(
+        ...,
+        "--vendor",
+        "-v",
+        help="The cloud storage vendor type where the checkpoint is uploaded."
+    ),
+    storage_name: Optional[str] = typer.Option(
+        ...,
+        "--storage-name",
+        "-s",
+        help="The name cloud storage where the checkpoint is uploaded."
+    ),
+    credential_id: Optional[str] = typer.Option(
+        ...,
+        "--credential-id",
+        "-c",
+        help="UUID of crendential to access cloud storage."
+    ),
+    # advanced arguments
+    pp_degree: Optional[int] = typer.Option(
+        1,
+        "--pp-degree",
+        "-pp",
+        help="Pipelined model parallelism degree of the model checkpoint."
+    ),
+    dp_degree: Optional[int] = typer.Option(
+        1,
+        "--dp-degree",
+        "-dp",
+        help="Data parallelism degree of the model checkpoint."
+    ),
+    mp_degree: Optional[int] = typer.Option(
+        1,
+        "--mp-degree",
+        "-mp",
+        help="Tensor parallelism degree of the model checkpoint."
+    ),
+    parallelism_order: Optional[str] = typer.Option(
+        'pp,dp,mp',
+        '--parallelism-order',
+        '-po',
+        callback=_validate_parallelism_order,
+        help="Order of device allocation in distributed training."
+    )
+):
     """Update the existing checkpoint.
     """
-    # TODO (TB): Currently, cannot modify dist_json and job_setting_json
-    group_id = get_group_id()
+    dist_config = {
+        "pp_degree": pp_degree,
+        "dp_degree": dp_degree,
+        "mp_degree": mp_degree,
+        "dp_mode": "allreduce",
+        "parallelism_order": parallelism_order
+    }
 
-    response = auth.get(get_uri(f"group/{group_id}/checkpoint/{checkpoint_id}/"))
-    try:
-        response.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit("Cannot retrieve checkpoint. ")
-    checkpoint_json = response.json()
+    checkpoint_client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
+    prev_info = checkpoint_client.get_checkpoint(checkpoint_id)
 
-    request_data = {}
-    if iteration is not None:
-        request_data["iteration"] = iteration
-    if vendor is not None:
-        request_data["vendor"] = vendor
-    else:
-        vendor = checkpoint_json["vendor"]
     if credential_id is not None:
-        request_data["credential_id"] = credential_id
-    else:
-        credential_id = checkpoint_json["credential_id"]
-    if storage_name is not None:
-        request_data["storage_name"] = storage_name
-    else:
-        storage_name = checkpoint_json["storage_name"]
+        credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+        credential = credential_client.get_credential(credential_id)
+        vendor = vendor or prev_info['vendor']
+        if credential["type"] != vendor:
+            secho_error_and_exit(f"Credential type and vendor mismatch: {credential['type']} and {vendor}")
 
-    response = auth.get(get_uri(f"credential/{credential_id}/"))
-    try:
-        response.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit("Cannot retrieve credential. ")
+        if file_or_dir is not None:
+            storage_name = storage_name or prev_info['storage_name']
+            storage_helper = CloudStorageHelper(file_or_dir, credential["value"], vendor, storage_name)
+            files = storage_helper.get_checkpoint_file_list()
 
-    credential_json = response.json()
-    if credential_json["type"] != vendor:
-        secho_error_and_exit(f"Credential type and vendor mismatch: {credential_json['type']} and {vendor}")
-
-    storage_helper = CloudStorageHelper(
-        file_or_dir, credential_json["value"], vendor, storage_name)
-    request_data["files"] = storage_helper.get_checkpoint_file_list()
-
-    response = auth.patch(get_uri(
-        f"group/{group_id}/checkpoint/{checkpoint_id}/"), json=request_data)
-    try:
-        response.raise_for_status()
-        _echo_checkpoint_detail(response.json())
-    except HTTPError:
-        secho_error_and_exit("Failed to update checkpoint. ")
+    info = checkpoint_client.update_checkpoint(
+        checkpoint_id,
+        vendor=vendor,
+        iteration=iteration,
+        storage_name=storage_name,
+        dist_config=dist_config,
+        credential_id=credential_id,
+        files=files
+    )
+    _echo_checkpoint_detail(info)
 
 
 @app.command("delete")
-def checkpoint_delete(checkpoint_id: str = typer.Option(...)):
+def checkpoint_delete(
+    checkpoint_id: str = typer.Option(...)
+):
     """Delete the existing checkpoint.
     """
-    group_id = get_group_id()
-
-    response = auth.delete(get_uri(f"group/{group_id}/checkpoint/{checkpoint_id}/"))
-    try:
-        response.raise_for_status()
-        typer.echo(f"Successfully deleted checkpoint (ID = {checkpoint_id})")
-    except HTTPError:
-        secho_error_and_exit(f"Delete failed.")
+    client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
+    client.delete_checkpoint(checkpoint_id)
 
 
 if __name__ == '__main__':

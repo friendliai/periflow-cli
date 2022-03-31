@@ -391,7 +391,7 @@ class GroupExperimentClientService(ClientService, GroupRequestMixin):
         self.initialize_group()
         super().__init__(template, group_id=self.group_id, **kwargs)
 
-    def get_id_by_name(self, name: str) -> Optional[int]:
+    def get_id_by_name(self, name: str) -> Optional[T]:
         try:
             response = self.list()
         except HTTPError:
@@ -414,7 +414,7 @@ class GroupDataClientService(ClientService, GroupRequestMixin):
         self.initialize_group()
         super().__init__(template, group_id=self.group_id, **kwargs)
 
-    def get_id_by_name(self, name: str) -> Optional[int]:
+    def get_id_by_name(self, name: str) -> Optional[T]:
         try:
             response = self.list()
         except HTTPError:
@@ -430,7 +430,7 @@ class GroupVMClientService(ClientService, GroupRequestMixin):
         self.initialize_group()
         super().__init__(template, group_id=self.group_id, **kwargs)
 
-    def get_id_by_name(self, name: str) -> Optional[int]:
+    def get_id_by_name(self, name: str) -> Optional[T]:
         try:
             response = self.list()
         except HTTPError:
@@ -441,6 +441,95 @@ class GroupVMClientService(ClientService, GroupRequestMixin):
         return None
 
 
+class CredentialClientService(ClientService):
+    def get_credential(self, credential_id: T) -> dict:
+        try:
+            response = self.retrieve(credential_id)
+        except HTTPError:
+            secho_error_and_exit(f"Credential ({credential_id}) is not found")
+        return response.json()
+
+
+class CheckpointClientService(ClientService):
+    def get_checkpoint(self, checkpoint_id: T) -> dict:
+        try:
+            response = self.retrieve(checkpoint_id)
+        except HTTPError:
+            secho_error_and_exit(f"Failed to get info of checkpoint ({checkpoint_id})")
+        return response.json()
+
+    def update_checkpoint(self,
+                          checkpoint_id: T,
+                          *,
+                          vendor: Optional[str],
+                          iteration: Optional[int],
+                          storage_name: Optional[str],
+                          dist_config: Optional[dict],
+                          credential_id: Optional[str],
+                          files: Optional[List[dict]]) -> dict:
+        prev_info = self.get_checkpoint(checkpoint_id)
+        request_data = {
+            "vendor": vendor or prev_info['vendor'],
+            "iteration": iteration or prev_info['iteration'],
+            "storage_name": storage_name or prev_info['storage_name'],
+            "dist_json": dist_config or prev_info['dist_json'],
+            "credential_id": credential_id or prev_info['credential_id'],
+            "job_setting_json": None,
+            "files": files or prev_info['files']
+        }
+        try:
+            response = self.partial_update(checkpoint_id, json=request_data)
+        except HTTPError:
+            secho_error_and_exit("Cannot update checkpoint")
+        return response.json()
+
+    def delete_checkpoint(self, checkpoint_id: T) -> None:
+        try:
+            response = self.delete(checkpoint_id)
+        except HTTPError:
+            secho_error_and_exit(f"Failed to delete checkpoint ({checkpoint_id})")
+        return response
+
+
+class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
+        super().__init__(template, group_id=self.group_id, **kwargs)
+
+    def list_checkpoints(self, category: Optional[str]) -> dict:
+        request_data = {}
+        if category is not None:
+            request_data['category'] = category
+
+        try:
+            response = self.list(json=request_data)
+        except HTTPError:
+            secho_error_and_exit("Cannot list checkpoints in your group")
+        return response.json()['results']
+
+    def create_checkpoint(self,
+                          vendor: str,
+                          iteration: int,
+                          storage_name: str,
+                          dist_config: dict,
+                          credential_id: str,
+                          files: List[dict]) -> dict:
+        request_data = {
+            "vendor": vendor,
+            "iteration": iteration,
+            "storage_name": storage_name,
+            "dist_json": dist_config,
+            "credential_id": credential_id,
+            "job_setting_json": None,
+            "files": files
+        }
+        try:
+            response = self.create(json=request_data)
+        except HTTPError:
+            secho_error_and_exit("Failed to create checkpoint")
+        return response.json() 
+
+
 client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.USER_GROUP: (UserGroupClientService, Template(get_uri('user/'))),
     ServiceType.JOB: (JobClientService, Template(get_uri('job/'))),
@@ -448,9 +537,12 @@ client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.JOB_ARTIFACT: (JobArtifactClientService, Template(get_uri('job/$job_id/artifact/'))),
     ServiceType.GROUP_JOB: (GroupJobClientService, Template(get_uri('group/$group_id/job/'))),
     ServiceType.JOB_TEMPLATE: (JobTemplateClientService, Template(get_uri('job_template/'))),
+    ServiceType.CREDENTIAL: (CredentialClientService, Template(get_uri('credential/'))),
     ServiceType.GROUP_EXPERIMENT: (GroupExperimentClientService, Template(get_uri('group/$group_id/experiment/'))),
     ServiceType.GROUP_DATA: (GroupDataClientService, Template(get_uri('group/$group_id/datastore/'))),
     ServiceType.GROUP_VM: (GroupVMClientService, Template(get_uri('group/$group_id/vm_config/'))),
+    ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_uri('checkpoint/'))),
+    ServiceType.GROUP_CHECKPOINT: (GroupCheckpointClinetService, Template(get_uri('group/$group_id/checkpoint/'))),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri('job/'))),
 }
 
