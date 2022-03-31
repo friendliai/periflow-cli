@@ -8,7 +8,7 @@ import typer
 import yaml
 from requests.exceptions import HTTPError
 
-from pfcli import autoauth
+from pfcli.service import auth
 from pfcli.utils import get_group_id, get_uri, secho_error_and_exit
 
 app = typer.Typer()
@@ -25,7 +25,7 @@ def quota_list():
     """
     group_id = get_group_id()
 
-    response = autoauth.get(get_uri(f"group/{group_id}/vm_quota/"))
+    response = auth.get(get_uri(f"group/{group_id}/vm_quota/"))
     try:
         response.raise_for_status()
     except HTTPError:
@@ -63,7 +63,7 @@ def quota_list():
 
 @config_app.command("type")
 def config_type_list():
-    response = autoauth.get(get_uri("vm_config_type/"))
+    response = auth.get(get_uri("vm_config_type/"))
     try:
         response.raise_for_status()
     except HTTPError:
@@ -89,7 +89,7 @@ def config_type_list():
 def config_list():
     group_id = get_group_id()
 
-    response = autoauth.get(get_uri(f"group/{group_id}/vm_config/"))
+    response = auth.get(get_uri(f"group/{group_id}/vm_config/"))
     try:
         response.raise_for_status()
     except HTTPError:
@@ -114,7 +114,7 @@ def config_list():
 
 @config_app.command("view")
 def config_detail(vm_config_id: int = typer.Option(...), detail: bool = typer.Option(False, help="View all available fields of vm configs")):
-    response = autoauth.get(get_uri(f"vm_config/{vm_config_id}/"))
+    response = auth.get(get_uri(f"vm_config/{vm_config_id}/"))
     try:
         response.raise_for_status()
     except HTTPError:
@@ -151,7 +151,7 @@ def config_create(vm_config_type_id: Optional[int] = typer.Option(None),
         request_data["vm_config_type_id"] = vm_config_type_id
     request_data["template_data"] = template_data
 
-    response = autoauth.post(get_uri(f"group/{group_id}/vm_config/"), json=request_data)
+    response = auth.post(get_uri(f"group/{group_id}/vm_config/"), json=request_data)
 
     try:
         response.raise_for_status()
@@ -178,7 +178,7 @@ def config_update(vm_config_id: int = typer.Option(...),
 
     request_data = {}
     request_data["template_data"] = template_data
-    response = autoauth.patch(get_uri(f"vm_config/{vm_config_id}/"), json=request_data)
+    response = auth.patch(get_uri(f"vm_config/{vm_config_id}/"), json=request_data)
     try:
         response.raise_for_status()
     except HTTPError:
@@ -195,7 +195,7 @@ def config_update(vm_config_id: int = typer.Option(...),
 
 @config_app.command("delete")
 def config_delete(vm_config_id: int = typer.Option(...)):
-    response = autoauth.delete(get_uri(f"vm_config/{vm_config_id}/"))
+    response = auth.delete(get_uri(f"vm_config/{vm_config_id}/"))
     try:
         response.raise_for_status()
     except HTTPError:

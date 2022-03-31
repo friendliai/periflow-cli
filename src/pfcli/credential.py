@@ -6,7 +6,7 @@ import typer
 import yaml
 from requests import HTTPError
 
-from pfcli import autoauth
+from pfcli.service import auth
 from pfcli.utils import get_uri, secho_error_and_exit, get_group_id
 
 
@@ -45,7 +45,7 @@ def create(cred_type: str = typer.Option(...),
     request_data.update({"value": value})
 
     if owner_type.value == 'user':
-        r = autoauth.post(get_uri(f"credential/"),
+        r = auth.post(get_uri(f"credential/"),
                         json=request_data)
         try:
             r.raise_for_status()
@@ -53,7 +53,7 @@ def create(cred_type: str = typer.Option(...),
         except HTTPError:
             secho_error_and_exit(f"Credential register failed...")
     else:
-        r = autoauth.post(get_uri(f"group/{group_id}/credential/"),
+        r = auth.post(get_uri(f"group/{group_id}/credential/"),
                         json=request_data)
         try:
             r.raise_for_status()
@@ -67,7 +67,7 @@ def list(cred_type: str = typer.Option(...)):
     creds = []
 
     request_data = {"type": cred_type}
-    r_user = autoauth.get(get_uri("credential/"),
+    r_user = auth.get(get_uri("credential/"),
                      params=request_data)
     try:
         r_user.raise_for_status()
@@ -79,7 +79,7 @@ def list(cred_type: str = typer.Option(...)):
         creds.append(cred_user)
 
     group_id = get_group_id()
-    r_group = autoauth.get(get_uri(f"group/{group_id}/credential/"))
+    r_group = auth.get(get_uri(f"group/{group_id}/credential/"))
     try:
         r_group.raise_for_status()
     except HTTPError:
@@ -114,7 +114,7 @@ def update(cred_id: str = typer.Option(...),
         request_data["value"] = value
     if not request_data:
         secho_error_and_exit("You need to specify at least one properties to update credential")
-    r = autoauth.patch(get_uri(f"credential/{cred_id}/"), json=request_data)
+    r = auth.patch(get_uri(f"credential/{cred_id}/"), json=request_data)
     cred = r.json()
     try:
         r.raise_for_status()
@@ -127,7 +127,7 @@ def update(cred_id: str = typer.Option(...),
 
 @app.command()
 def delete(cred_id: str = typer.Option(...)):
-    r = autoauth.delete(get_uri(f"credential/{cred_id}/"))
+    r = auth.delete(get_uri(f"credential/{cred_id}/"))
     try:
         r.raise_for_status()
         typer.echo(f"Successfully deleted credential ID = {cred_id}")

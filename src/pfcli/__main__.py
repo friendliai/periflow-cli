@@ -13,8 +13,9 @@ from pfcli import credential
 from pfcli import job
 from pfcli import datastore
 from pfcli import vm
-from pfcli import autoauth
-from pfcli.autoauth import update_token, get_auth_header
+from pfcli.service import ServiceType
+from pfcli.service.auth import update_token
+from pfcli.service.client import UserGroupClientService, build_client
 from pfcli.utils import get_uri, secho_error_and_exit
 
 app = typer.Typer()
@@ -27,24 +28,17 @@ app.add_typer(vm.app, name="vm", help="Manage VMs")
 
 @app.command()
 def self():
-    r = autoauth.get(get_uri("user/self/"), headers=get_auth_header())
-    try:
-        r.raise_for_status()
-        results = [[r.json()["id"], r.json()["username"], r.json()["email"]]]
-        typer.echo(tabulate.tabulate(results, headers=["id", "username", "email"]))
-    except HTTPError:
-        secho_error_and_exit(f"Error Code = {r.status_code}, Detail = {r.json()['detail']}")
-
+    client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
+    info = client.get_user_info()
+    results = [(info["id"], info["username"], info["email"])]
+    typer.echo(tabulate.tabulate(results, headers=["id", "username", "email"]))
 
 @app.command()
 def group():
-    r = autoauth.get(get_uri("user/group/"), headers=get_auth_header())
-    try:
-        r.raise_for_status()
-        results = [[g["name"]] for g in r.json()["results"]]
-        typer.echo(tabulate.tabulate(results, headers=["group name"]))
-    except HTTPError:
-        secho_error_and_exit(f"Error Code = {r.status_code}, Detail = {r.json()['detail']}")
+    client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
+    info =  client.get_group_info()
+    results = [[g["name"] for g in info]]
+    typer.echo(tabulate.tabulate(results, headers=["name"]))
 
 
 @app.command()

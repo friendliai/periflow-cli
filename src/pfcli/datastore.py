@@ -4,7 +4,7 @@ import tabulate
 import typer
 from requests import HTTPError
 
-from pfcli import autoauth
+from pfcli.service import auth
 from pfcli.utils import get_uri, get_group_id, secho_error_and_exit
 
 app = typer.Typer()
@@ -14,7 +14,7 @@ app = typer.Typer()
 def list():
     group_id = get_group_id()
     results = [["id", "name", "vendor", "storage_name"]]
-    datastores = autoauth.get(get_uri(f"group/{group_id}/datastore/")).json()
+    datastores = auth.get(get_uri(f"group/{group_id}/datastore/")).json()
 
     for datastore in datastores:
         results.append([datastore["id"], datastore["name"], datastore["vendor"], datastore["storage_name"]])
@@ -36,7 +36,7 @@ def create(name: str = typer.Option(...),
         "credential_id": credential_id
     }
 
-    r = autoauth.post(get_uri(f"group/{group_id}/datastore/"), json=request_json)
+    r = auth.post(get_uri(f"group/{group_id}/datastore/"), json=request_json)
     try:
         r.raise_for_status()
         results = [
@@ -73,7 +73,7 @@ def update(datastore_id: str = typer.Option(...),
     if not request_json:
         secho_error_and_exit("You need to specify at least one properties to update datastore")
 
-    r = autoauth.patch(get_uri(f"group/{group_id}/datastore/{datastore_id}/"), json=request_json)
+    r = auth.patch(get_uri(f"group/{group_id}/datastore/{datastore_id}/"), json=request_json)
     try:
         r.raise_for_status()
         results = [
@@ -94,7 +94,7 @@ def delete(datastore_id: str = typer.Option(...)):
 
     group_id = get_group_id()
 
-    r = autoauth.get(get_uri(f"group/{group_id}/datastore/{datastore_id}"))
+    r = auth.get(get_uri(f"group/{group_id}/datastore/{datastore_id}"))
     try:
         r.raise_for_status()
         typer.secho("Datastore to be deleted", fg=typer.colors.MAGENTA)
@@ -113,7 +113,7 @@ def delete(datastore_id: str = typer.Option(...)):
     if not datastore_delete:
         typer.Exit(1)
 
-    r = autoauth.delete(get_uri(f"group/{group_id}/datastore/{datastore_id}"))
+    r = auth.delete(get_uri(f"group/{group_id}/datastore/{datastore_id}"))
     try:
         r.raise_for_status()
         typer.echo(f"Successfully deleted datastore.")

@@ -8,7 +8,7 @@ from subprocess import CalledProcessError, check_call
 
 import typer
 
-from pfcli import autoauth
+from pfcli.service import auth
 
 # Variables
 periflow_api_server = "https://api-dev.friendli.ai/api/"
@@ -74,7 +74,7 @@ def secho_error_and_exit(text: str, color: str = typer.colors.RED):
 
 
 def get_group_id() -> int:
-    r = autoauth.get(get_uri("user/group/"))
+    r = auth.get(get_uri("user/group/"))
     if r.status_code != 200:
         secho_error_and_exit(f"Cannot acquire group info.")
     groups = r.json()["results"]

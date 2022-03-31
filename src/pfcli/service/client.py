@@ -20,7 +20,7 @@ from websockets.client import WebSocketClientProtocol
 from websockets.exceptions import ConnectionClosed
 from requests import Response
 
-from pfcli.autoauth import (
+from pfcli.service.auth import (
     TokenType,
     get_auth_header,
     get_token,
@@ -106,9 +106,27 @@ class GroupRequestMixin:
 
 
 class UserGroupClientService(ClientService):
+    @auto_token_refresh
+    def self(self) -> Response:
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('self/')
+        return requests.get(
+            url_template.render(**self.url_kwargs),
+            headers=get_auth_header(),
+        )
+
+    @auto_token_refresh
+    def group(self) -> Response:
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('group/')
+        return requests.get(
+            url_template.render(**self.url_kwargs),
+            headers=get_auth_header(),
+        )
+
     def get_group_id(self) -> int:
         try:
-            response = self.list()
+            response = self.group()
         except HTTPError:
             secho_error_and_exit("Failed to get your group info.")
         if response.status_code != 200:
@@ -121,6 +139,20 @@ class UserGroupClientService(ClientService):
                 "Currently we do not support users with more than two groups... Please contact admin"
             )
         return groups[0]['id']
+
+    def get_user_info(self) -> dict:
+        try:
+            response = self.self()
+        except HTTPError:
+            secho_error_and_exit("Failed to get my user info")
+        return response.json()
+
+    def get_group_info(self) -> dict:
+        try:
+            response = self.group()
+        except HTTPError:
+            secho_error_and_exit("Failed to get my group info")
+        return response.json()['results']
 
 
 class JobClientService(ClientService):
@@ -410,7 +442,7 @@ class GroupVMClientService(ClientService, GroupRequestMixin):
 
 
 client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
-    ServiceType.USER_GROUP: (UserGroupClientService, Template(get_uri('user/group/'))),
+    ServiceType.USER_GROUP: (UserGroupClientService, Template(get_uri('user/'))),
     ServiceType.JOB: (JobClientService, Template(get_uri('job/'))),
     ServiceType.JOB_CHECKPOINT: (JobCheckpointClientService, Template(get_uri('job/$job_id/checkpoint/'))),
     ServiceType.JOB_ARTIFACT: (JobArtifactClientService, Template(get_uri('job/$job_id/artifact/'))),
