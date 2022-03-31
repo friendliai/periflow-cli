@@ -13,9 +13,9 @@ access_token_path = credential_path / "access_token"
 refresh_token_path = credential_path / "refresh_token"
 
 
-class TokenType(Enum):
-    ACCESS = 1
-    REFRESH = 2
+class TokenType(str, Enum):
+    ACCESS = "ACCESS"
+    REFRESH = "REFRESH"
 
 
 def get_auth_header() -> dict:

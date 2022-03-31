@@ -14,7 +14,7 @@ from pfcli import job
 from pfcli import datastore
 from pfcli import vm
 from pfcli.service import ServiceType
-from pfcli.service.auth import update_token
+from pfcli.service.auth import TokenType, update_token
 from pfcli.service.client import UserGroupClientService, build_client
 from pfcli.utils import get_uri, secho_error_and_exit
 
@@ -47,8 +47,8 @@ def login(username: str = typer.Option(..., prompt="Enter Username"),
     r = requests.post(get_uri("token/"), data={"username": username, "password": password})
     try:
         r.raise_for_status()
-        update_token(token_type="access", token=r.json()["access"])
-        update_token(token_type="refresh", token=r.json()["refresh"])
+        update_token(token_type=TokenType.ACCESS, token=r.json()["access"])
+        update_token(token_type=TokenType.REFRESH, token=r.json()["refresh"])
 
         typer.echo("\n\nLogin success!")
         typer.echo("Welcome back to...")
