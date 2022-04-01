@@ -3,12 +3,18 @@
 """PeriFlow YAML File Configuration Service"""
 
 from dataclasses import dataclass
-from typing import TypeVar, Optional
+from typing import Tuple, TypeVar, Optional, Union, Any
 
 import typer
-from pfcli.service import ServiceType
+from jsonschema import Draft7Validator, ValidationError
 
-from pfcli.service.client import JobTemplateClientService, build_client
+from pfcli.service import ServiceType, CredType, cred_type_map_inv
+from pfcli.service.client import (
+    CredentialClientService,
+    CredentialTypeClientService,
+    JobTemplateClientService,
+    build_client,
+)
 from pfcli.utils import secho_error_and_exit
 
 
@@ -110,11 +116,20 @@ SLACK_PLUGIN_CONFIG = """\
 """
 
 
-J = TypeVar('J', bound='JobTemplateConfigService')
+J = TypeVar('J', bound='JobConfigService')
+T = TypeVar('T', bound=Union[str, Tuple[Any]])
+
+
+class InteractiveConfigMixin:
+    def start_interaction(self) -> None:
+        raise NotImplementedError   # prama: no cover
+
+    def render(self) -> T:
+        raise NotImplementedError   # pragma: no cover
 
 
 @dataclass
-class JobTemplateConfigService:
+class JobConfigService(InteractiveConfigMixin):
     """Interface of job template configuration service
     """
     ready: bool = False
@@ -122,12 +137,6 @@ class JobTemplateConfigService:
     use_input_checkpoint: bool = False
     use_wandb: bool = False
     use_slack: bool = False
-
-    def start_interaction(self) -> None:
-        raise NotImplementedError   # prama: no cover
-
-    def render(self) -> str:
-        raise NotImplementedError   # pragma: no cover
 
     def _render_plugins(self) -> str:
         yaml_str = ""
@@ -142,7 +151,7 @@ class JobTemplateConfigService:
 
 
 @dataclass
-class CustomJobTemplateConfigService(JobTemplateConfigService):
+class CustomJobConfigService(JobConfigService):
     """Custom job template configuration service
     """
     # TODO: Support workspace, artifact
@@ -152,25 +161,25 @@ class CustomJobTemplateConfigService(JobTemplateConfigService):
 
     def start_interaction(self):
         self.use_private_img = typer.confirm(
-            "Will you use your private docker image? (You should provide credential)."
+            "Will you use your private docker image? (You should provide credential).", prompt_suffix="\n>>"
         )
         self.use_dist = typer.confirm(
-            "Will you run distributed training job?"
+            "Will you run distributed training job?", prompt_suffix="\n>>"
         )
         self.use_data = typer.confirm(
-            "Will you use dataset for the job?"
+            "Will you use dataset for the job?", prompt_suffix="\n>>"
         )
         self.use_input_checkpoint = typer.confirm(
-            "Will you use input checkpoint for the job?"
+            "Will you use input checkpoint for the job?", prompt_suffix="\n>>"
         )
         self.use_output_checkpoint = typer.confirm(
-            "Does your job generate model checkpoint file?"
+            "Does your job generate model checkpoint file?", prompt_suffix="\n>>"
         )
         self.use_wandb = typer.confirm(
-            "Will you use W&B monitoring for the job?"
+            "Will you use W&B monitoring for the job?", prompt_suffix="\n>>"
         )
         self.use_slack = typer.confirm(
-            "Do you want to get slack notifaction for the job?"
+            "Do you want to get slack notifaction for the job?", prompt_suffix="\n>>"
         )
         self.ready = True
 
@@ -198,7 +207,7 @@ class CustomJobTemplateConfigService(JobTemplateConfigService):
 
 
 @dataclass
-class PredefinedJobTemplateConfigService(JobTemplateConfigService):
+class PredefinedJobConfigService(JobConfigService):
     """Predefined job template configuration service
     """
     model_name: Optional[str] = None
@@ -211,6 +220,7 @@ class PredefinedJobTemplateConfigService(JobTemplateConfigService):
         self.model_name = typer.prompt(
             "Which job do you want to run? Choose one in the following catalog:\n",
             f"Options: {', '.join(template_names)}"
+            , prompt_suffix="\n>>"
         )
         if self.model_name not in template_names:
             secho_error_and_exit("Invalid job template name...!")
@@ -219,16 +229,16 @@ class PredefinedJobTemplateConfigService(JobTemplateConfigService):
         self.model_config = template["data_example"]
 
         self.use_data = typer.confirm(
-            "Will you use dataset for the job?"
+            "Will you use dataset for the job?", prompt_suffix="\n>>"
         )
         self.use_input_checkpoint = typer.confirm(
-            "Will you use input checkpoint for the job?"
+            "Will you use input checkpoint for the job?", prompt_suffix="\n>>"
         )
         self.use_wandb = typer.confirm(
-            "Will you use W&B monitoring for the job?"
+            "Will you use W&B monitoring for the job?", prompt_suffix="\n>>"
         )
         self.use_slack = typer.confirm(
-            "Do you want to get slack notifaction for the job?"
+            "Do you want to get slack notifaction for the job?", prompt_suffix="\n>>"
         )
         self.ready = True
 
@@ -252,11 +262,90 @@ class PredefinedJobTemplateConfigService(JobTemplateConfigService):
         return yaml_str
 
 
-def build_job_template_configurator(job_type: str) -> J:
+@dataclass
+class CredentialConfigService(InteractiveConfigMixin):
+    ready: bool = False
+    name: Optional[str] = None
+    cred_type: Optional[CredType] = None
+    value: Optional[dict] = None
+
+    def start_interaction(self) -> None:
+        self.name = typer.prompt(
+            "Enter the name of your new credential.", prompt_suffix="\n>>"
+        )
+        cred_type_options = [ e.value for e in CredType ]
+        self.cred_type = typer.prompt(
+            "What kind of credential do you want to create?\n",
+            f"Options: {', '.join(cred_type_options)}",
+            prompt_suffix="\n>>"
+        )
+        if self.cred_type not in cred_type_options:
+            secho_error_and_exit(
+                f"You should choose the type in the following Options: {', '.join(cred_type_options)}"
+            )
+        cred_type_client: CredentialTypeClientService = build_client(ServiceType.CREDENTIAL_TYPE)
+        schema = cred_type_client.get_schema_by_type(self.cred_type)
+        properties: dict = schema['properties']
+        self.value = {}
+        typer.echo("Please fill in the following fields")
+        for field, field_info in properties.items():
+            field_info: dict
+            field_info_str = "\n".join(f"    - {k}: {v}" for k, v in field_info.items())
+            entered = typer.prompt(f"  {field}:\n{field_info_str}", prompt_suffix="\n  >>")
+            self.value[field] = entered
+
+        try:
+            Draft7Validator(schema).validate(self.value)
+        except ValidationError as exc:
+            secho_error_and_exit(f"Format of credential value is invalid...! ({exc.message})")
+
+        self.ready = True
+
+    def start_interaction_for_update(self, credential_id: str) -> None:
+        cred_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+        prev_cred = cred_client.get_credential(credential_id)
+
+        self.name = typer.prompt(
+            "Enter the NEW name of your credential. Press ENTER if you don't want to update this.\n"
+            f"Current: {prev_cred['name']}",
+            prompt_suffix="\n>>",
+            default=prev_cred['name'],
+            show_default=False
+        )
+        self.cred_type = cred_type_map_inv[prev_cred['type']]
+        cred_type_client: CredentialTypeClientService = build_client(ServiceType.CREDENTIAL_TYPE)
+        schema = cred_type_client.get_schema_by_type(self.cred_type)
+        properties: dict = schema['properties']
+        self.value = {}
+        typer.echo("Please fill in the following fields")
+        for field, field_info in properties.items():
+            field_info: dict
+            field_info_str = "\n".join(f"    - {k}: {v}" for k, v in field_info.items())
+            entered = typer.prompt(
+                f"  {field} (Current: {prev_cred['value'][field]}):\n{field_info_str}",
+                prompt_suffix="\n  >>",
+                default=prev_cred['value'][field],
+                show_default=False
+            )
+            self.value[field] = entered
+
+        try:
+            Draft7Validator(schema).validate(self.value)
+        except ValidationError as exc:
+            secho_error_and_exit(f"Format of credential value is invalid...! ({exc.message})")
+
+        self.ready = True
+
+    def render(self) -> Tuple[Any]:
+        assert self.ready
+        return self.name, self.cred_type, self.value
+
+
+def build_job_configurator(job_type: str) -> J:
     if job_type == "custom":
-        configurator = CustomJobTemplateConfigService()
+        configurator = CustomJobConfigService()
     elif job_type == "predefined":
-        configurator = PredefinedJobTemplateConfigService()
+        configurator = PredefinedJobConfigService()
     else:
         secho_error_and_exit("Invalid job type...!")
 
@@ -264,5 +353,5 @@ def build_job_template_configurator(job_type: str) -> J:
     return configurator
 
 
-def build_data_template_configurator():
+def build_data_configurator():
     ...

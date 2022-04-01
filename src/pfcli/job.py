@@ -28,7 +28,7 @@ from pfcli.service.client import (
     JobWebSocketClientService,
     build_client,
 )
-from pfcli.service.config import build_job_template_configurator
+from pfcli.service.config import build_job_configurator
 from pfcli.utils import (
     get_default_editor,
     get_remaining_terminal_columns,
@@ -64,7 +64,8 @@ def refine_config(config: dict) -> None:
         create_new = typer.confirm(
             f"Experiment with the name ({experiment_name}) is not found.\n"
             "Do you want to proceed with creating a new experiment? "
-            f"If yes, a new experiment will be created with the name: {experiment_name}"
+            f"If yes, a new experiment will be created with the name: {experiment_name}",
+            prompt_suffix="\n>>"
         )
         if not create_new:
             typer.echo("Please run the job after creating an experiment first.")
@@ -350,9 +351,10 @@ def template_create(
 ):
     job_type = typer.prompt(
         "What kind job do you want?\n",
-        "Options: 'predefined', 'custom'"
+        "Options: 'predefined', 'custom'",
+        prompt_suffix="\n>>"
     )
-    configurator = build_job_template_configurator(job_type)
+    configurator = build_job_configurator(job_type)
     yaml_str = configurator.render()
 
     yaml = ruamel.yaml.YAML()
@@ -360,7 +362,8 @@ def template_create(
     yaml.dump(code, save_path)
 
     continue_edit = typer.confirm(
-        f"Do you want to open editor to configure the job YAML file? (default editor: {get_default_editor()})"
+        f"Do you want to open editor to configure the job YAML file? (default editor: {get_default_editor()})",
+        prompt_suffix="\n>>"
     )
     if continue_edit:
         open_editor(save_path.name)

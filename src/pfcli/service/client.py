@@ -7,7 +7,16 @@ from __future__ import annotations
 import copy
 import json
 from string import Template
-from typing import Iterator, TypeVar, Type, List, Dict, Tuple, Optional, Union
+from typing import (
+    Iterator,
+    TypeVar,
+    Type,
+    List,
+    Dict,
+    Tuple,
+    Optional,
+    Union
+)
 from dataclasses import dataclass
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -26,8 +35,13 @@ from pfcli.service.auth import (
     get_token,
     auto_token_refresh,
 )
-from pfcli.utils import get_uri, get_wss_uri, secho_error_and_exit, zip_dir
-from pfcli.service import ServiceType, LogType
+from pfcli.utils import (
+    get_uri,
+    get_wss_uri,
+    secho_error_and_exit,
+    zip_dir,
+)
+from pfcli.service import CredType, ServiceType, LogType, cred_type_map
 
 
 A = TypeVar('A', bound='ClientService')
@@ -127,6 +141,7 @@ class UserGroupClientService(ClientService):
     def get_group_id(self) -> int:
         try:
             response = self.group()
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to get your group info.")
         if response.status_code != 200:
@@ -143,6 +158,7 @@ class UserGroupClientService(ClientService):
     def get_user_info(self) -> dict:
         try:
             response = self.self()
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to get my user info")
         return response.json()
@@ -150,6 +166,7 @@ class UserGroupClientService(ClientService):
     def get_group_info(self) -> dict:
         try:
             response = self.group()
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to get my group info")
         return response.json()['results']
@@ -159,6 +176,7 @@ class JobClientService(ClientService):
     def list_jobs(self) -> dict:
         try:
             response = self.list()
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to list jobs.")
         return response.json()['results']
@@ -166,12 +184,14 @@ class JobClientService(ClientService):
     def get_job(self, job_id: int) -> dict:
         try:
             response = self.retrieve(job_id)
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit(f"Job ({job_id}) is not found. You may enter wrong ID.")
         return response.json()
 
     def run_job(self, config: dict, training_dir: Optional[Path]) -> dict:
         try:
+            response
             if training_dir is not None:
                 workspace_zip = Path(training_dir.parent / (training_dir.name + ".zip"))
                 with zip_dir(training_dir, workspace_zip) as zip_file:
@@ -179,6 +199,7 @@ class JobClientService(ClientService):
                     response = self.create(data={"data": json.dumps(config)}, files=files)
             else:
                 response = self.create(json=config)
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to run job.")
         return response.json()
@@ -194,7 +215,8 @@ class JobClientService(ClientService):
 
     def cancel_job(self, job_id: int) -> None:
         try:
-            self.cancel(job_id)
+            response = self.cancel(job_id)
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit(f"Failed to cancel job ({job_id})")
 
@@ -209,12 +231,13 @@ class JobClientService(ClientService):
 
     def terminate_job(self, job_id: int) -> None:
         try:
-            self.terminate(job_id)
+            response = self.terminate(job_id)
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit(f"Failed to terminate job ({job_id})")
 
     @auto_token_refresh
-    def text_logs(self, job_id: int, request_data: dict):
+    def text_logs(self, job_id: int, request_data: dict) -> Response:
         url_template = copy.deepcopy(self.url_template)
         url_template.attach_pattern('$job_id/text_log/')
         return requests.get(
@@ -244,6 +267,7 @@ class JobClientService(ClientService):
 
         try:
             response = self.text_logs(job_id, request_data)
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to fetch text logs")
         logs = response.json()['results']
@@ -322,6 +346,7 @@ class JobCheckpointClientService(ClientService):
     def list_checkpoints(self) -> dict:
         try:
             response = self.list()
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to list checkpoints")
         return json.loads(response.content)
@@ -331,6 +356,7 @@ class JobArtifactClientService(ClientService):
     def list_artifacts(self) -> dict:
         try:
             response = self.list()
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to list artifacts")
         return json.loads(response.content)
@@ -344,6 +370,7 @@ class GroupJobClientService(ClientService, GroupRequestMixin):
     def list_jobs(self) -> dict:
         try:
             response = self.list(params={"group_id": self.group_id})
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to list jobs in your group")
         return response.json()['results']
@@ -353,6 +380,7 @@ class JobTemplateClientService(ClientService):
     def list_job_templates(self) -> List[Tuple[str, str]]:
         try:
             response = self.list()
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to list job templates")
         template_list = []
@@ -371,6 +399,7 @@ class JobTemplateClientService(ClientService):
     def list_job_template_names(self) -> List[str]:
         try:
             response = self.list()
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to list job template names")
         return [ template['name'] for template in response.json() ]
@@ -378,6 +407,7 @@ class JobTemplateClientService(ClientService):
     def get_job_template_by_name(self, name: str) -> Optional[dict]:
         try:
             response = self.list()
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to get job template")
         for template in response.json():
@@ -394,6 +424,7 @@ class GroupExperimentClientService(ClientService, GroupRequestMixin):
     def get_id_by_name(self, name: str) -> Optional[T]:
         try:
             response = self.list()
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to get experiment info.")
         for experiment in response.json():
@@ -404,9 +435,14 @@ class GroupExperimentClientService(ClientService, GroupRequestMixin):
     def create_experiment(self, name: str) -> dict:
         try:
             response = self.create(data={'name': name})
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to create new experiment")
         return response.json()
+
+
+class DataClientService(ClientService):
+    ...
 
 
 class GroupDataClientService(ClientService, GroupRequestMixin):
@@ -417,6 +453,7 @@ class GroupDataClientService(ClientService, GroupRequestMixin):
     def get_id_by_name(self, name: str) -> Optional[T]:
         try:
             response = self.list()
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to get dataset info")
         for datastore in response.json():
@@ -433,6 +470,7 @@ class GroupVMClientService(ClientService, GroupRequestMixin):
     def get_id_by_name(self, name: str) -> Optional[T]:
         try:
             response = self.list()
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to get VM info")
         for vm_config in response.json():
@@ -441,19 +479,134 @@ class GroupVMClientService(ClientService, GroupRequestMixin):
         return None
 
 
+class GroupVMQuotaClientService(ClientService, GroupRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
+        super().__init__(template, group_id=self.group_id, **kwargs)
+
+
 class CredentialClientService(ClientService):
     def get_credential(self, credential_id: T) -> dict:
         try:
             response = self.retrieve(credential_id)
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit(f"Credential ({credential_id}) is not found")
         return response.json()
+
+    def list_credentials(self, cred_type: CredType) -> List[dict]:
+        type_name = cred_type_map[cred_type]
+        try:
+            response = self.list(params={"type": type_name})
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit(f"Failed to credential for {cred_type}")
+        return response.json()
+
+    def create_credential(self,
+                          cred_type: CredType,
+                          name: str,
+                          type_version: int,
+                          value: dict) -> dict:
+        type_name = cred_type_map[cred_type]
+        request_data = {
+            "type": type_name,
+            "name": name,
+            "type_version": type_version,
+            "value": value
+        }
+        try:
+            response = self.create(json=request_data)
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit("Failed to creat user credential")
+        return response.json()
+
+    def update_credential(self,
+                          credential_id: T,
+                          *,
+                          cred_type: Optional[CredType] = None,
+                          name: Optional[str] = None,
+                          type_version: Optional[str] = None,
+                          value: Optional[dict]= None) -> dict:
+        request_data = {}
+        if cred_type is not None:
+            type_name = cred_type_map[cred_type]
+            request_data['type'] = type_name
+        if name is not None:
+            request_data['name'] = name
+        if type_version is not None:
+            request_data['type_version'] = type_version
+        if value is not None:
+            request_data['value'] = value
+        try:
+            response = self.partial_update(credential_id, json=request_data)
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit(f"Failed to update credential ({credential_id})")
+        return response.json()
+
+    def delete_credential(self, credential_id) -> None:
+        try:
+            response = self.delete(credential_id)
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit(f"Failed to delete credential ({credential_id})")
+
+
+class GroupCredentialClientService(ClientService, GroupRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
+        super().__init__(template, group_id=self.group_id, **kwargs)
+
+    def list_credentials(self, cred_type: CredType) -> List[dict]:
+        type_name = cred_type_map[cred_type]
+        try:
+            response = self.list(params={"type": type_name})
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit(f"Failed to credential for {cred_type}")
+        return response.json()
+
+    def create_credential(self,
+                          cred_type: CredType,
+                          name: str,
+                          type_version: int,
+                          value: dict) -> dict:
+        type_name = cred_type_map[cred_type]
+        request_data = {
+            "type": type_name,
+            "name": name,
+            "type_version": type_version,
+            "value": value
+        }
+        try:
+            response = self.create(json=request_data)
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit("Failed to creat user credential")
+        return response.json()
+
+
+class CredentialTypeClientService(ClientService):
+    def get_schema_by_type(self, cred_type: CredType) -> Optional[dict]:
+        type_name = cred_type_map[cred_type]
+        try:
+            response = self.list()
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit("Failed to get credential schema")
+        for cred_type_json in response.json():
+            if cred_type_json['type_name'] == type_name:
+                return cred_type_json['versions'][-1]['schema']     # use the latest version
+        return None
 
 
 class CheckpointClientService(ClientService):
     def get_checkpoint(self, checkpoint_id: T) -> dict:
         try:
             response = self.retrieve(checkpoint_id)
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit(f"Failed to get info of checkpoint ({checkpoint_id})")
         return response.json()
@@ -479,6 +632,7 @@ class CheckpointClientService(ClientService):
         }
         try:
             response = self.partial_update(checkpoint_id, json=request_data)
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Cannot update checkpoint")
         return response.json()
@@ -503,6 +657,7 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
 
         try:
             response = self.list(json=request_data)
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Cannot list checkpoints in your group")
         return response.json()['results']
@@ -525,6 +680,7 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
         }
         try:
             response = self.create(json=request_data)
+            response.raise_for_status()
         except HTTPError:
             secho_error_and_exit("Failed to create checkpoint")
         return response.json() 
@@ -538,9 +694,13 @@ client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.GROUP_JOB: (GroupJobClientService, Template(get_uri('group/$group_id/job/'))),
     ServiceType.JOB_TEMPLATE: (JobTemplateClientService, Template(get_uri('job_template/'))),
     ServiceType.CREDENTIAL: (CredentialClientService, Template(get_uri('credential/'))),
+    ServiceType.GROUP_CREDENTIAL: (GroupCredentialClientService, Template(get_uri('group/$group_id/credential/'))),
+    ServiceType.CREDENTIAL_TYPE: (CredentialTypeClientService, Template(get_uri('credential_type/'))),
     ServiceType.GROUP_EXPERIMENT: (GroupExperimentClientService, Template(get_uri('group/$group_id/experiment/'))),
+    ServiceType.DATA: (DataClientService, Template(get_uri('datastore/'))),
     ServiceType.GROUP_DATA: (GroupDataClientService, Template(get_uri('group/$group_id/datastore/'))),
     ServiceType.GROUP_VM: (GroupVMClientService, Template(get_uri('group/$group_id/vm_config/'))),
+    ServiceType.GROUP_VM_QUOTA: (GroupVMQuotaClientService, Template(get_uri('group/$group_id/vm_quota/'))),
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_uri('checkpoint/'))),
     ServiceType.GROUP_CHECKPOINT: (GroupCheckpointClinetService, Template(get_uri('group/$group_id/checkpoint/'))),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri('job/'))),

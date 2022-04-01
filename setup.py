@@ -35,6 +35,7 @@ COMMON_DEPS = [
     "PyYaml>=6.0",
     "ruamel.yaml>=0.17.21",
     "typer>=0.4.0",
+    "jsonschema>=4.4.0",
     "boto3>=1.20.*",
     "botocore>=1.23.*",
     "azure-mgmt-storage>=19.0.*",

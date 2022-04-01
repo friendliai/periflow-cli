@@ -45,7 +45,7 @@ def update_token(token_type: TokenType, token: str) -> None:
         refresh_token_path.write_text(token)
 
 
-def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable:
+def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable[..., requests.Response]:
     @functools.wraps(func)
     def inner(*args, **kwargs) -> requests.Response:
         r = func(*args, **kwargs)

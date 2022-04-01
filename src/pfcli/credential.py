@@ -1,21 +1,19 @@
-from typing import Optional, List, Dict
-from enum import Enum
+# Copyright (C) 2021 FriendliAI
+
+"""PeriFlow Credential CLi"""
+
+from typing import List, Dict
 
 import tabulate
 import typer
-import yaml
-from requests import HTTPError
 
-from pfcli.service import auth
-from pfcli.utils import get_uri, secho_error_and_exit, get_group_id
+from pfcli.service import ServiceType
+from pfcli.service import CredType
+from pfcli.service.client import CredentialClientService, GroupCredentialClientService, build_client
+from pfcli.service.config import CredentialConfigService
 
 
 app = typer.Typer()
-
-
-class OwnerType(str, Enum):
-    GROUP = "group"
-    USER = "user"
 
 
 def _print_cred_list(cred_list: List[Dict]):
@@ -27,112 +25,83 @@ def _print_cred_list(cred_list: List[Dict]):
 
 
 @app.command()
-def create(cred_type: str = typer.Option(...),
-           name: str = typer.Option(...),
-           config_file: typer.FileText = typer.Option(...),
-           type_version: int = typer.Option(1),
-           owner_type: OwnerType = OwnerType.GROUP):
-    request_data = {
-        "type": cred_type,
-        "name": name,
-        "type_version": type_version
-    }
-    try:
-        value = yaml.safe_load(config_file)
-    except yaml.YAMLError as e:
-        secho_error_and_exit(f"Error occurred while parsing config file... {e}")
-    group_id = get_group_id()
-    request_data.update({"value": value})
+def create():
+    configurator = CredentialConfigService()
 
-    if owner_type.value == 'user':
-        r = auth.post(get_uri(f"credential/"),
-                        json=request_data)
-        try:
-            r.raise_for_status()
-            typer.echo(f"Credential registered... Name = {r.json()['name']}")
-        except HTTPError:
-            secho_error_and_exit(f"Credential register failed...")
+    configurator.start_interaction()
+    name, cred_type, value = configurator.render()
+
+    is_group_shared = typer.confirm("Do you want to shared the credential with your group members?", default=True)
+    if is_group_shared:
+        client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
     else:
-        r = auth.post(get_uri(f"group/{group_id}/credential/"),
-                        json=request_data)
-        try:
-            r.raise_for_status()
-            typer.echo(f"Credential registered... Name = {r.json()['name']}")
-        except HTTPError:
-            secho_error_and_exit(f"Credential register failed...")
+        client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+
+    info = client.create_credential(cred_type, name, 1, value)
+
+    typer.secho("Credential created successfully!", fg=typer.colors.BLUE)
+    _print_cred_list([info])
 
 
 @app.command()
-def list(cred_type: str = typer.Option(...)):
-    creds = []
-
-    request_data = {"type": cred_type}
-    r_user = auth.get(get_uri("credential/"),
-                     params=request_data)
-    try:
-        r_user.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit(f"Credential listing failed... Error Code = {r_user.status_code}, Detail = {r_user.text}")
-    creds_user = r_user.json()
-    for cred_user in creds_user:
-        cred_user["owner_type"] = "user"
-        creds.append(cred_user)
-
-    group_id = get_group_id()
-    r_group = auth.get(get_uri(f"group/{group_id}/credential/"))
-    try:
-        r_group.raise_for_status()
-    except HTTPError:
-        secho_error_and_exit(f"Credential listing failed...")
-    creds_group = r_group.json()
-    for cred_group in creds_group:
-        if cred_group["type"] == cred_type:
-            cred_group["owner_type"] = "group"
-            creds.append(cred_group) 
+def list(
+    cred_type: CredType = typer.Option(
+        ...,
+        '--cred-type',
+        '-t',
+        help="Type of credentials to list."
+    ),
+    group: bool = typer.Option(
+        False,
+        '--group',
+        '-g',
+        help="List group-shared credentials"
+    )
+):
+    if group:
+        client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
+    else:
+        client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+    creds = client.list_credentials(cred_type)
 
     _print_cred_list(creds)
 
 
 @app.command()
-def update(cred_id: str = typer.Option(...),
-           cred_type: Optional[str] = typer.Option(None),
-           name: Optional[str] = typer.Option(None),
-           type_version: int = typer.Option(None),
-           config_file: Optional[typer.FileText] = typer.Option(None)):
-    request_data = {}
-    if cred_type is not None:
-        request_data["cred_type"] = cred_type
-    if name is not None:
-        request_data["name"] = name
-    if type_version is not None:
-        request_data["type_version"] = type_version
-    if config_file is not None:
-        try:
-            value = yaml.safe_load(config_file)
-        except yaml.YAMLError as e:
-            secho_error_and_exit(f"Error occurred while parsing config file... {e}")
-        request_data["value"] = value
-    if not request_data:
-        secho_error_and_exit("You need to specify at least one properties to update credential")
-    r = auth.patch(get_uri(f"credential/{cred_id}/"), json=request_data)
-    cred = r.json()
-    try:
-        r.raise_for_status()
-        typer.echo(tabulate.tabulate(
-            [[cred["id"], cred["name"], cred["type"], cred["type_version"], cred["created_at"]]],
-            headers=["id", "name", "type", "type_version", "created_at"]))
-    except HTTPError:
-        secho_error_and_exit(f"Update Failed...")
+def update(
+    cred_id: str = typer.Option(
+        ...,
+        '--cred-id',
+        '-i',
+        help='UUID of credential to update.'
+    )
+):
+    configurator = CredentialConfigService()
+
+    configurator.start_interaction_for_update(cred_id)
+    name, cred_type, value = configurator.render()
+
+    client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+
+    info = client.update_credential(cred_id, cred_type=cred_type, name=name, type_version=1, value=value)
+
+    typer.secho("Credential updated successfully!", fg=typer.colors.BLUE)
+    _print_cred_list([info])
 
 
 @app.command()
-def delete(cred_id: str = typer.Option(...)):
-    r = auth.delete(get_uri(f"credential/{cred_id}/"))
-    try:
-        r.raise_for_status()
-        typer.echo(f"Successfully deleted credential ID = {cred_id}")
-    except HTTPError:
-        secho_error_and_exit(f"Delete failed...")
+def delete(
+    cred_id: str = typer.Option(
+        ...,
+        '--cred-id',
+        '-i',
+        help='UUID of credential to delete.'
+    )
+):
+    client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+    client.delete_credential(cred_id)
+
+    typer.secho("Credential deleted successfully!", fg=typer.colors.BLUE)
 
 
 if __name__ == '__main__':
