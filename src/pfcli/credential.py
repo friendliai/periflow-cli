@@ -1,6 +1,6 @@
 # Copyright (C) 2021 FriendliAI
 
-"""PeriFlow Credential CLi"""
+"""PeriFlow Credential CLI"""
 
 from typing import List, Dict
 

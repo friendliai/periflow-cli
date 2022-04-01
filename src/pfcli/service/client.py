@@ -191,7 +191,6 @@ class JobClientService(ClientService):
 
     def run_job(self, config: dict, training_dir: Optional[Path]) -> dict:
         try:
-            response
             if training_dir is not None:
                 workspace_zip = Path(training_dir.parent / (training_dir.name + ".zip"))
                 with zip_dir(training_dir, workspace_zip) as zip_file:
@@ -442,7 +441,13 @@ class GroupExperimentClientService(ClientService, GroupRequestMixin):
 
 
 class DataClientService(ClientService):
-    ...
+    def get_datastore(self, datastore_id: T) -> dict:
+        try:
+            response = self.retrieve(datastore_id)
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit(f"Datastore ({datastore_id}) is not found.")
+        return response.json()
 
 
 class GroupDataClientService(ClientService, GroupRequestMixin):
@@ -450,16 +455,43 @@ class GroupDataClientService(ClientService, GroupRequestMixin):
         self.initialize_group()
         super().__init__(template, group_id=self.group_id, **kwargs)
 
-    def get_id_by_name(self, name: str) -> Optional[T]:
+    def list_datastores(self) -> dict:
         try:
             response = self.list()
             response.raise_for_status()
         except HTTPError:
-            secho_error_and_exit("Failed to get dataset info")
-        for datastore in response.json():
+            secho_error_and_exit("Failed to list dataset info")
+        return response.json()
+
+    def get_id_by_name(self, name: str) -> Optional[T]:
+        datastores = self.list_datastores()
+        for datastore in datastores:
             if datastore['name'] == name:
                 return datastore['id']
         return None
+
+    def create_datastore(self,
+                         name: str,
+                         vendor: CredType,
+                         region: str,
+                         storage_name: str,
+                         credential_id: T,
+                         metadata: dict) -> dict:
+        vendor_name = cred_type_map[vendor]
+        request_data = {
+            "name": name,
+            "vendor": vendor_name,
+            "region": region,
+            "storage_name": storage_name,
+            "credential_id": credential_id,
+            "metadata": metadata,
+        }
+        try:
+            response = self.create(json=request_data)
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit("Failed to create a new datastore")
+        return response.json()
 
 
 class GroupVMClientService(ClientService, GroupRequestMixin):

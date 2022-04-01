@@ -411,7 +411,7 @@ def template_get(
             "model_config": config["data_example"]
         }
     }
-    result_yaml = yaml.dump(result, sort_keys=False, indent=4)
+    result_yaml = yaml.dump(result, sort_keys=False, indent=2)
     if download_file is not None:
         download_file.write(result_yaml)
         typer.echo("\nTemplate File Download Success!\n")

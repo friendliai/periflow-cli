@@ -3,7 +3,7 @@
 """PeriFlow YAML File Configuration Service"""
 
 from dataclasses import dataclass
-from typing import Tuple, TypeVar, Optional, Union, Any
+from typing import Tuple, TypeVar, Optional, Union, Any, List
 
 import typer
 from jsonschema import Draft7Validator, ValidationError
@@ -12,6 +12,7 @@ from pfcli.service import ServiceType, CredType, cred_type_map_inv
 from pfcli.service.client import (
     CredentialClientService,
     CredentialTypeClientService,
+    GroupCredentialClientService,
     JobTemplateClientService,
     build_client,
 )
@@ -117,6 +118,7 @@ SLACK_PLUGIN_CONFIG = """\
 
 
 J = TypeVar('J', bound='JobConfigService')
+D = TypeVar('D', bound='DataConfigService')
 T = TypeVar('T', bound=Union[str, Tuple[Any]])
 
 
@@ -291,14 +293,11 @@ class CredentialConfigService(InteractiveConfigMixin):
         for field, field_info in properties.items():
             field_info: dict
             field_info_str = "\n".join(f"    - {k}: {v}" for k, v in field_info.items())
-            entered = typer.prompt(f"  {field}:\n{field_info_str}", prompt_suffix="\n  >>")
+            hide_input = True if "password" in field else False
+            entered = typer.prompt(f"  {field}:\n{field_info_str}", prompt_suffix="\n  >>", hide_input=hide_input)
             self.value[field] = entered
 
-        try:
-            Draft7Validator(schema).validate(self.value)
-        except ValidationError as exc:
-            secho_error_and_exit(f"Format of credential value is invalid...! ({exc.message})")
-
+        self._validate_schema(schema, self.value)
         self.ready = True
 
     def start_interaction_for_update(self, credential_id: str) -> None:
@@ -321,24 +320,121 @@ class CredentialConfigService(InteractiveConfigMixin):
         for field, field_info in properties.items():
             field_info: dict
             field_info_str = "\n".join(f"    - {k}: {v}" for k, v in field_info.items())
+            hide_input = True if "password" in field else False
             entered = typer.prompt(
                 f"  {field} (Current: {prev_cred['value'][field]}):\n{field_info_str}",
                 prompt_suffix="\n  >>",
                 default=prev_cred['value'][field],
-                show_default=False
+                show_default=False,
+                hide_input=hide_input
             )
             self.value[field] = entered
 
+        self._validate_schema(schema, self.value)
+        self.ready = True
+
+    def _validate_schema(self, schema: dict, value: dict) -> None:
         try:
-            Draft7Validator(schema).validate(self.value)
+            Draft7Validator(schema).validate(value)
+        except ValidationError as exc:
+            secho_error_and_exit(f"Format of credential value is invalid...! ({exc.message})")
+
+    def render(self) -> Tuple[Any]:
+        assert self.ready
+        return self.name, self.cred_type, self.value
+
+
+class DataConfigService(InteractiveConfigMixin):
+    ready: bool = False
+    name: Optional[str] = None
+    vendor: Optional[CredType] = None
+    region: Optional[str] = None
+    storage_name: Optional[str] = None
+    credential_id: Optional[str] = None
+    metadata: Optional[dict] = None
+
+    def _list_available_credentials(self, vendor_type: CredType) -> List[str]:
+        user_cred_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+        group_cred_client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
+
+        creds = []
+        creds.extend(user_cred_client.list_credentials(cred_type=vendor_type))
+        creds.extend(group_cred_client.list_credentials(cred_type=vendor_type))
+
+        return creds
+
+    def start_interaction_common(self) -> None:
+        self.name = typer.prompt(
+            "Enter the name of your new credential.", prompt_suffix="\n>>",
+        )
+        vendor_options: List[CredType] = [CredType.S3, CredType.BLOB, CredType.GCS]
+        self.vendor = typer.prompt(
+            "Enter the cloud vendor where your dataset is uploaded.",
+            f"Options: {', '.join(vendor_options)}",
+            prompt_suffix="\n>>"
+        )
+        if self.vendor not in vendor_options:
+            secho_error_and_exit(f"Invalid cloud vendor provided. Choose in {[e.value for e in vendor_options]}.")
+        self.region = typer.prompt(
+            "Enter the region of cloud storage where your dataset is uploaded."
+        )
+        self.storage_name = typer.prompt(
+            "Enter the storage name where your dataset is uploaded.", prompt_suffix="\n>>"
+        )
+        available_creds = self._list_available_credentials(self.vendor)
+        cloud_cred_options = "\n".join(f"  - {cred['id']}: {cred['name']}" for cred in available_creds)
+        self.credential_id = typer.prompt(
+            "Enter credential UUID to access your cloud storage. "
+            f"Your available credentials for cloud storages are:\n{cloud_cred_options}",
+            prompt_suffix="\n>>"
+        )
+        if self.credential_id not in [cred['id'] for cred in available_creds]:
+            secho_error_and_exit(f"The credential ({self.credential_id}) cannot be used to create a datastore.")
+
+    def render(self) -> Tuple[Any]:
+        assert self.ready
+        return self.name, self.vendor, self.region, self.storage_name, self.credential_id, self.metadata
+
+
+class PredefinedDataConfigService(DataConfigService):
+    def start_interaction(self) -> None:
+        self.start_interaction_common()
+
+        job_template_client_service: JobTemplateClientService = build_client(ServiceType.JOB_TEMPLATE)
+        template_names = job_template_client_service.list_job_template_names()
+        self.model_name = typer.prompt(
+            "Which job would you like to use this datastore? Choose one in the following catalog:\n",
+            f"Options: {', '.join(template_names)}"
+            , prompt_suffix="\n>>"
+        )
+        if self.model_name not in template_names:
+            secho_error_and_exit("Invalid job template name...!")
+        template = job_template_client_service.get_job_template_by_name(self.model_name)
+        assert template is not None
+
+        schema = template["data_store_template"]["metadata_schema"]
+        properties: dict = schema['properties']
+        self.metadata = {}
+        typer.echo("Please fill in the following fields (NOTE: Enter comma-separated string for array values)")
+        for field, field_info in properties.items():
+            field_info: dict
+            field_info_str = "\n".join(f"    - {k}: {v}" for k, v in field_info.items())
+            entered = typer.prompt(f"  {field}:\n{field_info_str}", prompt_suffix="\n  >>")
+            if field_info['type'] == 'array':
+                entered.split(',')
+            self.metadata[field] = entered
+
+        try:
+            Draft7Validator(schema).validate(self.metadata)
         except ValidationError as exc:
             secho_error_and_exit(f"Format of credential value is invalid...! ({exc.message})")
 
         self.ready = True
 
-    def render(self) -> Tuple[Any]:
-        assert self.ready
-        return self.name, self.cred_type, self.value
+
+class CustomDataConfigService(DataConfigService):
+    def start_interaction(self) -> None:
+        self.start_interaction_common()
 
 
 def build_job_configurator(job_type: str) -> J:
@@ -353,5 +449,13 @@ def build_job_configurator(job_type: str) -> J:
     return configurator
 
 
-def build_data_configurator():
-    ...
+def build_data_configurator(job_type: str) -> D:
+    if job_type == "custom":
+        configurator = CustomDataConfigService()
+    elif job_type == "predefined":
+        configurator = PredefinedDataConfigService()
+    else:
+        secho_error_and_exit("Invalid job type...!")
+
+    configurator.start_interaction()
+    return configurator

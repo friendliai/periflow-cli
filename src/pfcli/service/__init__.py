@@ -44,7 +44,7 @@ class CheckpointCategory(str, Enum):
 class CredType(str, Enum):
     DOCKER = "docker"
     S3 = "s3"
-    BLOB = "blob"
+    BLOB = "azure-blob"
     GCS = "gcs"
     WANDB = "wandb"
     SLACK = "slack"
