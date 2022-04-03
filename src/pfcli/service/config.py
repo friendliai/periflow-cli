@@ -173,7 +173,7 @@ class CustomJobConfigService(JobConfigService):
     use_output_checkpoint: bool = False
 
     def start_interaction(self):
-        self.use_private_img = typer.confirm(
+        self.use_private_image = typer.confirm(
             "Will you use your private docker image? (You should provide credential).", prompt_suffix="\n>>"
         )
         self.use_dist = typer.confirm(
@@ -200,6 +200,7 @@ class CustomJobConfigService(JobConfigService):
         assert self.ready
 
         yaml_str = DEFAULT_TEMPLATE_CONFIG
+        yaml_str += CUSTOM_JOB_SETTING_CONFIG
         if self.use_private_image:
             yaml_str += PRIVATE_DOCKER_IMG_CONFIG
         if self.use_dist:
