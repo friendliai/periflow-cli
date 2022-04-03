@@ -12,7 +12,14 @@ import typer
 from click import Choice
 from jsonschema import Draft7Validator, ValidationError
 
-from pfcli.service import CloudType, JobType, ServiceType, CredType, cred_type_map_inv
+from pfcli.service import (
+    CloudType,
+    JobType,
+    ServiceType,
+    CredType,
+    cred_type_map_inv,
+    vendor_region_map,
+)
 from pfcli.service.client import (
     CredentialClientService,
     CredentialTypeClientService,
@@ -373,7 +380,9 @@ class DataConfigService(InteractiveConfigMixin):
             prompt_suffix="\n>>"
         )
         self.region = typer.prompt(
-            "Enter the region of cloud storage where your dataset is uploaded."
+            "Enter the region of cloud storage where your dataset is uploaded.",
+            type=Choice(vendor_region_map[self.vendor]),
+            prompt_suffix="\n>>"
         )
         self.storage_name = typer.prompt(
             "Enter the storage name where your dataset is uploaded.", prompt_suffix="\n>>"

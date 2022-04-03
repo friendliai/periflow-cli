@@ -39,9 +39,17 @@ from pfcli.utils import (
     get_uri,
     get_wss_uri,
     secho_error_and_exit,
+    validate_vendor_region,
     zip_dir,
 )
-from pfcli.service import CloudType, CredType, ServiceType, LogType, cred_type_map
+from pfcli.service import (
+    CloudType,
+    CredType,
+    ServiceType,
+    LogType,
+    cred_type_map,
+    cred_type_map_inv,
+)
 
 
 A = TypeVar('A', bound='ClientService')
@@ -458,6 +466,11 @@ class DataClientService(ClientService):
                          storage_name: Optional[str],
                          credential_id: Optional[str],
                          metadata: Optional[dict]) -> dict:
+        # Valdiate region
+        if vendor is not None or region is not None:
+            prev_info = self.get_datastore(datastore_id)
+            validate_vendor_region(vendor or cred_type_map_inv[prev_info['vendor']], region or prev_info['region'])
+
         request_data = {}
         if name is not None:
             request_data['name'] = name

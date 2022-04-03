@@ -1,5 +1,10 @@
+# Copyright (C) 2021 FriendliAI
+
+"""PeriFlow CLI Shared Utilities"""
+
 import os
 import zipfile
+
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -8,7 +13,7 @@ from subprocess import CalledProcessError, check_call
 
 import typer
 
-from pfcli.service import auth
+from pfcli.service import CloudType, vendor_region_map
 
 # Variables
 periflow_api_server = "https://api-dev.friendli.ai/api/"
@@ -108,3 +113,11 @@ def open_editor(path: str, editor: Optional[str] = None):
 
 def get_default_editor() -> str:
     return os.environ.get("PERIFLOW_CLI_EDITOR", "vim")
+
+
+def validate_vendor_region(vendor: CloudType, region: str):
+    available_regions = vendor_region_map[vendor]
+    if region not in available_regions:
+        secho_error_and_exit(
+            f"'{region}' is not supported region for {vendor}. Please choose another one in {available_regions}."
+        )

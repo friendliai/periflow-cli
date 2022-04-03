@@ -12,7 +12,7 @@ import yaml
 from pfcli.service import CloudType, JobType, ServiceType
 from pfcli.service.client import DataClientService, GroupDataClientService, build_client
 from pfcli.service.config import build_data_configurator
-from pfcli.utils import secho_error_and_exit
+from pfcli.utils import secho_error_and_exit, validate_vendor_region
 
 app = typer.Typer()
 
@@ -127,6 +127,8 @@ def create(
         help="Path to file containing the metadata describing your dataset."
     ),
 ):
+    validate_vendor_region(cloud, region)
+
     metadata = {}
     if metadata_file is not None:
         try:
@@ -145,7 +147,7 @@ def create(
 def update(
     target_name: str = typer.Option(
         ...,
-        '--taget-name-',
+        '--taget-name',
         '-n',
         help='The name of datastore to update.'
     ),
