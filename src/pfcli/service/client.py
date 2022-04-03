@@ -449,6 +449,42 @@ class DataClientService(ClientService):
             secho_error_and_exit(f"Datastore ({datastore_id}) is not found.")
         return response.json()
 
+    def update_datastore(self,
+                         datastore_id: T,
+                         *,
+                         name: Optional[str],
+                         vendor: Optional[str],
+                         region: Optional[str],
+                         storage_name: Optional[str],
+                         credential_id: Optional[str],
+                         metadata: Optional[dict]) -> dict:
+        request_data = {}
+        if name is not None:
+            request_data['name'] = name
+        if vendor is not None:
+            request_data['vendor'] = vendor
+        if region is not None:
+            request_data['region'] = region
+        if storage_name is not None:
+            request_data['storage_name'] = storage_name
+        if credential_id is not None:
+            request_data['credential_id'] = credential_id
+        if metadata is not None:
+            request_data['metadata'] = metadata
+        try:
+            response = self.partial_update(datastore_id, json=request_data)
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit("Cannot update datastore")
+        return response.json()
+
+    def delete_datastore(self, datastore_id: T) -> dict:
+        try:
+            response = self.delete(datastore_id)
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit(f"Failed to delete datastore ({datastore_id})")
+
 
 class GroupDataClientService(ClientService, GroupRequestMixin):
     def __init__(self, template: Template, **kwargs):
@@ -477,6 +513,7 @@ class GroupDataClientService(ClientService, GroupRequestMixin):
                          storage_name: str,
                          credential_id: T,
                          metadata: dict) -> dict:
+        breakpoint()
         vendor_name = cred_type_map[vendor]
         request_data = {
             "name": name,
@@ -646,12 +683,12 @@ class CheckpointClientService(ClientService):
     def update_checkpoint(self,
                           checkpoint_id: T,
                           *,
-                          vendor: Optional[str],
-                          iteration: Optional[int],
-                          storage_name: Optional[str],
-                          dist_config: Optional[dict],
-                          credential_id: Optional[str],
-                          files: Optional[List[dict]]) -> dict:
+                          vendor: Optional[str] = None,
+                          iteration: Optional[int] = None,
+                          storage_name: Optional[str] = None,
+                          dist_config: Optional[dict] = None,
+                          credential_id: Optional[str] = None,
+                          files: Optional[List[dict]] = None) -> dict:
         prev_info = self.get_checkpoint(checkpoint_id)
         request_data = {
             "vendor": vendor or prev_info['vendor'],

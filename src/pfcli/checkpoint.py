@@ -8,7 +8,7 @@ from typing import Optional, List
 import tabulate
 import typer
 
-from pfcli.service import CheckpointCategory, ServiceType, VendorType
+from pfcli.service import CheckpointCategory, ServiceType, CloudType
 from pfcli.service.client import (
     CheckpointClientService,
     CredentialClientService,
@@ -24,7 +24,7 @@ app = typer.Typer()
 def _echo_checkpoint_detail(checkpoint_json: dict):
     typer.echo(f"id: {checkpoint_json['id']}")
     typer.echo(f"category: {checkpoint_json['category']}")
-    typer.echo(f"vendor: {checkpoint_json['vendor']}")
+    typer.echo(f"cloud: {checkpoint_json['vendor']}")
     typer.echo(f"iteration: {checkpoint_json['iteration']}")
     typer.echo(f"created_at: {checkpoint_json['created_at']}")
     typer.echo("files:")
@@ -57,10 +57,12 @@ def checkpoint_list(
     client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
     checkpoints = client.list_checkpoints(category)
 
-    headers = ["id", "category", "vendor", "storage_name", "iteration", "created_at"]
+    headers = ["id", "category", "cloud", "storage name", "iteration", "created at"]
     results = []
-    for checkpoint in checkpoints:
-        results.append([checkpoint[header] for header in headers])
+    for ckpt in checkpoints:
+        results.append(
+            (ckpt['id'], ckpt['category'], ckpt['vendor'], ckpt['storage_name'], ckpt['iteration'], ckpt['created_at'])
+        )
 
     typer.echo(tabulate.tabulate(results, headers=headers))
 
@@ -95,9 +97,9 @@ def checkpoint_create(
         "-i",
         help="The iteration number of the checkpoint."
     ),
-    vendor: VendorType = typer.Option(
+    cloud: CloudType = typer.Option(
         ...,
-        "--vendor",
+        "--cloud",
         "-v",
         help="The cloud storage vendor type where the checkpoint is uploaded."
     ),
@@ -152,15 +154,15 @@ def checkpoint_create(
 
     credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     credential = credential_client.get_credential(credential_id)
-    if credential["type"] != vendor:
-        secho_error_and_exit(f"Credential type and vendor mismatch: {credential['type']} and {vendor}")
+    if credential["type"] != cloud:
+        secho_error_and_exit(f"Credential type and cloud vendor mismatch: {credential['type']} and {cloud}")
 
-    storage_helper = CloudStorageHelper(file_or_dir, credential["value"], vendor, storage_name)
+    storage_helper = CloudStorageHelper(file_or_dir, credential["value"], cloud, storage_name)
     files = storage_helper.get_checkpoint_file_list()
 
     checkpoint_client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
     info = checkpoint_client.create_checkpoint(
-        vendor=vendor,
+        vendor=cloud,
         iteration=iteration,
         storage_name=storage_name,
         dist_config=dist_config,
@@ -189,9 +191,9 @@ def checkpoint_update(
         "-i",
         help="The iteration number of the checkpoint."
     ),
-    vendor: Optional[VendorType] = typer.Option(
+    cloud: Optional[CloudType] = typer.Option(
         ...,
-        "--vendor",
+        "--cloud",
         "-v",
         help="The cloud storage vendor type where the checkpoint is uploaded."
     ),
@@ -250,18 +252,18 @@ def checkpoint_update(
     if credential_id is not None:
         credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
         credential = credential_client.get_credential(credential_id)
-        vendor = vendor or prev_info['vendor']
-        if credential["type"] != vendor:
-            secho_error_and_exit(f"Credential type and vendor mismatch: {credential['type']} and {vendor}")
+        cloud = cloud or prev_info['vendor']
+        if credential["type"] != cloud:
+            secho_error_and_exit(f"Credential type and cloud vendor mismatch: {credential['type']} and {cloud}")
 
         if file_or_dir is not None:
             storage_name = storage_name or prev_info['storage_name']
-            storage_helper = CloudStorageHelper(file_or_dir, credential["value"], vendor, storage_name)
+            storage_helper = CloudStorageHelper(file_or_dir, credential["value"], cloud, storage_name)
             files = storage_helper.get_checkpoint_file_list()
 
     info = checkpoint_client.update_checkpoint(
         checkpoint_id,
-        vendor=vendor,
+        vendor=cloud,
         iteration=iteration,
         storage_name=storage_name,
         dist_config=dist_config,

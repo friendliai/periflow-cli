@@ -330,7 +330,7 @@ def view(
         "\n\nCHECKPOINTS\n\n" + \
         tabulate.tabulate(
             checkpoint_list,
-            headers=["id", "vendor", "region", "iteration", "created_at"]
+            headers=["id", "cloud", "region", "iteration", "created_at"]
         ) + \
         "\n\nARTIFACTS\n\n" + \
         tabulate.tabulate(

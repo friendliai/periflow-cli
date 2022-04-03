@@ -111,8 +111,8 @@ def zip_dir(dir_path: Path, zip_path: Path):
         zip_path.unlink()
 
 
-def open_editor(path: str):
-    default_editor = get_default_editor()
+def open_editor(path: str, editor: Optional[str] = None):
+    default_editor = editor or get_default_editor()
     try:
         check_call([default_editor, path])
     except CalledProcessError:

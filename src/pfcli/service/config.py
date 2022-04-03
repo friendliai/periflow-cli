@@ -2,13 +2,17 @@
 
 """PeriFlow YAML File Configuration Service"""
 
-from dataclasses import dataclass
+import os
+import tempfile
+from dataclasses import dataclass, field
 from typing import Tuple, TypeVar, Optional, Union, Any, List
 
+import yaml
 import typer
+from click import Choice
 from jsonschema import Draft7Validator, ValidationError
 
-from pfcli.service import ServiceType, CredType, cred_type_map_inv
+from pfcli.service import CloudType, JobType, ServiceType, CredType, cred_type_map_inv
 from pfcli.service.client import (
     CredentialClientService,
     CredentialTypeClientService,
@@ -16,7 +20,7 @@ from pfcli.service.client import (
     JobTemplateClientService,
     build_client,
 )
-from pfcli.utils import secho_error_and_exit
+from pfcli.utils import get_default_editor, open_editor, secho_error_and_exit
 
 
 DEFAULT_TEMPLATE_CONFIG = """\
@@ -221,11 +225,9 @@ class PredefinedJobConfigService(JobConfigService):
         template_names = job_template_client_service.list_job_template_names()
         self.model_name = typer.prompt(
             "Which job do you want to run? Choose one in the following catalog:\n",
-            f"Options: {', '.join(template_names)}"
-            , prompt_suffix="\n>>"
+            type=Choice(template_names),
+            prompt_suffix="\n>>"
         )
-        if self.model_name not in template_names:
-            secho_error_and_exit("Invalid job template name...!")
         template = job_template_client_service.get_job_template_by_name(self.model_name)
         assert template is not None
         self.model_config = template["data_example"]
@@ -266,6 +268,8 @@ class PredefinedJobConfigService(JobConfigService):
 
 @dataclass
 class CredentialConfigService(InteractiveConfigMixin):
+    """Credential configuration service
+    """
     ready: bool = False
     name: Optional[str] = None
     cred_type: Optional[CredType] = None
@@ -275,16 +279,11 @@ class CredentialConfigService(InteractiveConfigMixin):
         self.name = typer.prompt(
             "Enter the name of your new credential.", prompt_suffix="\n>>"
         )
-        cred_type_options = [ e.value for e in CredType ]
         self.cred_type = typer.prompt(
             "What kind of credential do you want to create?\n",
-            f"Options: {', '.join(cred_type_options)}",
+            type=Choice([ e.value for e in CredType ]),
             prompt_suffix="\n>>"
         )
-        if self.cred_type not in cred_type_options:
-            secho_error_and_exit(
-                f"You should choose the type in the following Options: {', '.join(cred_type_options)}"
-            )
         cred_type_client: CredentialTypeClientService = build_client(ServiceType.CREDENTIAL_TYPE)
         schema = cred_type_client.get_schema_by_type(self.cred_type)
         properties: dict = schema['properties']
@@ -297,7 +296,7 @@ class CredentialConfigService(InteractiveConfigMixin):
             entered = typer.prompt(f"  {field}:\n{field_info_str}", prompt_suffix="\n  >>", hide_input=hide_input)
             self.value[field] = entered
 
-        self._validate_schema(schema, self.value)
+        self._validate_schema(schema)
         self.ready = True
 
     def start_interaction_for_update(self, credential_id: str) -> None:
@@ -330,12 +329,12 @@ class CredentialConfigService(InteractiveConfigMixin):
             )
             self.value[field] = entered
 
-        self._validate_schema(schema, self.value)
+        self._validate_schema(schema)
         self.ready = True
 
-    def _validate_schema(self, schema: dict, value: dict) -> None:
+    def _validate_schema(self, schema: dict) -> None:
         try:
-            Draft7Validator(schema).validate(value)
+            Draft7Validator(schema).validate(self.value)
         except ValidationError as exc:
             secho_error_and_exit(f"Format of credential value is invalid...! ({exc.message})")
 
@@ -344,16 +343,17 @@ class CredentialConfigService(InteractiveConfigMixin):
         return self.name, self.cred_type, self.value
 
 
+@dataclass
 class DataConfigService(InteractiveConfigMixin):
     ready: bool = False
     name: Optional[str] = None
-    vendor: Optional[CredType] = None
+    vendor: Optional[CloudType] = None
     region: Optional[str] = None
     storage_name: Optional[str] = None
     credential_id: Optional[str] = None
-    metadata: Optional[dict] = None
+    metadata: Optional[dict] = field(default_factory=dict)
 
-    def _list_available_credentials(self, vendor_type: CredType) -> List[str]:
+    def _list_available_credentials(self, vendor_type: CloudType) -> List[dict]:
         user_cred_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
         group_cred_client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
 
@@ -365,16 +365,13 @@ class DataConfigService(InteractiveConfigMixin):
 
     def start_interaction_common(self) -> None:
         self.name = typer.prompt(
-            "Enter the name of your new credential.", prompt_suffix="\n>>",
+            "Enter the name of your new dataset.", prompt_suffix="\n>>",
         )
-        vendor_options: List[CredType] = [CredType.S3, CredType.BLOB, CredType.GCS]
         self.vendor = typer.prompt(
             "Enter the cloud vendor where your dataset is uploaded.",
-            f"Options: {', '.join(vendor_options)}",
+            type=Choice([e.value for e in CloudType]),
             prompt_suffix="\n>>"
         )
-        if self.vendor not in vendor_options:
-            secho_error_and_exit(f"Invalid cloud vendor provided. Choose in {[e.value for e in vendor_options]}.")
         self.region = typer.prompt(
             "Enter the region of cloud storage where your dataset is uploaded."
         )
@@ -386,29 +383,31 @@ class DataConfigService(InteractiveConfigMixin):
         self.credential_id = typer.prompt(
             "Enter credential UUID to access your cloud storage. "
             f"Your available credentials for cloud storages are:\n{cloud_cred_options}",
+            type=Choice([ cred['id'] for cred in available_creds ]),
+            show_choices=False,
             prompt_suffix="\n>>"
         )
-        if self.credential_id not in [cred['id'] for cred in available_creds]:
-            secho_error_and_exit(f"The credential ({self.credential_id}) cannot be used to create a datastore.")
 
     def render(self) -> Tuple[Any]:
         assert self.ready
         return self.name, self.vendor, self.region, self.storage_name, self.credential_id, self.metadata
 
 
+@dataclass
 class PredefinedDataConfigService(DataConfigService):
+    model_name: Optional[str] = None
+
     def start_interaction(self) -> None:
         self.start_interaction_common()
 
+        # Configure metdata
         job_template_client_service: JobTemplateClientService = build_client(ServiceType.JOB_TEMPLATE)
         template_names = job_template_client_service.list_job_template_names()
         self.model_name = typer.prompt(
             "Which job would you like to use this datastore? Choose one in the following catalog:\n",
-            f"Options: {', '.join(template_names)}"
-            , prompt_suffix="\n>>"
+            type=Choice(template_names),
+            prompt_suffix="\n>>"
         )
-        if self.model_name not in template_names:
-            secho_error_and_exit("Invalid job template name...!")
         template = job_template_client_service.get_job_template_by_name(self.model_name)
         assert template is not None
 
@@ -432,9 +431,34 @@ class PredefinedDataConfigService(DataConfigService):
         self.ready = True
 
 
+@dataclass
 class CustomDataConfigService(DataConfigService):
     def start_interaction(self) -> None:
         self.start_interaction_common()
+
+        # Configure metdata
+        exist_metadata = typer.confirm(
+            "[Optional] Do you want to add metadata for your datastore? "
+            "You can use this metadata in PeriFlow serving service.",
+        )
+        if exist_metadata:
+            editor = typer.prompt(
+                "Editor will be opened in the current terminal to edit the metadata. "
+                "The metadata should be described in YAML format.\n"
+                f"Your default editor is '{get_default_editor()}'. "
+                "If you want to use another editor, enter the name of your preferred editor.",
+                default=get_default_editor(),
+                prompt_suffix="\n>>"
+            )
+            with tempfile.TemporaryDirectory() as dir:
+                path = os.path.join(dir, 'metadata.yaml')
+                open_editor(path, editor)
+                try:
+                    with open(path, 'r') as f:
+                        self.metadata = yaml.safe_load(f)
+                except yaml.YAMLError as exc:
+                    secho_error_and_exit(f"Error occurred while parsing metadata file... {exc}")
+        self.ready = True
 
 
 def build_job_configurator(job_type: str) -> J:
@@ -449,10 +473,10 @@ def build_job_configurator(job_type: str) -> J:
     return configurator
 
 
-def build_data_configurator(job_type: str) -> D:
-    if job_type == "custom":
+def build_data_configurator(job_type: JobType) -> D:
+    if job_type == JobType.CUSTOM:
         configurator = CustomDataConfigService()
-    elif job_type == "predefined":
+    elif job_type == JobType.PREDEFINED:
         configurator = PredefinedDataConfigService()
     else:
         secho_error_and_exit("Invalid job type...!")

@@ -1,3 +1,7 @@
+# Copyright (C) 2021 FriendliAI
+
+"""PeriFlow Auth Tools"""
+
 import functools
 import os
 from enum import Enum

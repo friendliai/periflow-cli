@@ -42,8 +42,10 @@ def group():
 
 
 @app.command()
-def login(username: str = typer.Option(..., prompt="Enter Username"),
-          password: str = typer.Option(..., prompt="Enter Password", hide_input=True)):
+def login(
+    username: str = typer.Option(..., prompt="Enter Username"),
+    password: str = typer.Option(..., prompt="Enter Password", hide_input=True)
+):
     r = requests.post(get_uri("token/"), data={"username": username, "password": password})
     try:
         r.raise_for_status()

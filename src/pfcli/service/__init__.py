@@ -24,16 +24,21 @@ class ServiceType(str, Enum):
     JOB_WS = "JOB_WS"
 
 
+class JobType(str, Enum):
+    PREDEFINED = "predefined"
+    CUSTOM = "custom"
+
+
 class LogType(str, Enum):
     STDOUT = "stdout"
     STDERR = "stderr"
     VMLOG = "vmlog"
 
 
-class VendorType(str, Enum):
-    AWS = "aws"
-    AZURE = "azure"
-    GCP = "gcp"
+class CloudType(str, Enum):
+    S3 = "s3"
+    BLOB = "azure-blob"
+    GCS = "gcs"
 
 
 class CheckpointCategory(str, Enum):
