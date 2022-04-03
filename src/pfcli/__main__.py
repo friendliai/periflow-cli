@@ -33,6 +33,7 @@ def self():
     results = [(info["id"], info["username"], info["email"])]
     typer.echo(tabulate.tabulate(results, headers=["id", "username", "email"]))
 
+
 @app.command()
 def group():
     client: UserGroupClientService = build_client(ServiceType.USER_GROUP)

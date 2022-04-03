@@ -73,19 +73,6 @@ def secho_error_and_exit(text: str, color: str = typer.colors.RED):
     raise typer.Exit(1)
 
 
-def get_group_id() -> int:
-    r = auth.get(get_uri("user/group/"))
-    if r.status_code != 200:
-        secho_error_and_exit(f"Cannot acquire group info.")
-    groups = r.json()["results"]
-    if len(groups) == 0:
-        secho_error_and_exit("You are not assigned to any group... Please contact admin")
-    if len(groups) > 1:
-        secho_error_and_exit(
-            "Currently we do not support users with more than two groups... Please contact admin")
-    return groups[0]['id']
-
-
 def get_remaining_terminal_columns(occupied: int) -> int:
     return os.get_terminal_size().columns - occupied
 

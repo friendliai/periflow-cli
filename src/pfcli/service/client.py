@@ -41,7 +41,7 @@ from pfcli.utils import (
     secho_error_and_exit,
     zip_dir,
 )
-from pfcli.service import CredType, ServiceType, LogType, cred_type_map
+from pfcli.service import CloudType, CredType, ServiceType, LogType, cred_type_map
 
 
 A = TypeVar('A', bound='ClientService')
@@ -552,6 +552,24 @@ class GroupVMQuotaClientService(ClientService, GroupRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_group()
         super().__init__(template, group_id=self.group_id, **kwargs)
+
+    def list_vm_quotas(self,
+                       vendor: Optional[CloudType] = None,
+                       region: Optional[str] = None,
+                       device_type: Optional[str] = None) -> Optional[List[dict]]:
+        try:
+            response = self.list()
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit(f"Failed to list VM quota info")
+        vm_dict_list = response.json()
+        if vendor is not None:
+            vm_dict_list = list(filter(lambda info: info['vm_instance_type']['vendor'] == vendor, vm_dict_list))
+        if region is not None:
+            vm_dict_list = list(filter(lambda info: info['vm_instance_type']['region'] == region, vm_dict_list))
+        if device_type is not None:
+            vm_dict_list = list(filter(lambda info: info['vm_instance_type']['devcie_type'] == device_type, vm_dict_list))
+        return vm_dict_list
 
 
 class CredentialClientService(ClientService):

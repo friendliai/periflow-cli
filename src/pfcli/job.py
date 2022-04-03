@@ -199,7 +199,7 @@ def list(
             [
                 job["id"],
                 job["status"],
-                job["vm_config"]["vm_config_type"]["name"],
+                job["vm_config"]["vm_config_type"]["vm_instance_type"]["name"],
                 job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
                 job["num_desired_devices"],
                 job["data_store"]['storage_name'] if job["data_store"] is not None else None,
@@ -287,7 +287,7 @@ def view(
         [
             job["id"],
             job["status"],
-            job["vm_config"]["vm_config_type"]["name"],
+            job["vm_config"]["vm_config_type"]["vm_instance_type"]["name"],
             job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
             job["num_desired_devices"],
             job["data_store"]['storage_name'] if job["data_store"] is not None else None,
