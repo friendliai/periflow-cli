@@ -513,7 +513,6 @@ class GroupDataClientService(ClientService, GroupRequestMixin):
                          storage_name: str,
                          credential_id: T,
                          metadata: dict) -> dict:
-        breakpoint()
         vendor_name = cred_type_map[vendor]
         request_data = {
             "name": name,
