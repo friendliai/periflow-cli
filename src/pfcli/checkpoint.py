@@ -2,9 +2,11 @@
 
 """CLI for Checkpoint"""
 
+import os
 from pathlib import Path
 from typing import Optional, List
 
+import wget
 import typer
 
 from pfcli.service import CheckpointCategory, ServiceType, StorageType
@@ -275,7 +277,7 @@ def checkpoint_delete(
     checkpoint_id: str = typer.Option(
         ...,
         '--checkpoint-id',
-        '-d',
+        '-i',
         help="UUID of checkpoint to delete."
     ),
     force: bool = typer.Option(
@@ -296,6 +298,33 @@ def checkpoint_delete(
     client.delete_checkpoint(checkpoint_id)
 
     typer.secho("Checkpoint is deleted successfully!", fg=typer.colors.BLUE)
+
+
+@app.command("download")
+def checkpoint_download(
+    checkpoint_id: str = typer.Option(
+        ...,
+        '--checkpoint-id',
+        '-i',
+        help="UUID of checkpoint to download."
+    ),
+    save_directory: Optional[str] = typer.Option(
+        None,
+        '--save-directory',
+        '-d',
+        help="Path to directory to save checkpoint files."
+    )
+):
+    if save_directory is not None and not os.path.isdir(save_directory):
+        secho_error_and_exit(f"Directory {save_directory} is not found.")
+
+    save_directory = save_directory or os.getcwd()
+
+    client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
+    files = client.get_checkpoint_files(checkpoint_id)
+
+    for file in files:
+        wget.download(file['download_url'], out=save_directory)
 
 
 if __name__ == '__main__':

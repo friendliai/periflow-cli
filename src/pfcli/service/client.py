@@ -785,6 +785,23 @@ class CheckpointClientService(ClientService):
             secho_error_and_exit(f"Failed to delete checkpoint ({checkpoint_id})")
         return response
 
+    @auto_token_refresh
+    def download(self, checkpoint_id: T) -> Response:
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('$checkpoint_id/download/')
+        return requests.get(
+            url_template.render(checkpoint_id=checkpoint_id, **self.url_kwargs),
+            headers=get_auth_header(),
+        )
+
+    def get_checkpoint_files(self, checkpoint_id: T) -> List[dict]:
+        try:
+            response = self.download(checkpoint_id)
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit("Failed to get list of checkpoint files.")
+        return response.json()['files']
+
 
 class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
     def __init__(self, template: Template, **kwargs):
