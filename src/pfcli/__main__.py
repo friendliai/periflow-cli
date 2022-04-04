@@ -8,11 +8,14 @@ from requests import HTTPError
 
 import typer
 
-from pfcli import checkpoint
-from pfcli import credential
-from pfcli import job
-from pfcli import datastore
-from pfcli import vm
+from pfcli import (
+    checkpoint,
+    experiment,
+    credential,
+    job,
+    datastore,
+    vm
+)
 from pfcli.service import ServiceType
 from pfcli.service.auth import TokenType, update_token
 from pfcli.service.client import UserGroupClientService, build_client
@@ -24,6 +27,7 @@ app.add_typer(job.app, name="job", help="Manage jobs")
 app.add_typer(checkpoint.app, name="checkpoint", help="Manage checkpoints")
 app.add_typer(datastore.app, name="datastore", help="Manage datasets")
 app.add_typer(vm.app, name="vm", help="Manage VMs")
+app.add_typer(experiment.app, name="experiment", help="Manage experiments")
 
 
 @app.command()

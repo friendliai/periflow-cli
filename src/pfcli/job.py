@@ -20,6 +20,7 @@ from pfcli.service import LogType, ServiceType
 from pfcli.service.client import (
     GroupDataClientService,
     GroupExperimentClientService,
+    GroupJobClientService,
     GroupVMClientService,
     JobArtifactClientService,
     JobCheckpointClientService,
@@ -29,6 +30,7 @@ from pfcli.service.client import (
     build_client,
 )
 from pfcli.service.config import build_job_configurator
+from pfcli.service.formatter import TableFormatter
 from pfcli.utils import (
     get_default_editor,
     get_remaining_terminal_columns,
@@ -46,6 +48,11 @@ log_app = typer.Typer()
 
 app.add_typer(template_app, name="template", help="Manager job templates.")
 app.add_typer(log_app, name="log", help="Manage job logs.")
+
+job_formatter = TableFormatter(
+    fields=['id', 'status', 'vm_name', 'device_type', 'num_devices', 'data_name', 'start', 'duration', 'err'],
+    headers=['id', 'status', 'vm', 'device', '# devices', 'data', 'start', 'duration', 'error']
+)
 
 
 def refine_config(config: dict) -> None:
@@ -147,12 +154,6 @@ def run(
 
 @app.command("list", help="List jobs.")
 def list(
-    long_list: bool = typer.Option(
-        False,
-        "--long-list",
-        "-l",
-        help="View job list with detail"
-    ),
     tail: Optional[int] = typer.Option(
         None,
         "--tail",
@@ -172,11 +173,10 @@ def list(
         help="Show all jobs in my group including jobs launched by other users"
     )
 ):
-    request_type = ServiceType.JOB
     if show_group_job:
-        request_type = ServiceType.GROUP_JOB
-
-    client = build_client(request_type)
+        client: GroupJobClientService = build_client(ServiceType.GROUP_JOB)
+    else:
+        client: JobClientService = build_client(ServiceType.JOB)
     jobs = client.list_jobs()
 
     job_list = []
@@ -184,28 +184,29 @@ def list(
         started_at = job.get("started_at")
         finished_at = job.get("finished_at")
         if started_at is not None:
-            start = datetime_to_pretty_str(parse(job["started_at"]), long_list=long_list)
+            start = datetime_to_pretty_str(parse(job["started_at"]))
         else:
             start = None
         if started_at is not None and finished_at is not None:
-            duration = timedelta_to_pretty_str(parse(started_at), parse(finished_at), long_list=long_list)
+            duration = timedelta_to_pretty_str(parse(started_at), parse(finished_at))
         elif started_at is not None and job["status"] == "running":
             start_time = parse(started_at)
             curr_time = datetime.now(start_time.tzinfo)
-            duration = timedelta_to_pretty_str(start_time, curr_time, long_list=long_list)
+            duration = timedelta_to_pretty_str(start_time, curr_time)
         else:
             duration = None
         job_list.append(
-            [
-                job["id"],
-                job["status"],
-                job["vm_config"]["vm_config_type"]["vm_instance_type"]["name"],
-                job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
-                job["num_desired_devices"],
-                job["data_store"]['storage_name'] if job["data_store"] is not None else None,
-                start,
-                duration
-            ]
+            {
+                "id": job["id"],
+                "status": job["status"],
+                "vm_name": job["vm_config"]["vm_config_type"]["vm_instance_type"]["name"],
+                "device_type": job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
+                "num_devices": job["num_desired_devices"],
+                "data_name": job["data_store"]['name'] if job["data_store"] is not None else None,
+                "start": start,
+                "duration": duration,
+                "err": job["error_message"]
+            }
         )
     if tail is not None or head is not None:
         target_job_list = []
@@ -217,12 +218,7 @@ def list(
             target_job_list.extend(job_list[-head:]) 
     else:
         target_job_list = job_list
-    typer.echo(
-        tabulate.tabulate(
-            target_job_list,
-            headers=["id", "status", "vm_name", "device", "# devices", "data_name", "start", "duration"]
-        )
-    )
+    typer.echo(job_formatter.render(target_job_list))
 
 
 @app.command("stop", help="Stop running job.")
@@ -253,12 +249,6 @@ def view(
         "-i",
         help="ID of job to view log"
     ),
-    long_list: bool = typer.Option(
-        False,
-        "--long-list",
-        "-l",
-        help="View job info with detail"
-    )
 ):
     job_client: JobClientService = build_client(ServiceType.JOB)
     job_checkpoint_client: JobCheckpointClientService = build_client(ServiceType.JOB_CHECKPOINT, job_id=job_id)
@@ -271,31 +261,29 @@ def view(
     started_at = job.get("started_at")
     finished_at = job.get("finished_at")
     if started_at is not None:
-        start = datetime_to_pretty_str(parse(job["started_at"]), long_list=long_list)
+        start = datetime_to_pretty_str(parse(job["started_at"]))
     else:
         start = None
     if started_at is not None and finished_at is not None:
-        duration = timedelta_to_pretty_str(parse(started_at), parse(finished_at), long_list=long_list)
+        duration = timedelta_to_pretty_str(parse(started_at), parse(finished_at))
     elif started_at is not None and job["status"] == "running":
         start_time = parse(started_at)
         curr_time = datetime.now(start_time.tzinfo)
-        duration = timedelta_to_pretty_str(start_time, curr_time, long_list=long_list)
+        duration = timedelta_to_pretty_str(start_time, curr_time)
     else:
         duration = None
 
-    job_list = [
-        [
-            job["id"],
-            job["status"],
-            job["vm_config"]["vm_config_type"]["vm_instance_type"]["name"],
-            job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
-            job["num_desired_devices"],
-            job["data_store"]['storage_name'] if job["data_store"] is not None else None,
-            start,
-            duration,
-            job["error_message"]
-        ]
-    ]
+    job_dict = {
+        "id": job["id"],
+        "status": job["status"],
+        "vm_name": job["vm_config"]["vm_config_type"]["vm_instance_type"]["name"],
+        "device_type": job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
+        "num_devices": job["num_desired_devices"],
+        "data_name": job["data_store"]['name'] if job["data_store"] is not None else None,
+        "start": start,
+        "duration": duration,
+        "err": job["error_message"]
+    }
 
     checkpoint_list = []
     for checkpoint in reversed(job_checkpoints):
@@ -305,7 +293,7 @@ def view(
                 checkpoint["vendor"],
                 checkpoint["region"],
                 checkpoint["iteration"],
-                datetime_to_pretty_str(parse(checkpoint["created_at"]), long_list=long_list),
+                datetime_to_pretty_str(parse(checkpoint["created_at"])),
             ]
         )
 
@@ -323,10 +311,7 @@ def view(
 
     typer.echo(
         "OVERVIEW\n\n" + \
-        tabulate.tabulate(
-            job_list,
-            headers=["id", "status", "vm_name", "device", "# devices", "datastore", "start", "duration", "err_msg"]
-        ) + \
+        job_formatter.render([job_dict]) + \
         "\n\nCHECKPOINTS\n\n" + \
         tabulate.tabulate(
             checkpoint_list,

@@ -339,14 +339,14 @@ def delete(
     )
 ):
     if not force:
-        do_delete = typer.confirm("Are your sure to delete credential?")
+        do_delete = typer.confirm("Are you sure to delete credential?")
         if not do_delete:
             raise typer.Abort()
 
     client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     client.delete_credential(cred_id)
 
-    typer.secho("Credential deleted successfully!", fg=typer.colors.BLUE)
+    typer.secho(f"Credential ({cred_id}) is deleted successfully!", fg=typer.colors.BLUE)
 
 
 if __name__ == '__main__':

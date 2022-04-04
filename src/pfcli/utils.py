@@ -20,7 +20,7 @@ periflow_api_server = "https://api-dev.friendli.ai/api/"
 periflow_ws_server = "wss://api-ws-dev.friendli.ai/ws/"
 
 
-def datetime_to_pretty_str(past: Optional[datetime], long_list: bool):
+def datetime_to_pretty_str(past: Optional[datetime], long_list: bool = False):
     cur = datetime.now().astimezone()
     delta = cur - past
     if long_list:
@@ -44,7 +44,7 @@ def datetime_to_pretty_str(past: Optional[datetime], long_list: bool):
             return f'{delta.days + round(delta.seconds / (3600 * 24))} days ago'
 
 
-def timedelta_to_pretty_str(start: datetime, finish: datetime, long_list: bool):
+def timedelta_to_pretty_str(start: datetime, finish: datetime, long_list: bool = False):
     delta = finish - start
     if long_list:
         if delta < timedelta(minutes=1):

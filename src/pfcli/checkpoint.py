@@ -275,12 +275,30 @@ def checkpoint_update(
 
 @app.command("delete")
 def checkpoint_delete(
-    checkpoint_id: str = typer.Option(...)
+    checkpoint_id: str = typer.Option(
+        ...,
+        '--checkpoint-id',
+        '-d',
+        help="UUID of checkpoint to delete."
+    ),
+    force: bool = typer.Option(
+        False,
+        '--force',
+        '-f',
+        help="Forcefully delete checkpoint without confirmation prompt."
+    )
 ):
     """Delete the existing checkpoint.
     """
+    if not force:
+        do_delete = typer.confirm("Are you sure to delete checkpoint?")
+        if not do_delete:
+            raise typer.Abort()
+
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
     client.delete_checkpoint(checkpoint_id)
+
+    typer.secho("Checkpoint is deleted successfully!", fg=typer.colors.BLUE)
 
 
 if __name__ == '__main__':

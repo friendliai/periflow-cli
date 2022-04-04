@@ -2,7 +2,7 @@
 
 """PeriFlow Datastore CLI"""
 
-from typing import Optional, List, Dict
+from typing import Optional
 from click import Choice
 
 import tabulate
@@ -12,22 +12,17 @@ import yaml
 from pfcli.service import CloudType, JobType, ServiceType
 from pfcli.service.client import DataClientService, GroupDataClientService, build_client
 from pfcli.service.config import build_data_configurator
+from pfcli.service.formatter import TableFormatter
 from pfcli.utils import secho_error_and_exit, validate_vendor_region
 
 app = typer.Typer()
 
-
-def _print_datastores(datastores: List[Dict], show_detail: bool = False):
-    headers = ["id", "name", "cloud", "storage_name"]
-    if show_detail:
-        headers.append("metadata")
-    results = []
-    for d in datastores:
-        info = [d["id"], d["name"], d["vendor"], d["storage_name"]]
-        if show_detail:
-            info.append(yaml.dump(d["metadata"], indent=2) if bool(d["metadata"]) else "N/A")
-        results.append(info)
-    typer.echo(tabulate.tabulate(results, headers=headers))
+formatter = TableFormatter(
+    fields=['id', 'name', 'vendor', 'storage_name'],
+    headers=['id', 'name', 'cloud', 'storage name'],
+    extra_fields=['metadata'],
+    extra_headers=['metadata']
+)
 
 
 @app.callback(invoke_without_command=True)
@@ -60,7 +55,8 @@ def main(
 
         typer.secho("Datastore created successfully!", fg=typer.colors.BLUE)
 
-    _print_datastores([datastore])
+    datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
+    typer.echo(formatter.render([datastore], show_detail=True))
     exit(0)
 
 
@@ -68,7 +64,7 @@ def main(
 def list():
     client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
     datastores = client.list_datastores()
-    _print_datastores(datastores)
+    typer.echo(formatter.render(datastores))
 
 
 @app.command()
@@ -85,7 +81,8 @@ def view(
 
     datastore_id = group_client.get_id_by_name(name)
     datastore = client.get_datastore(datastore_id)
-    _print_datastores([datastore], show_detail=True)
+    datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
+    typer.echo(formatter.render([datastore], show_detail=True))
 
 
 @app.command()
@@ -140,7 +137,8 @@ def create(
     datastore = client.create_datastore(name, cloud, region, storage_name, credential_id, metadata)
 
     typer.secho(f"Datastore ({name}) is created successfully!", fg=typer.colors.BLUE)
-    _print_datastores([datastore])
+    datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
+    typer.echo(formatter.render([datastore], show_detail=True))
 
 
 @app.command()
@@ -211,7 +209,8 @@ def update(
     )
 
     typer.secho("Datastore is updated successfully!", fg=typer.colors.BLUE)
-    _print_datastores([datastore])
+    datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
+    typer.echo(formatter.render([datastore], show_detail=True))
 
 
 @app.command()

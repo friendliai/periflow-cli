@@ -23,10 +23,10 @@ from pathlib import Path
 
 import yaml
 import requests
-from requests import HTTPError
 import websockets
 from websockets.client import WebSocketClientProtocol
 from websockets.exceptions import ConnectionClosed
+from requests import HTTPError
 from requests import Response
 
 from pfcli.service.auth import (
@@ -423,10 +423,52 @@ class JobTemplateClientService(ClientService):
         return None
 
 
+class ExperimentClientService(ClientService):
+    @auto_token_refresh
+    def experiment_jobs(self, experiment_id: T) -> Response:
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('$experiment_id/job/')
+        return requests.get(
+            url_template.render(experiment_id=experiment_id, **self.url_kwargs),
+            headers=get_auth_header()
+        )
+
+    def get_jobs_in_experiment(self, experiment_id: T) -> List[dict]:
+        try:
+            response = self.experiment_jobs(experiment_id)
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit("Failed to fetch jobs in the experiment.")
+        return response.json()['results']
+
+    def delete_experiment(self, experiment_id: T) -> None:
+        try:
+            response = self.delete(experiment_id)
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit("Failed to delete experiment.")
+
+    def update_experiment_name(self, experiment_id: T, name: str) -> dict:
+        try:
+            response = self.partial_update(experiment_id, json={'name': name})
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit(f"Failed to update the name of experiment to {name}")
+        return response.json()
+
+
 class GroupExperimentClientService(ClientService, GroupRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_group()
         super().__init__(template, group_id=self.group_id, **kwargs)
+
+    def list_experiments(self):
+        try:
+            response = self.list()
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit("Failed to list experiments")
+        return response.json()
 
     def get_id_by_name(self, name: str) -> Optional[T]:
         try:
@@ -787,6 +829,8 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
 
 client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.USER_GROUP: (UserGroupClientService, Template(get_uri('user/'))),
+    ServiceType.EXPERIMENT: (ExperimentClientService, Template(get_uri('experiment/'))),
+    ServiceType.GROUP_EXPERIMENT: (GroupExperimentClientService, Template(get_uri('group/$group_id/experiment/'))),
     ServiceType.JOB: (JobClientService, Template(get_uri('job/'))),
     ServiceType.JOB_CHECKPOINT: (JobCheckpointClientService, Template(get_uri('job/$job_id/checkpoint/'))),
     ServiceType.JOB_ARTIFACT: (JobArtifactClientService, Template(get_uri('job/$job_id/artifact/'))),
@@ -795,7 +839,6 @@ client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.CREDENTIAL: (CredentialClientService, Template(get_uri('credential/'))),
     ServiceType.GROUP_CREDENTIAL: (GroupCredentialClientService, Template(get_uri('group/$group_id/credential/'))),
     ServiceType.CREDENTIAL_TYPE: (CredentialTypeClientService, Template(get_uri('credential_type/'))),
-    ServiceType.GROUP_EXPERIMENT: (GroupExperimentClientService, Template(get_uri('group/$group_id/experiment/'))),
     ServiceType.DATA: (DataClientService, Template(get_uri('datastore/'))),
     ServiceType.GROUP_DATA: (GroupDataClientService, Template(get_uri('group/$group_id/datastore/'))),
     ServiceType.GROUP_VM: (GroupVMClientService, Template(get_uri('group/$group_id/vm_config/'))),
