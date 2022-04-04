@@ -37,6 +37,12 @@ class LogType(str, Enum):
 
 
 class CloudType(str, Enum):
+    AWS = "aws"
+    AZURE = "azure"
+    GCP = "gcp"
+
+
+class StorageType(str, Enum):
     S3 = "s3"
     BLOB = "azure-blob"
     GCS = "gcs"
@@ -211,8 +217,15 @@ AWS_REGION_NAMES = [
     "sa-east-1",
 ]
 
-vendor_region_map = {
-    CloudType.S3: AWS_REGION_NAMES,
-    CloudType.BLOB: AZURE_REGION_NAMES,
-    CloudType.GCS: GCP_REGION_NAMES,
+storage_region_map = {
+    StorageType.S3: AWS_REGION_NAMES,
+    StorageType.BLOB: AZURE_REGION_NAMES,
+    StorageType.GCS: GCP_REGION_NAMES,
+}
+
+
+cloud_region_map = {
+    CloudType.AWS: AWS_REGION_NAMES,
+    CloudType.AZURE: AZURE_REGION_NAMES,
+    CloudType.GCP: GCP_REGION_NAMES,
 }

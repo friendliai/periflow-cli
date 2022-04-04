@@ -8,7 +8,7 @@ from typing import Optional, List
 import tabulate
 import typer
 
-from pfcli.service import CheckpointCategory, ServiceType, CloudType
+from pfcli.service import CheckpointCategory, ServiceType, StorageType
 from pfcli.service.client import (
     CheckpointClientService,
     CredentialClientService,
@@ -97,7 +97,7 @@ def checkpoint_create(
         "-i",
         help="The iteration number of the checkpoint."
     ),
-    cloud: CloudType = typer.Option(
+    cloud: StorageType = typer.Option(
         ...,
         "--cloud",
         "-v",
@@ -191,7 +191,7 @@ def checkpoint_update(
         "-i",
         help="The iteration number of the checkpoint."
     ),
-    cloud: Optional[CloudType] = typer.Option(
+    cloud: Optional[StorageType] = typer.Option(
         ...,
         "--cloud",
         "-v",

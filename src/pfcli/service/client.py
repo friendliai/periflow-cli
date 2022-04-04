@@ -39,11 +39,11 @@ from pfcli.utils import (
     get_uri,
     get_wss_uri,
     secho_error_and_exit,
-    validate_vendor_region,
+    validate_storage_region,
     zip_dir,
 )
 from pfcli.service import (
-    CloudType,
+    StorageType,
     CredType,
     ServiceType,
     LogType,
@@ -511,7 +511,7 @@ class DataClientService(ClientService):
         # Valdiate region
         if vendor is not None or region is not None:
             prev_info = self.get_datastore(datastore_id)
-            validate_vendor_region(vendor or cred_type_map_inv[prev_info['vendor']], region or prev_info['region'])
+            validate_storage_region(vendor or cred_type_map_inv[prev_info['vendor']], region or prev_info['region'])
 
         request_data = {}
         if name is not None:
@@ -608,7 +608,7 @@ class GroupVMQuotaClientService(ClientService, GroupRequestMixin):
         super().__init__(template, group_id=self.group_id, **kwargs)
 
     def list_vm_quotas(self,
-                       vendor: Optional[CloudType] = None,
+                       vendor: Optional[StorageType] = None,
                        region: Optional[str] = None,
                        device_type: Optional[str] = None) -> Optional[List[dict]]:
         try:

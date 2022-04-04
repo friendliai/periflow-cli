@@ -9,6 +9,7 @@ import typer
 
 from pfcli.service import CloudType, ServiceType
 from pfcli.service.client import GroupVMQuotaClientService, build_client
+from pfcli.utils import validate_cloud_region
 
 app = typer.Typer()
 
@@ -51,6 +52,9 @@ def list(
 ):
     """List all VM quota information.
     """
+    if cloud is not None and region is not None:
+        validate_cloud_region(cloud, region)
+
     client: GroupVMQuotaClientService = build_client(ServiceType.GROUP_VM_QUOTA)
-    vm_dict_list = client.list_vm_quotas(vendor=cloud, device_type=device_type)
+    vm_dict_list = client.list_vm_quotas(vendor=cloud, region=region, device_type=device_type)
     _print_vms(vm_dict_list)

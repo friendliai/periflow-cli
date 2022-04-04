@@ -13,7 +13,12 @@ from subprocess import CalledProcessError, check_call
 
 import typer
 
-from pfcli.service import CloudType, vendor_region_map
+from pfcli.service import (
+    CloudType,
+    StorageType,
+    storage_region_map,
+    cloud_region_map
+)
 
 # Variables
 periflow_api_server = "https://api-dev.friendli.ai/api/"
@@ -115,8 +120,16 @@ def get_default_editor() -> str:
     return os.environ.get("PERIFLOW_CLI_EDITOR", "vim")
 
 
-def validate_vendor_region(vendor: CloudType, region: str):
-    available_regions = vendor_region_map[vendor]
+def validate_storage_region(vendor: StorageType, region: str):
+    available_regions = storage_region_map[vendor]
+    if region not in available_regions:
+        secho_error_and_exit(
+            f"'{region}' is not supported region for {vendor}. Please choose another one in {available_regions}."
+        )
+
+
+def validate_cloud_region(vendor: CloudType, region: str):
+    available_regions = cloud_region_map[vendor]
     if region not in available_regions:
         secho_error_and_exit(
             f"'{region}' is not supported region for {vendor}. Please choose another one in {available_regions}."

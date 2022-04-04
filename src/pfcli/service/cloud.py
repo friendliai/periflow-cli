@@ -9,7 +9,7 @@ import boto3
 import botocore
 from azure.storage.blob import BlobServiceClient
 
-from pfcli.service import CloudType
+from pfcli.service import StorageType
 from pfcli.utils import secho_error_and_exit
 
 
@@ -17,7 +17,7 @@ class CloudStorageHelper:
     def __init__(self,
                  file_or_dir: Path,
                  credential_json: Dict[str, str],
-                 vendor: CloudType,
+                 vendor: StorageType,
                  storage_name: str):
         self.file_or_dir = file_or_dir
         self.credential_json = credential_json
@@ -91,8 +91,8 @@ class CloudStorageHelper:
         return file_list
 
     def get_checkpoint_file_list(self) -> List[dict]:
-        if self.vendor == CloudType.S3:
+        if self.vendor == StorageType.S3:
             return self._get_checkpoint_file_list_aws()
-        if self.vendor == CloudType.BLOB:
+        if self.vendor == StorageType.BLOB:
             return self._get_checkpoint_file_list_azure()
         return self._get_checkpoint_file_list_gcp()

@@ -13,12 +13,12 @@ from click import Choice
 from jsonschema import Draft7Validator, ValidationError
 
 from pfcli.service import (
-    CloudType,
+    StorageType,
     JobType,
     ServiceType,
     CredType,
     cred_type_map_inv,
-    vendor_region_map,
+    storage_region_map,
 )
 from pfcli.service.client import (
     CredentialClientService,
@@ -355,13 +355,13 @@ class CredentialConfigService(InteractiveConfigMixin):
 class DataConfigService(InteractiveConfigMixin):
     ready: bool = False
     name: Optional[str] = None
-    vendor: Optional[CloudType] = None
+    vendor: Optional[StorageType] = None
     region: Optional[str] = None
     storage_name: Optional[str] = None
     credential_id: Optional[str] = None
     metadata: Optional[dict] = field(default_factory=dict)
 
-    def _list_available_credentials(self, vendor_type: CloudType) -> List[dict]:
+    def _list_available_credentials(self, vendor_type: StorageType) -> List[dict]:
         user_cred_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
         group_cred_client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
 
@@ -377,12 +377,12 @@ class DataConfigService(InteractiveConfigMixin):
         )
         self.vendor = typer.prompt(
             "Enter the cloud vendor where your dataset is uploaded.",
-            type=Choice([e.value for e in CloudType]),
+            type=Choice([e.value for e in StorageType]),
             prompt_suffix="\n>>"
         )
         self.region = typer.prompt(
             "Enter the region of cloud storage where your dataset is uploaded.",
-            type=Choice(vendor_region_map[self.vendor]),
+            type=Choice(storage_region_map[self.vendor]),
             prompt_suffix="\n>>"
         )
         self.storage_name = typer.prompt(

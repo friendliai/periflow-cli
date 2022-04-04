@@ -5,15 +5,14 @@
 from typing import Optional
 from click import Choice
 
-import tabulate
 import typer
 import yaml
 
-from pfcli.service import CloudType, JobType, ServiceType
+from pfcli.service import StorageType, JobType, ServiceType
 from pfcli.service.client import DataClientService, GroupDataClientService, build_client
 from pfcli.service.config import build_data_configurator
 from pfcli.service.formatter import TableFormatter
-from pfcli.utils import secho_error_and_exit, validate_vendor_region
+from pfcli.utils import secho_error_and_exit, validate_storage_region
 
 app = typer.Typer()
 
@@ -93,7 +92,7 @@ def create(
         '-n',
         help="Name of your datastore to create."
     ),
-    cloud: Optional[CloudType] = typer.Option(
+    cloud: Optional[StorageType] = typer.Option(
         ...,
         '--cloud',
         '-c',
@@ -124,7 +123,7 @@ def create(
         help="Path to file containing the metadata describing your dataset."
     ),
 ):
-    validate_vendor_region(cloud, region)
+    validate_storage_region(cloud, region)
 
     metadata = {}
     if metadata_file is not None:
@@ -155,7 +154,7 @@ def update(
         '-nn',
         help='The new name of datastore.'
     ),
-    cloud: Optional[CloudType] = typer.Option(
+    cloud: Optional[StorageType] = typer.Option(
         None,
         '--cloud',
         '-c',
