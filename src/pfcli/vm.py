@@ -4,29 +4,26 @@
 
 from typing import Optional, List, Dict
 
-import tabulate
 import typer
 
 from pfcli.service import CloudType, ServiceType
 from pfcli.service.client import GroupVMQuotaClientService, build_client
+from pfcli.service.formatter import TableFormatter
 from pfcli.utils import validate_cloud_region
+
 
 app = typer.Typer()
 
-
-def _print_vms(vm_dict_list: List[Dict]):
-    headers = ["vm", "cloud", "region", "device_type", "quota"]
-    results = [
-        [
-            d['vm_instance_type']['code'],
-            d['vm_instance_type']['vendor'],
-            d['vm_instance_type']['region'],
-            d['vm_instance_type']['device_type'],
-            d['quota']
-        ] for d in vm_dict_list
-    ]
-
-    typer.echo(tabulate.tabulate(results, headers=headers))
+formatter = TableFormatter(
+    fields=[
+        'vm_instance_type.code',
+        'vm_instance_type.vendor',
+        'vm_instance_type.region',
+        'vm_instance_type.device_type',
+        'quota'
+    ],
+    headers=['vm', 'cloud', 'region', 'device', 'quota']
+)
 
 
 @app.command("list")
@@ -57,4 +54,5 @@ def list(
 
     client: GroupVMQuotaClientService = build_client(ServiceType.GROUP_VM_QUOTA)
     vm_dict_list = client.list_vm_quotas(vendor=cloud, region=region, device_type=device_type)
-    _print_vms(vm_dict_list)
+
+    typer.echo(formatter.render(vm_dict_list))

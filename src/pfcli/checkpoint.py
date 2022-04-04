@@ -5,7 +5,6 @@
 from pathlib import Path
 from typing import Optional, List
 
-import tabulate
 import typer
 
 from pfcli.service import CheckpointCategory, ServiceType, StorageType
@@ -16,24 +15,20 @@ from pfcli.service.client import (
     build_client,
 )
 from pfcli.service.cloud import CloudStorageHelper
+from pfcli.service.formatter import TableFormatter
 from pfcli.utils import secho_error_and_exit
+
 
 app = typer.Typer()
 
-
-def _echo_checkpoint_detail(checkpoint_json: dict):
-    typer.echo(f"id: {checkpoint_json['id']}")
-    typer.echo(f"category: {checkpoint_json['category']}")
-    typer.echo(f"cloud: {checkpoint_json['vendor']}")
-    typer.echo(f"iteration: {checkpoint_json['iteration']}")
-    typer.echo(f"created_at: {checkpoint_json['created_at']}")
-    typer.echo("files:")
-    headers = ["name", "path", "mtime", "size"]
-    results = []
-    for file in checkpoint_json['files']:
-        results.append([file[header] for header in headers])
-    headers[2] = "modified time"
-    typer.echo(tabulate.tabulate(results, headers=headers))
+ckpt_formatter = TableFormatter(
+    fields=['id', 'category', 'vendor', 'storage_name', 'iteration', 'created_at'],
+    headers=['id', 'category', 'cloud', 'storage name', 'iteration', 'created at']
+)
+file_formatter = TableFormatter(
+    fields=['name', 'path', 'mtime', 'size'],
+    headers=['name', 'path', 'mtime', 'size']
+)
 
 
 def _validate_parallelism_order(value: str) -> List[str]:
@@ -57,14 +52,7 @@ def checkpoint_list(
     client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
     checkpoints = client.list_checkpoints(category)
 
-    headers = ["id", "category", "cloud", "storage name", "iteration", "created at"]
-    results = []
-    for ckpt in checkpoints:
-        results.append(
-            (ckpt['id'], ckpt['category'], ckpt['vendor'], ckpt['storage_name'], ckpt['iteration'], ckpt['created_at'])
-        )
-
-    typer.echo(tabulate.tabulate(results, headers=headers))
+    typer.echo(ckpt_formatter.render(checkpoints))
 
 
 @app.command("view")
@@ -80,7 +68,10 @@ def checkpoint_detail(
     """
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
     info = client.get_checkpoint(checkpoint_id)
-    _echo_checkpoint_detail(info)
+
+    typer.echo(ckpt_formatter.render([info], in_list=True))
+    typer.echo("\nFILES\n")
+    typer.echo(file_formatter.render(info['files']))
 
 
 @app.command("create")
@@ -169,7 +160,10 @@ def checkpoint_create(
         credential_id=credential_id,
         files=files
     )
-    _echo_checkpoint_detail(info)
+
+    typer.echo(ckpt_formatter.render([info], in_list=True))
+    typer.echo("\nFILES\n")
+    typer.echo(file_formatter.render(info['files']))
 
 
 @app.command("update")
@@ -270,7 +264,10 @@ def checkpoint_update(
         credential_id=credential_id,
         files=files
     )
-    _echo_checkpoint_detail(info)
+
+    typer.echo(ckpt_formatter.render([info], in_list=True))
+    typer.echo("\nFILES\n")
+    typer.echo(file_formatter.render(info['files']))
 
 
 @app.command("delete")

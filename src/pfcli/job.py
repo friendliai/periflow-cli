@@ -50,8 +50,27 @@ app.add_typer(template_app, name="template", help="Manager job templates.")
 app.add_typer(log_app, name="log", help="Manage job logs.")
 
 job_formatter = TableFormatter(
-    fields=['id', 'status', 'vm_name', 'device_type', 'num_devices', 'data_name', 'start', 'duration', 'err'],
-    headers=['id', 'status', 'vm', 'device', '# devices', 'data', 'start', 'duration', 'error']
+    fields=[
+        'id',
+        'status',
+        'vm_config.vm_config_type.vm_instance_type.name',
+        'vm_config.vm_config_type.vm_instance_type.device_type',
+        'num_desired_devices',
+        'data_name',
+        'started_at',
+        'duration',
+    ],
+    headers=['id', 'status', 'vm', 'device', '# devices', 'data', 'start', 'duration'],
+    extra_fields=['error_message'],
+    extra_headers=['error']
+)
+ckpt_formatter = TableFormatter(
+    fields=['id', 'vendor', 'region', 'iteration', 'created_at'],
+    headers=['id', 'cloud', 'region', 'iteration', 'created at']
+)
+artifact_formatter = TableFormatter(
+    fields=['id', 'name', 'path', 'mtime', 'mime_type'],
+    headers=['id', 'name', 'path', 'mtime', 'media type']
 )
 
 
@@ -141,14 +160,9 @@ def run(
     client: JobClientService = build_client(ServiceType.JOB)
     job_data = client.run_job(config, training_dir)
 
-    headers = ["id", "workspace_signature", "workspace_id"]
-    typer.echo(
-        tabulate.tabulate(
-            [
-                (job_data["id"], job_data["workspace_signature"], job_data["workspace_id"])
-            ],
-            headers=headers
-        )
+    typer.secho(
+        f"Job ({job_data}) started successfully. Use 'pf job log view' to see the job logs.",
+        fg=typer.colors.BLUE
     )
 
 
@@ -179,7 +193,6 @@ def list(
         client: JobClientService = build_client(ServiceType.JOB)
     jobs = client.list_jobs()
 
-    job_list = []
     for job in jobs:
         started_at = job.get("started_at")
         finished_at = job.get("finished_at")
@@ -195,29 +208,21 @@ def list(
             duration = timedelta_to_pretty_str(start_time, curr_time)
         else:
             duration = None
-        job_list.append(
-            {
-                "id": job["id"],
-                "status": job["status"],
-                "vm_name": job["vm_config"]["vm_config_type"]["vm_instance_type"]["name"],
-                "device_type": job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
-                "num_devices": job["num_desired_devices"],
-                "data_name": job["data_store"]['name'] if job["data_store"] is not None else None,
-                "start": start,
-                "duration": duration,
-                "err": job["error_message"]
-            }
-        )
+        job['started_at'] = start
+        job['duration'] = duration
+        job['data_name'] = job["data_store"]['name'] if job["data_store"] is not None else None
+
     if tail is not None or head is not None:
         target_job_list = []
         if tail:
-            target_job_list.extend(job_list[:tail])
+            target_job_list.extend(jobs[:tail])
             target_job_list.append(["..."])
         if head:
             target_job_list.append(["..."])
-            target_job_list.extend(job_list[-head:]) 
+            target_job_list.extend(jobs[-head:]) 
     else:
-        target_job_list = job_list
+        target_job_list = jobs
+
     typer.echo(job_formatter.render(target_job_list))
 
 
@@ -273,17 +278,9 @@ def view(
     else:
         duration = None
 
-    job_dict = {
-        "id": job["id"],
-        "status": job["status"],
-        "vm_name": job["vm_config"]["vm_config_type"]["vm_instance_type"]["name"],
-        "device_type": job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
-        "num_devices": job["num_desired_devices"],
-        "data_name": job["data_store"]['name'] if job["data_store"] is not None else None,
-        "start": start,
-        "duration": duration,
-        "err": job["error_message"]
-    }
+    job['started_at'] = start
+    job['duration'] = duration
+    job['data_name'] = job["data_store"]['name'] if job["data_store"] is not None else None
 
     checkpoint_list = []
     for checkpoint in reversed(job_checkpoints):
@@ -293,7 +290,7 @@ def view(
                 checkpoint["vendor"],
                 checkpoint["region"],
                 checkpoint["iteration"],
-                datetime_to_pretty_str(parse(checkpoint["created_at"])),
+                datetime_to_pretty_str(parse(checkpoint["created_at"]), long_list=True),
             ]
         )
 
@@ -311,17 +308,11 @@ def view(
 
     typer.echo(
         "OVERVIEW\n\n" + \
-        job_formatter.render([job_dict]) + \
+        job_formatter.render([job], show_detail=True, in_list=True) + \
         "\n\nCHECKPOINTS\n\n" + \
-        tabulate.tabulate(
-            checkpoint_list,
-            headers=["id", "cloud", "region", "iteration", "created_at"]
-        ) + \
+        ckpt_formatter.render(checkpoint_list) + \
         "\n\nARTIFACTS\n\n" + \
-        tabulate.tabulate(
-            artifact_list,
-            headers=["id", "name", "path", "mtime", "type"]
-        )
+        artifact_formatter.render(artifact_list)
     )
 
 

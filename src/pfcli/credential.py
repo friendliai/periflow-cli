@@ -3,14 +3,13 @@
 """PeriFlow Credential CLI"""
 
 import json
-from typing import List, Dict
 
-import tabulate
 import typer
 
 from pfcli.service import ServiceType, CredType
 from pfcli.service.client import CredentialClientService, GroupCredentialClientService, build_client
 from pfcli.service.config import CredentialConfigService
+from pfcli.service.formatter import TableFormatter
 from pfcli.utils import secho_error_and_exit
 
 
@@ -20,22 +19,17 @@ update_app = typer.Typer()
 
 app.add_typer(create_app, name='create')
 
+formatter = TableFormatter(
+    fields=['id', 'name', 'type', 'created_at', 'owner_type'],
+    headers=['id', 'name', 'type', 'created at', 'scope']
+)
+
 
 S3_DOC_LINK = "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html"
 AZURE_BLOB_DOC_LINK = "https://docs.microsoft.com/en-us/azure/storage/common/storage-account-keys-manage?tabs=azure-portal" # pylint: disable=line-too-long
 GCP_DOC_LINK = "https://cloud.google.com/iam/docs/creating-managing-service-account-keys"
 SLACK_DOC_LINK = "https://slack.com/help/articles/215770388-Create-and-regenerate-API-tokens"
 WANDB_API_KEY_LINK = "https://wandb.ai/authorize"
-
-
-def _print_cred_list(cred_list: List[Dict]):
-    headers = ["id", "name", "type", "type_version", "created_at", "owner type"]
-    results = []
-    for cred in cred_list:
-        results.append(
-            [cred["id"], cred["name"], cred["type"], cred["type_version"], cred["created_at"], cred["owner_type"]]
-        )
-    typer.echo(tabulate.tabulate(results, headers=headers))
 
 
 @create_app.callback(invoke_without_command=True)
@@ -69,7 +63,7 @@ def main(
     info = client.create_credential(cred_type, name, 1, value)
 
     typer.secho("Credential created successfully!", fg=typer.colors.BLUE)
-    _print_cred_list([info])
+    typer.echo(formatter.render([info]))
     exit(0)
 
 
@@ -105,7 +99,7 @@ def docker(
         'password': password
     }
     cred = client.create_credential(CredType.DOCKER, name, 1, value)
-    _print_cred_list([cred])
+    typer.echo(formatter.render([cred]))
 
 
 @create_app.command()
@@ -145,7 +139,7 @@ def s3(
         'aws_default_region': aws_default_region
     }
     cred = client.create_credential(CredType.S3, name, 1, value)
-    _print_cred_list([cred])
+    typer.echo(formatter.render([cred]))
 
 
 @create_app.command()
@@ -180,7 +174,7 @@ def azure_blob(
         'storage_account_key': storage_account_key,
     }
     cred = client.create_credential(CredType.BLOB, name, 1, value)
-    _print_cred_list([cred])
+    typer.echo(formatter.render([cred]))
 
 
 @create_app.command()
@@ -213,7 +207,7 @@ def gcs(
         secho_error_and_exit(f"Error occurred while parsing JSON file... {exc}")
     del value['type']
     cred = client.create_credential(CredType.GCS, name, 1, value)
-    _print_cred_list([cred])
+    typer.echo(formatter.render([cred]))
 
 
 @create_app.command()
@@ -243,7 +237,7 @@ def slack(
         'token': token
     }
     cred = client.create_credential(CredType.SLACK, name, 1, value)
-    _print_cred_list([cred])
+    typer.echo(formatter.render([cred]))
 
 
 @create_app.command()
@@ -273,7 +267,7 @@ def wandb(
         'token': api_key
     }
     cred = client.create_credential(CredType.WANDB, name, 1, value)
-    _print_cred_list([cred])
+    typer.echo(formatter.render([cred]))
 
 
 @app.command()
@@ -297,7 +291,7 @@ def list(
         client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     creds = client.list_credentials(cred_type)
 
-    _print_cred_list(creds)
+    typer.echo(formatter.render(creds))
 
 
 @app.command()
@@ -319,7 +313,7 @@ def update(
     info = client.update_credential(cred_id, cred_type=cred_type, name=name, type_version=1, value=value)
 
     typer.secho("Credential updated successfully!", fg=typer.colors.BLUE)
-    _print_cred_list([info])
+    typer.echo(formatter.render([info]))
 
 
 @app.command()
