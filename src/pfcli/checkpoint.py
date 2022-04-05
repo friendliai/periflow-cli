@@ -323,7 +323,8 @@ def checkpoint_download(
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
     files = client.get_checkpoint_files(checkpoint_id)
 
-    for file in files:
+    for i, file in enumerate(files):
+        typer.secho(f"Downloading files {i + 1}/{len(files)}...")
         wget.download(file['download_url'], out=save_directory)
 
 
