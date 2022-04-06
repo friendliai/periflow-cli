@@ -137,7 +137,7 @@ def run(
         "-f",
         help="Path to configuration file"
     ),
-    training_dir: Optional[Path] = typer.Option(
+    workspace_dir: Optional[Path] = typer.Option(
         None,
         "--training-dir",
         "-d",
@@ -151,14 +151,14 @@ def run(
 
     refine_config(config)
 
-    if training_dir is not None:
-        if not training_dir.exists():
+    if workspace_dir is not None:
+        if not workspace_dir.exists():
             secho_error_and_exit(f"Specified workspace does not exist...")
-        if not training_dir.is_dir():
+        if not workspace_dir.is_dir():
             secho_error_and_exit(f"Specified workspace is not directory...")
 
     client: JobClientService = build_client(ServiceType.JOB)
-    job_data = client.run_job(config, training_dir)
+    job_data = client.run_job(config, workspace_dir)
 
     typer.secho(
         f"Job ({job_data['id']}) started successfully. Use 'pf job log view' to see the job logs.",

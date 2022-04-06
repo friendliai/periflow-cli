@@ -77,6 +77,12 @@ PRIVATE_DOCKER_IMG_CONFIG = """\
     credential_id:
 """
 
+JOB_WORKSPACE_CONFIG = """\
+  # Path to mount your workspace volume
+  workspace:
+    mount_path:
+"""
+
 PREDEFINED_JOB_SETTING_CONFIG = JOB_SETTING_CONFIG + """\
   type: predefined
 """
@@ -167,7 +173,7 @@ class JobConfigService(InteractiveConfigMixin):
 class CustomJobConfigService(JobConfigService):
     """Custom job template configuration service
     """
-    # TODO: Support workspace, artifact
+    # TODO: Support artifact
     use_private_image: bool = False
     use_dist: bool = False
     use_output_checkpoint: bool = False
@@ -176,8 +182,8 @@ class CustomJobConfigService(JobConfigService):
         self.use_private_image = typer.confirm(
             "Will you use your private docker image? (You should provide credential).", prompt_suffix="\n>>"
         )
-        self.use_dist = typer.confirm(
-            "Will you run distributed training job?", prompt_suffix="\n>>"
+        self.use_workspace = typer.confirm(
+            "Do you want to run job with the scripts in your local directory?"
         )
         self.use_data = typer.confirm(
             "Will you use dataset for the job?", prompt_suffix="\n>>"
@@ -187,6 +193,9 @@ class CustomJobConfigService(JobConfigService):
         )
         self.use_output_checkpoint = typer.confirm(
             "Does your job generate model checkpoint file?", prompt_suffix="\n>>"
+        )
+        self.use_dist = typer.confirm(
+            "Will you run distributed training job?", prompt_suffix="\n>>"
         )
         self.use_wandb = typer.confirm(
             "Will you use W&B monitoring for the job?", prompt_suffix="\n>>"
@@ -203,6 +212,8 @@ class CustomJobConfigService(JobConfigService):
         yaml_str += CUSTOM_JOB_SETTING_CONFIG
         if self.use_private_image:
             yaml_str += PRIVATE_DOCKER_IMG_CONFIG
+        if self.use_workspace:
+            yaml_str += JOB_WORKSPACE_CONFIG
         if self.use_dist:
             yaml_str += DIST_CONFIG
         if self.use_data:
