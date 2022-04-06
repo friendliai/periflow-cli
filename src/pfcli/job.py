@@ -161,7 +161,7 @@ def run(
     job_data = client.run_job(config, training_dir)
 
     typer.secho(
-        f"Job ({job_data}) started successfully. Use 'pf job log view' to see the job logs.",
+        f"Job ({job_data['id']}) started successfully. Use 'pf job log view' to see the job logs.",
         fg=typer.colors.BLUE
     )
 
