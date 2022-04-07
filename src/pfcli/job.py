@@ -15,8 +15,9 @@ import tabulate
 import typer
 import yaml
 import ruamel.yaml
+from click import Choice
 
-from pfcli.service import LogType, ServiceType
+from pfcli.service import JobType, LogType, ServiceType
 from pfcli.service.client import (
     GroupDataClientService,
     GroupExperimentClientService,
@@ -327,7 +328,7 @@ def template_create(
 ):
     job_type = typer.prompt(
         "What kind job do you want?\n",
-        "Options: 'predefined', 'custom'",
+        type=Choice([ e.value for e in JobType ]),
         prompt_suffix="\n>>"
     )
     configurator = build_job_configurator(job_type)
