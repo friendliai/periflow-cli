@@ -9,7 +9,13 @@ import typer
 import yaml
 
 from pfcli.service import StorageType, JobType, ServiceType
-from pfcli.service.client import DataClientService, GroupDataClientService, build_client
+from pfcli.service.client import (
+    CredentialClientService,
+    DataClientService,
+    GroupDataClientService,
+    build_client,
+)
+from pfcli.service.cloud import build_storage_helper
 from pfcli.service.config import build_data_configurator
 from pfcli.service.formatter import TableFormatter
 from pfcli.utils import secho_error_and_exit, validate_storage_region
@@ -86,7 +92,7 @@ def view(
 
 @app.command()
 def create(
-    name: Optional[str] = typer.Option(
+    name: str = typer.Option(
         ...,
         '--name',
         '-n',
@@ -121,9 +127,17 @@ def create(
         '--metadata-file',
         '-f',
         help="Path to file containing the metadata describing your dataset."
-    ),
+    )
 ):
     validate_storage_region(cloud, region)
+
+    credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+    credential = credential_client.get_credential(credential_id)
+    if credential["type"] != cloud:
+        secho_error_and_exit(f"Credential type and cloud vendor mismatch: {credential['type']} and {cloud}")
+
+    storage_helper = build_storage_helper(cloud, credential['value'])
+    files = storage_helper.list_storage_files(storage_name)
 
     metadata = {}
     if metadata_file is not None:

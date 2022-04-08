@@ -16,7 +16,7 @@ from pfcli.service.client import (
     GroupCheckpointClinetService,
     build_client,
 )
-from pfcli.service.cloud import CloudStorageHelper
+from pfcli.service.cloud import CloudStorageHelper, build_storage_helper
 from pfcli.service.formatter import TableFormatter
 from pfcli.utils import secho_error_and_exit
 
