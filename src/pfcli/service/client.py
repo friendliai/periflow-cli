@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 import copy
 import json
 from string import Template
@@ -48,7 +49,8 @@ from pfcli.service import (
     ServiceType,
     LogType,
     cred_type_map,
-    cred_type_map_inv,
+    storage_type_map,
+    storage_type_map_inv,
 )
 
 
@@ -502,18 +504,21 @@ class DataClientService(ClientService):
     def update_datastore(self,
                          datastore_id: T,
                          *,
-                         name: Optional[str],
-                         vendor: Optional[str],
-                         region: Optional[str],
-                         storage_name: Optional[str],
-                         credential_id: Optional[str],
-                         metadata: Optional[dict],
-                         files: Optional[List[dict]],
-                         active: bool) -> dict:
+                         name: Optional[str] = None,
+                         vendor: Optional[StorageType] = None,
+                         region: Optional[str] = None,
+                         storage_name: Optional[str] = None,
+                         credential_id: Optional[str] = None,
+                         metadata: Optional[dict] = None,
+                         files: Optional[List[dict]] = None,
+                         active: Optional[bool] = None) -> dict:
         # Valdiate region
         if vendor is not None or region is not None:
             prev_info = self.get_datastore(datastore_id)
-            validate_storage_region(vendor or cred_type_map_inv[prev_info['vendor']], region or prev_info['region'])
+            validate_storage_region(
+                vendor or storage_type_map_inv[prev_info['vendor']],
+                region or prev_info['region']
+            )
 
         request_data = {}
         if name is not None:
@@ -530,8 +535,10 @@ class DataClientService(ClientService):
             request_data['metadata'] = metadata
         if files is not None:
             request_data['files'] = files
-        request_data['active'] = active
+        if active is not None:
+            request_data['active'] = active
         try:
+            breakpoint()
             response = self.partial_update(datastore_id, json=request_data)
             response.raise_for_status()
         except HTTPError:
@@ -544,6 +551,28 @@ class DataClientService(ClientService):
             response.raise_for_status()
         except HTTPError:
             secho_error_and_exit(f"Failed to delete datastore ({datastore_id})")
+
+    @auto_token_refresh
+    def upload(self, datastore_id: T, request_data: dict) -> Response:
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('$datastore_id/upload/')
+        return requests.post(
+            url_template.render(datastore_id=datastore_id, **self.url_kwargs),
+            headers=get_auth_header(),
+            json=request_data
+        )
+
+    def get_upload_urls(self, datastore_id: T, src_path: Path) -> List[Dict[str, str]]:
+        paths = list(map(str, src_path.rglob('*')))
+        paths = [f for f in paths if os.path.isfile(f)]
+        if len(paths) == 0:
+            secho_error_and_exit(f"No file exists in this path ({src_path})")
+        try:
+            response = self.upload(datastore_id, {'paths': paths})
+            response.raise_for_status()
+        except HTTPError:
+            secho_error_and_exit(f"Failed to get presigned URLs")
+        return response.json()
 
 
 class GroupDataClientService(ClientService, GroupRequestMixin):
@@ -568,14 +597,14 @@ class GroupDataClientService(ClientService, GroupRequestMixin):
 
     def create_datastore(self,
                          name: str,
-                         vendor: CredType,
+                         vendor: StorageType,
                          region: str,
                          storage_name: str,
-                         credential_id: T,
+                         credential_id: Optional[T],
                          metadata: dict,
                          files: List[dict],
                          active: bool) -> dict:
-        vendor_name = cred_type_map[vendor]
+        vendor_name = storage_type_map[vendor]
         request_data = {
             "name": name,
             "vendor": vendor_name,

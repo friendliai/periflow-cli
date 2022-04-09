@@ -4,14 +4,18 @@
 
 import os
 import zipfile
-
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+from dateutil.tz import tzlocal
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict
 from subprocess import CalledProcessError, check_call
 
 import typer
+import requests
+from tqdm import tqdm
+from tqdm.utils import CallbackIOWrapper
 
 from pfcli.service import (
     CloudType,
@@ -134,3 +138,38 @@ def validate_cloud_region(vendor: CloudType, region: str):
         secho_error_and_exit(
             f"'{region}' is not supported region for {vendor}. Please choose another one in {available_regions}."
         )
+
+
+def _upload_file(file_path: str, url: str, ctx: tqdm):
+    try:
+        with open(file_path, 'rb') as f:
+            wrapped_object = CallbackIOWrapper(ctx.update, f, 'read')
+            requests.put(url, data=wrapped_object)
+    except FileNotFoundError:
+        secho_error_and_exit(f"{file_path} is not found.")
+
+
+def _get_total_file_size(file_paths: List[str]) -> int:
+    return sum([os.stat(file_path).st_size for file_path in file_paths])
+
+
+def upload_files(url_dicts: List[Dict[str, str]]) -> None:
+    total_size = _get_total_file_size([url_info['path'] for url_info in url_dicts])
+
+    with tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024) as t:
+        with ThreadPoolExecutor() as executor:
+            futs = [
+                executor.submit(
+                    _upload_file, url_info['path'], url_info['upload_url'], t
+                ) for url_info in url_dicts
+            ]
+            wait(futs, return_when=FIRST_EXCEPTION)
+
+
+def get_file_info(path: str) -> dict:
+    return {
+        'name': os.path.basename(path),
+        'path': path,
+        'mtime': datetime.fromtimestamp(os.stat(path).st_mtime, tz=tzlocal()).isoformat(),
+        'size': os.stat(path).st_size,
+    }

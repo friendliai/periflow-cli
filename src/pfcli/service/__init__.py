@@ -46,6 +46,23 @@ class StorageType(str, Enum):
     S3 = "s3"
     BLOB = "azure-blob"
     GCS = "gcs"
+    FAI = "fai"
+
+
+storage_type_map: Dict[StorageType, str] = {
+    StorageType.S3: "aws",
+    StorageType.BLOB: "azure.blob",
+    StorageType.GCS: "gcp",
+    StorageType.FAI: "fai",
+}
+
+
+storage_type_map_inv: Dict[StorageType, str] = {
+    "aws": StorageType.S3,
+    "azure.blob": StorageType.BLOB,
+    "gcp": StorageType.GCS,
+    "fai": StorageType.FAI,
+}
 
 
 class CheckpointCategory(str, Enum):

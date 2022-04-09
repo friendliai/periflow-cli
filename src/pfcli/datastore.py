@@ -2,6 +2,7 @@
 
 """PeriFlow Datastore CLI"""
 
+from pathlib import Path
 from typing import Optional
 from click import Choice
 
@@ -24,15 +25,20 @@ from pfcli.service.client import (
 from pfcli.service.cloud import build_storage_helper
 from pfcli.service.config import build_data_configurator
 from pfcli.service.formatter import TableFormatter
-from pfcli.utils import secho_error_and_exit, validate_storage_region
+from pfcli.utils import (
+    secho_error_and_exit,
+    upload_files,
+    validate_storage_region,
+    get_file_info,
+)
 
 app = typer.Typer()
 
 formatter = TableFormatter(
-    fields=['id', 'name', 'vendor', 'storage_name'],
-    headers=['id', 'name', 'cloud', 'storage name'],
-    extra_fields=['metadata'],
-    extra_headers=['metadata']
+    fields=['id', 'name', 'vendor', 'storage_name', 'active'],
+    headers=['id', 'name', 'cloud', 'storage name', 'active'],
+    extra_fields=['metadata', 'files'],
+    extra_headers=['metadata', 'files']
 )
 
 
@@ -67,6 +73,7 @@ def main(
         typer.secho("Datastore created successfully!", fg=typer.colors.BLUE)
 
     datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
+    datastore['files'] = yaml.dump(datastore['files'], indent=2, sort_keys=False) if datastore['files'] else "N/A"
     typer.echo(formatter.render([datastore], show_detail=True))
     exit(0)
 
@@ -93,6 +100,7 @@ def view(
     datastore_id = group_client.get_id_by_name(name)
     datastore = client.get_datastore(datastore_id)
     datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
+    datastore['files'] = yaml.dump(datastore['files'], indent=2, sort_keys=False) if datastore['files'] else "N/A"
     typer.echo(formatter.render([datastore], show_detail=True))
 
 
@@ -159,6 +167,64 @@ def create(
 
     typer.secho(f"Datastore ({name}) is created successfully!", fg=typer.colors.BLUE)
     datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
+    datastore['files'] = yaml.dump(datastore['files'], indent=2, sort_keys=False) if datastore['files'] else "N/A"
+    typer.echo(formatter.render([datastore], show_detail=True))
+
+
+@app.command()
+def upload(
+    name: str = typer.Option(
+        ...,
+        '--name',
+        '-n',
+        help="Name of your datastore to upload objects. If not exists, a new datastore will be created."
+    ),
+    source_path: Path = typer.Option(
+        ...,
+        '--source-path',
+        '-p',
+        help="Path to source file or directory to upload."
+    ),
+    metadata_file: Optional[typer.FileText] = typer.Option(
+        None,
+        '--metadata-file',
+        '-f',
+        help="Path to file containing the metadata describing your dataset."
+    ),
+):
+    client: DataClientService = build_client(ServiceType.DATA)
+    group_client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
+
+    datastore_id = group_client.get_id_by_name(name)
+    metadata = None
+    if datastore_id is None:
+        typer.echo(f"Creating datastore ({name})...")
+        metadata = {}
+        if metadata_file is not None:
+            try:
+                metadata = yaml.safe_load(metadata_file)
+            except yaml.YAMLError as exc:
+                secho_error_and_exit(f"Error occurred while parsing metadata file... {exc}")
+
+        datastore = group_client.create_datastore(name, StorageType.FAI, '', '', None, metadata, [], False)
+        typer.secho(f"Datastore ({name}) is created successfully.", fg=typer.colors.BLUE)
+        datastore_id = datastore['id']
+
+    typer.echo(f"Start uploading objects to datastore ({name})...")
+    url_dicts = client.get_upload_urls(datastore_id, source_path)
+    upload_files(url_dicts)
+
+    datastore = client.update_datastore(
+        datastore_id,
+        files=[
+            get_file_info(url_info['path']) for url_info in url_dicts
+        ],
+        metadata=metadata,
+        active=True
+    )
+    typer.secho(f"Objects are uploaded to datastore ({name}) successfully!", fg=typer.colors.BLUE)
+    datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
+    datastore['files'] = yaml.dump(datastore['files'], indent=2) if datastore['files'] else "N/A"
     typer.echo(formatter.render([datastore], show_detail=True))
 
 
@@ -232,6 +298,7 @@ def update(
 
     typer.secho("Datastore is updated successfully!", fg=typer.colors.BLUE)
     datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
+    datastore['files'] = yaml.dump(datastore['files'], indent=2) if datastore['files'] else "N/A"
     typer.echo(formatter.render([datastore], show_detail=True))
 
 
