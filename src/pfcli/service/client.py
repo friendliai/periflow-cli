@@ -507,7 +507,9 @@ class DataClientService(ClientService):
                          region: Optional[str],
                          storage_name: Optional[str],
                          credential_id: Optional[str],
-                         metadata: Optional[dict]) -> dict:
+                         metadata: Optional[dict],
+                         files: Optional[List[dict]],
+                         active: bool) -> dict:
         # Valdiate region
         if vendor is not None or region is not None:
             prev_info = self.get_datastore(datastore_id)
@@ -526,6 +528,9 @@ class DataClientService(ClientService):
             request_data['credential_id'] = credential_id
         if metadata is not None:
             request_data['metadata'] = metadata
+        if files is not None:
+            request_data['files'] = files
+        request_data['active'] = active
         try:
             response = self.partial_update(datastore_id, json=request_data)
             response.raise_for_status()
@@ -567,7 +572,9 @@ class GroupDataClientService(ClientService, GroupRequestMixin):
                          region: str,
                          storage_name: str,
                          credential_id: T,
-                         metadata: dict) -> dict:
+                         metadata: dict,
+                         files: List[dict],
+                         active: bool) -> dict:
         vendor_name = cred_type_map[vendor]
         request_data = {
             "name": name,
@@ -576,6 +583,8 @@ class GroupDataClientService(ClientService, GroupRequestMixin):
             "storage_name": storage_name,
             "credential_id": credential_id,
             "metadata": metadata,
+            "files": files,
+            "active": active,
         }
         try:
             response = self.create(json=request_data)

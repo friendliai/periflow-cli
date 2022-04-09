@@ -20,7 +20,7 @@ C = TypeVar('C', bound='CloudStorageHelper')
 class CloudStorageHelper:
     credential_json: Dict[str, str]
 
-    def list_storage_files(self, storage_name: str, path_prefix: Optional[str] = None):
+    def list_storage_files(self, storage_name: str, path_prefix: Optional[str] = None) -> List[dict]:
         raise NotImplementedError   # pragma: no cover
 
 

@@ -8,7 +8,13 @@ from click import Choice
 import typer
 import yaml
 
-from pfcli.service import StorageType, JobType, ServiceType
+from pfcli.service import (
+    StorageType,
+    JobType,
+    ServiceType,
+    cred_type_map,
+    cred_type_map_inv,
+)
 from pfcli.service.client import (
     CredentialClientService,
     DataClientService,
@@ -133,8 +139,10 @@ def create(
 
     credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     credential = credential_client.get_credential(credential_id)
-    if credential["type"] != cloud:
-        secho_error_and_exit(f"Credential type and cloud vendor mismatch: {credential['type']} and {cloud}")
+    if credential["type"] != cred_type_map[cloud]:
+        secho_error_and_exit(
+            f"Credential type and cloud vendor mismatch: {cred_type_map_inv[credential['type']]} and {cloud}."
+        )
 
     storage_helper = build_storage_helper(cloud, credential['value'])
     files = storage_helper.list_storage_files(storage_name)
@@ -147,7 +155,7 @@ def create(
             secho_error_and_exit(f"Error occurred while parsing metadata file... {exc}")
 
     client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
-    datastore = client.create_datastore(name, cloud, region, storage_name, credential_id, metadata)
+    datastore = client.create_datastore(name, cloud, region, storage_name, credential_id, metadata, files, True)
 
     typer.secho(f"Datastore ({name}) is created successfully!", fg=typer.colors.BLUE)
     datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
@@ -218,7 +226,8 @@ def update(
         region=region,
         storage_name=storage_name,
         credential_id=credential_id,
-        metadata=metadata
+        metadata=metadata,
+        active=True
     )
 
     typer.secho("Datastore is updated successfully!", fg=typer.colors.BLUE)
