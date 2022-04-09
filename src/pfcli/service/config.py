@@ -27,6 +27,7 @@ from pfcli.service.client import (
     JobTemplateClientService,
     build_client,
 )
+from pfcli.service.cloud import build_storage_helper
 from pfcli.utils import get_default_editor, open_editor, secho_error_and_exit
 
 
@@ -371,6 +372,7 @@ class DataConfigService(InteractiveConfigMixin):
     storage_name: Optional[str] = None
     credential_id: Optional[str] = None
     metadata: Optional[dict] = field(default_factory=dict)
+    files: Optional[List[dict]] = field(default_factory=list)
 
     def _list_available_credentials(self, vendor_type: StorageType) -> List[dict]:
         user_cred_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
@@ -381,6 +383,10 @@ class DataConfigService(InteractiveConfigMixin):
         creds.extend(group_cred_client.list_credentials(cred_type=vendor_type))
 
         return creds
+
+    def _get_credential(self) -> dict:
+        client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+        return client.get_credential(self.credential_id)['value']
 
     def start_interaction_common(self) -> None:
         self.name = typer.prompt(
@@ -408,10 +414,13 @@ class DataConfigService(InteractiveConfigMixin):
             show_choices=False,
             prompt_suffix="\n>>"
         )
+        credential_value = self._get_credential()
+        storage_helper = build_storage_helper(self.vendor, credential_value)
+        self.files = storage_helper.list_storage_files(self.storage_name)
 
     def render(self) -> Tuple[Any]:
         assert self.ready
-        return self.name, self.vendor, self.region, self.storage_name, self.credential_id, self.metadata
+        return self.name, self.vendor, self.region, self.storage_name, self.credential_id, self.metadata, self.files
 
 
 @dataclass

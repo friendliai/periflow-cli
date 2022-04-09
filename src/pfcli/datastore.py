@@ -59,10 +59,10 @@ def main(
             prompt_suffix="\n>>"
         )
         configurator = build_data_configurator(job_type)
-        name, cloud, region, storage_name, credential_id, metadata = configurator.render()
+        name, cloud, region, storage_name, credential_id, metadata, files = configurator.render()
 
         client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
-        datastore = client.create_datastore(name, cloud, region, storage_name, credential_id, metadata)
+        datastore = client.create_datastore(name, cloud, region, storage_name, credential_id, metadata, files, True)
 
         typer.secho("Datastore created successfully!", fg=typer.colors.BLUE)
 
@@ -133,7 +133,7 @@ def create(
         '--metadata-file',
         '-f',
         help="Path to file containing the metadata describing your dataset."
-    )
+    ),
 ):
     validate_storage_region(cloud, region)
 
