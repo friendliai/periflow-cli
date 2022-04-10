@@ -538,7 +538,6 @@ class DataClientService(ClientService):
         if active is not None:
             request_data['active'] = active
         try:
-            breakpoint()
             response = self.partial_update(datastore_id, json=request_data)
             response.raise_for_status()
         except HTTPError:
