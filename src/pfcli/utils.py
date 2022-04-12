@@ -176,9 +176,8 @@ def get_file_info(path: str) -> dict:
 
 
 def get_content_size(url: str) -> int:
-    response = requests.head(url)
-    size = int(response.headers['Content-Length'])
-    return size
+    response = requests.get(url, stream=True)
+    return int(response.headers['Content-Length'])
 
 
 def download_range(url: str, start: int, end: int, output: str, ctx: tqdm) -> None:
