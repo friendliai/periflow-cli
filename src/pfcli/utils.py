@@ -173,3 +173,56 @@ def get_file_info(path: str) -> dict:
         'mtime': datetime.fromtimestamp(os.stat(path).st_mtime, tz=tzlocal()).isoformat(),
         'size': os.stat(path).st_size,
     }
+
+
+def get_content_size(url: str) -> int:
+    response = requests.head(url)
+    size = int(response.headers['Content-Length'])
+    return size
+
+
+def download_range(url: str, start: int, end: int, output: str, ctx: tqdm) -> None:
+    headers = {'Range': f'bytes={start}-{end}'}
+    response = requests.get(url, headers=headers, stream=True)
+
+    with open(output, 'wb') as f:
+        wrapped_object = CallbackIOWrapper(ctx.update, f, 'write')
+        for part in response.iter_content(1024):
+            wrapped_object.write(part)
+
+
+def download_file_simple(url: str, out: str, content_length: int) -> None:
+    response = requests.get(url, stream=True)
+    with tqdm.wrapattr(open(os.devnull, "wb"), "write", miniters=1, desc=out, total=content_length) as fout:
+        for chunk in response.iter_content(chunk_size=4096):
+            fout.write(chunk)
+
+
+def download_file_parallel(url: str, out: str, content_length: int, chunk_size: int = 1024 * 1024 * 4) -> None:
+    chunks = range(0, content_length, chunk_size)
+
+    with tqdm(total=content_length, unit='B', unit_scale=True, unit_divisor=1024) as t:
+        with ThreadPoolExecutor() as executor:
+            futs = [
+                executor.submit(
+                    download_range, url, start, start + chunk_size - 1, f'{out}.part{i}', t
+                ) for i, start in enumerate(chunks)
+            ]
+            wait(futs, return_when=FIRST_EXCEPTION)
+
+    with open(out, 'wb') as f:
+        for i in range(len(chunks)):
+            chunk_path = f'{out}.part{i}'
+            with open(chunk_path, 'rb') as chunk_f:
+                f.write(chunk_f.read())
+
+            os.remove(chunk_path)
+
+
+def download_file(url: str, out: str) -> None:
+    file_size = get_content_size(url)
+
+    if file_size >= 16 * 1024 * 1024:
+        download_file_parallel(url, out, file_size)
+    else:
+        download_file_simple(url, out, file_size)

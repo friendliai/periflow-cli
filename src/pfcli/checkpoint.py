@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 from typing import Optional, List
 
-import wget
 import typer
 
 from pfcli.service import (
@@ -24,7 +23,7 @@ from pfcli.service.client import (
 )
 from pfcli.service.cloud import build_storage_helper
 from pfcli.service.formatter import TableFormatter
-from pfcli.utils import secho_error_and_exit
+from pfcli.utils import download_file, secho_error_and_exit
 
 
 app = typer.Typer()
@@ -229,7 +228,7 @@ def checkpoint_download(
 
     for i, file in enumerate(files):
         typer.secho(f"Downloading files {i + 1}/{len(files)}...")
-        wget.download(file['download_url'], out=save_directory)
+        download_file(file['download_url'], out=os.path.join(save_directory, file['name']))
 
 
 if __name__ == '__main__':

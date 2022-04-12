@@ -38,7 +38,6 @@ COMMON_DEPS = [
     "jsonschema>=4.4.0",
     "boto3>=1.20.*",
     "botocore>=1.23.*",
-    "wget>=3.2",
     "tqdm>=4.64.0",
     "azure-mgmt-storage>=19.0.*",
     "azure-storage-blob>=12.9.*"
