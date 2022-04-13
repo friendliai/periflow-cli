@@ -65,7 +65,6 @@ def view(
     experiment_id = group_client.get_id_by_name(name)
     jobs = client.get_jobs_in_experiment(experiment_id)
 
-    job_list = []
     for job in jobs:
         started_at = job.get("started_at")
         finished_at = job.get("finished_at")
@@ -81,29 +80,20 @@ def view(
             duration = timedelta_to_pretty_str(start_time, curr_time)
         else:
             duration = None
-        job_list.append(
-            {
-                "id": job["id"],
-                "status": job["status"],
-                "vm_name": job["vm_config"]["vm_config_type"]["vm_instance_type"]["name"],
-                "device_type": job["vm_config"]["vm_config_type"]["vm_instance_type"]["device_type"],
-                "num_devices": job["num_desired_devices"],
-                "data_name": job["data_store"]['name'] if job["data_store"] is not None else None,
-                "start": start,
-                "duration": duration,
-                "err": job["error_message"]
-            }
-        )
+        job['started_at'] = start
+        job['duration'] = duration
+        job['data_name'] = job["data_store"]['name'] if job["data_store"] is not None else None
+
     if tail is not None or head is not None:
         target_job_list = []
         if tail:
-            target_job_list.extend(job_list[:tail])
+            target_job_list.extend(jobs[:tail])
             target_job_list.append(["..."])
         if head:
             target_job_list.append(["..."])
-            target_job_list.extend(job_list[-head:]) 
+            target_job_list.extend(jobs[-head:]) 
     else:
-        target_job_list = job_list
+        target_job_list = jobs
     typer.echo(job_formatter.render(target_job_list))
 
 

@@ -25,8 +25,8 @@ from pfcli.service import (
 )
 
 # Variables
-periflow_api_server = "https://api-dev.friendli.ai/api/"
-periflow_ws_server = "wss://api-ws-dev.friendli.ai/ws/"
+periflow_api_server = "https://api-staging.friendli.ai/api/"
+periflow_ws_server = "wss://api-ws-staging.friendli.ai/ws/"
 
 
 def datetime_to_pretty_str(past: Optional[datetime], long_list: bool = False):
@@ -101,11 +101,11 @@ def datetime_to_simple_string(dt: datetime) -> str:
 
 @contextmanager
 def zip_dir(dir_path: Path, zip_path: Path):
-    typer.secho("Compressing training directory...", fg=typer.colors.MAGENTA)
+    typer.secho("Preparing workspace directory...", fg=typer.colors.MAGENTA)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zip_file:
         for e in dir_path.rglob("*"):
             zip_file.write(e, e.relative_to(dir_path.parent))
-    typer.secho("Compressing finished... Now uploading...", fg=typer.colors.MAGENTA)
+    typer.secho("Uploading workspace directory...", fg=typer.colors.MAGENTA)
     try:
         yield zip_path.open("rb")
     finally:

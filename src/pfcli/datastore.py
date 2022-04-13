@@ -100,8 +100,8 @@ def view(
     datastore_id = group_client.get_id_by_name(name)
     datastore = client.get_datastore(datastore_id)
     datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
-    datastore['files'] = yaml.dump(datastore['files'], indent=2, sort_keys=False) if datastore['files'] else "N/A"
-    typer.echo(formatter.render([datastore], show_detail=True))
+    datastore['files'] = "\n" + yaml.dump(datastore['files'], indent=2, sort_keys=False) if datastore['files'] else "N/A"
+    typer.echo(formatter.render([datastore], show_detail=True, in_list=True))
 
 
 @app.command()

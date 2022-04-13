@@ -53,6 +53,7 @@ app.add_typer(log_app, name="log", help="Manage job logs.")
 job_formatter = TableFormatter(
     fields=[
         'id',
+        'name',
         'status',
         'vm_config.vm_config_type.vm_instance_type.name',
         'vm_config.vm_config_type.vm_instance_type.device_type',
@@ -61,7 +62,7 @@ job_formatter = TableFormatter(
         'started_at',
         'duration',
     ],
-    headers=['id', 'status', 'vm', 'device', '# devices', 'data', 'start', 'duration'],
+    headers=['id', 'name', 'status', 'vm', 'device', '# devices', 'data', 'start', 'duration'],
     extra_fields=['error_message'],
     extra_headers=['error']
 )
@@ -75,17 +76,30 @@ artifact_formatter = TableFormatter(
 )
 
 
-def refine_config(config: dict) -> None:
-    assert "vm" in config
-    assert "num_devices" in config
-    assert "experiment" in config
+def refine_config(config: dict,
+                  vm_name: Optional[str],
+                  num_devices: Optional[int],
+                  experiment_name: Optional[str],
+                  job_name: Optional[str]) -> None:
+    assert "job_setting" in config
+
+    if num_devices is not None:
+        config["num_devices"] = num_devices
+    else:
+        assert "num_devices" in config
+
+    if job_name is not None:
+        config["name"] = job_name
+
+    if "workspace" not in config["job_setting"]:
+        config["job_setting"]["workspace"] = {"mount_path": "/workspace"}
 
     experiment_client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
     data_client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
     vm_client: GroupVMClientService = build_client(ServiceType.GROUP_VM)
     job_template_client: JobTemplateClientService = build_client(ServiceType.JOB_TEMPLATE)
 
-    experiment_name = config["experiment"]
+    experiment_name = experiment_name or config["experiment"]
     experiment_id = experiment_client.get_id_by_name(experiment_name)
     if experiment_id is None:
         create_new = typer.confirm(
@@ -103,7 +117,7 @@ def refine_config(config: dict) -> None:
     del config["experiment"]
     config["experiment_id"] = experiment_id
 
-    vm_name = config["vm"]
+    vm_name = vm_name or config["vm"]
     vm_config_id = vm_client.get_id_by_name(vm_name)
     if vm_config_id is None:
         secho_error_and_exit(f"VM ({vm_name}) is not found.")
@@ -140,9 +154,36 @@ def run(
     ),
     workspace_dir: Optional[Path] = typer.Option(
         None,
-        "--training-dir",
+        "--workspace-dir",
         "-d",
-        help="Path to training workspace directory"
+        help="Path to workspace directory in your local file system"
+    ),
+    vm_name: Optional[str] = typer.Option(
+        None,
+        "--vm",
+        "-v",
+        help="VM type. You can check the list of VMs with `pf vm list`. "
+             "If not provided, the value in the config file will be used."
+    ),
+    num_devices: Optional[int] = typer.Option(
+        None,
+        "--num-devices",
+        "-n",
+        help="The number of devices to use in the job"
+    ),
+    experiment_name: Optional[str] = typer.Option(
+        None,
+        "--experiment",
+        "-e",
+        help="The name of experiment. "
+             "If not provided, the value in the config file will be used."
+    ),
+    job_name: Optional[str] = typer.Option(
+       None,
+       "--name",
+       "-n",
+       help="The name of this job. " 
+             "If not provided, the value in the config file will be used."
     )
 ):
     try:
@@ -150,7 +191,7 @@ def run(
     except yaml.YAMLError as e:
         secho_error_and_exit(f"Error occurred while parsing config file... {e}")
 
-    refine_config(config)
+    refine_config(config, vm_name, num_devices, experiment_name, job_name)
 
     if workspace_dir is not None:
         if not workspace_dir.exists():
@@ -344,56 +385,6 @@ def template_create(
     )
     if continue_edit:
         open_editor(save_path.name)
-
-
-@template_app.command("list")
-def template_list():
-    client: JobTemplateClientService = build_client(ServiceType.JOB_TEMPLATE)
-    template_list = client.list_job_templates()
-
-    typer.echo(
-        tabulate.tabulate(
-            template_list,
-            headers=["name", "model_config"],
-            tablefmt="grid"
-        )
-    )
-
-
-@template_app.command("get")
-def template_get(
-    template_name: str = typer.Option(
-        ...,
-        "--template-name",
-        "-n",
-        help="Name of job template"
-    ),
-    download_file: Optional[typer.FileTextWrite] = typer.Option(
-        None,
-        "--download-file",
-        "-f",
-        help="Path to save job template YAML configuration file"
-    )
-):
-    client: JobTemplateClientService = build_client(ServiceType.JOB_TEMPLATE)
-    config = client.get_job_template_by_name(template_name)
-    if config is None:
-        secho_error_and_exit(f"Predefined job template with name ({template_name}) is not found.")
-
-    result = {
-        "job_setting": {
-            "type": "predefined",
-            "model_code": config["model_code"],
-            "engine_code": config["engine_code"],
-            "model_config": config["data_example"]
-        }
-    }
-    result_yaml = yaml.dump(result, sort_keys=False, indent=2)
-    if download_file is not None:
-        download_file.write(result_yaml)
-        typer.echo("\nTemplate File Download Success!\n")
-    else:
-        typer.echo(result_yaml)
 
 
 def _split_log_types(value: Optional[str]) -> Optional[List[LogType]]:

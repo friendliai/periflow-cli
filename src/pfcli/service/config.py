@@ -70,7 +70,14 @@ CUSTOM_JOB_SETTING_CONFIG = JOB_SETTING_CONFIG + """\
   docker:
     # Docker image you want to use in the job
     image:
-    # Bash shell command to run the job
+    # Bash shell command to run the job.
+    #
+    # NOTE: PeriFlow automatically sets the following environment variables for PyTorch DDP.
+    #   - MASTER_ADDR: Address of rank 0 node.
+    #   - WORLD_SIZE: The total number of GPUs participating in the task.
+    #   - RANK: Rank of the current process.
+    #   - LOCAL_RANK: Local rank of the current process in the node.
+    #   - NODE_RANK: Index of the current node.
     command:
 """
 
@@ -79,7 +86,7 @@ PRIVATE_DOCKER_IMG_CONFIG = """\
 """
 
 JOB_WORKSPACE_CONFIG = """\
-  # Path to mount your workspace volume
+  # Path to mount your workspace volume. If not specified, '/workspace' will be used by default.
   workspace:
     mount_path:
 """
