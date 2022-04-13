@@ -181,28 +181,28 @@ class CustomJobConfigService(JobConfigService):
 
     def start_interaction(self):
         self.use_private_image = typer.confirm(
-            "Will you use your private docker image? (You should provide credential).", prompt_suffix="\n>>"
+            "Will you use your private docker image? (You should provide credential).", prompt_suffix="\n>> "
         )
         self.use_workspace = typer.confirm(
-            "Do you want to run job with the scripts in your local directory?"
+            "Do you want to run job with the scripts in your local directory?", prompt_suffix="\n>> "
         )
         self.use_data = typer.confirm(
-            "Will you use dataset for the job?", prompt_suffix="\n>>"
+            "Will you use dataset for the job?", prompt_suffix="\n>> "
         )
         self.use_input_checkpoint = typer.confirm(
-            "Will you use input checkpoint for the job?", prompt_suffix="\n>>"
+            "Will you use input checkpoint for the job?", prompt_suffix="\n>> "
         )
         self.use_output_checkpoint = typer.confirm(
-            "Does your job generate model checkpoint file?", prompt_suffix="\n>>"
+            "Does your job generate model checkpoint file?", prompt_suffix="\n>> "
         )
         self.use_dist = typer.confirm(
-            "Will you run distributed training job?", prompt_suffix="\n>>"
+            "Will you run distributed training job?", prompt_suffix="\n>> "
         )
         self.use_wandb = typer.confirm(
-            "Will you use W&B monitoring for the job?", prompt_suffix="\n>>"
+            "Will you use W&B monitoring for the job?", prompt_suffix="\n>> "
         )
         self.use_slack = typer.confirm(
-            "Do you want to get slack notifaction for the job?", prompt_suffix="\n>>"
+            "Do you want to get slack notifaction for the job?", prompt_suffix="\n>> "
         )
         self.ready = True
 
@@ -246,23 +246,23 @@ class PredefinedJobConfigService(JobConfigService):
         self.model_name = typer.prompt(
             "Which job do you want to run? Choose one in the following catalog:\n",
             type=Choice(template_names),
-            prompt_suffix="\n>>"
+            prompt_suffix="\n>> "
         )
         template = job_template_client_service.get_job_template_by_name(self.model_name)
         assert template is not None
         self.model_config = template["data_example"]
 
         self.use_data = typer.confirm(
-            "Will you use dataset for the job?", prompt_suffix="\n>>"
+            "Will you use dataset for the job?", prompt_suffix="\n>> "
         )
         self.use_input_checkpoint = typer.confirm(
-            "Will you use input checkpoint for the job?", prompt_suffix="\n>>"
+            "Will you use input checkpoint for the job?", prompt_suffix="\n>> "
         )
         self.use_wandb = typer.confirm(
-            "Will you use W&B monitoring for the job?", prompt_suffix="\n>>"
+            "Will you use W&B monitoring for the job?", prompt_suffix="\n>> "
         )
         self.use_slack = typer.confirm(
-            "Do you want to get slack notifaction for the job?", prompt_suffix="\n>>"
+            "Do you want to get slack notifaction for the job?", prompt_suffix="\n>> "
         )
         self.ready = True
 
@@ -297,12 +297,12 @@ class CredentialConfigService(InteractiveConfigMixin):
 
     def start_interaction(self) -> None:
         self.name = typer.prompt(
-            "Enter the name of your new credential.", prompt_suffix="\n>>"
+            "Enter the name of your new credential.", prompt_suffix="\n>> "
         )
         self.cred_type = typer.prompt(
             "What kind of credential do you want to create?\n",
             type=Choice([ e.value for e in CredType ]),
-            prompt_suffix="\n>>"
+            prompt_suffix="\n>> "
         )
         cred_type_client: CredentialTypeClientService = build_client(ServiceType.CREDENTIAL_TYPE)
         schema = cred_type_client.get_schema_by_type(self.cred_type)
@@ -313,7 +313,7 @@ class CredentialConfigService(InteractiveConfigMixin):
             field_info: dict
             field_info_str = "\n".join(f"    - {k}: {v}" for k, v in field_info.items())
             hide_input = True if "password" in field else False
-            entered = typer.prompt(f"  {field}:\n{field_info_str}", prompt_suffix="\n  >>", hide_input=hide_input)
+            entered = typer.prompt(f"  {field}:\n{field_info_str}", prompt_suffix="\n  >> ", hide_input=hide_input)
             self.value[field] = entered
 
         self._validate_schema(schema)
@@ -326,7 +326,7 @@ class CredentialConfigService(InteractiveConfigMixin):
         self.name = typer.prompt(
             "Enter the NEW name of your credential. Press ENTER if you don't want to update this.\n"
             f"Current: {prev_cred['name']}",
-            prompt_suffix="\n>>",
+            prompt_suffix="\n>> ",
             default=prev_cred['name'],
             show_default=False
         )
@@ -342,7 +342,7 @@ class CredentialConfigService(InteractiveConfigMixin):
             hide_input = True if "password" in field else False
             entered = typer.prompt(
                 f"  {field} (Current: {prev_cred['value'][field]}):\n{field_info_str}",
-                prompt_suffix="\n  >>",
+                prompt_suffix="\n  >> ",
                 default=prev_cred['value'][field],
                 show_default=False,
                 hide_input=hide_input
@@ -390,20 +390,20 @@ class DataConfigService(InteractiveConfigMixin):
 
     def start_interaction_common(self) -> None:
         self.name = typer.prompt(
-            "Enter the name of your new dataset.", prompt_suffix="\n>>",
+            "Enter the name of your new dataset.", prompt_suffix="\n>> ",
         )
         self.vendor = typer.prompt(
             "Enter the cloud vendor where your dataset is uploaded.",
             type=Choice([e.value for e in StorageType]),
-            prompt_suffix="\n>>"
+            prompt_suffix="\n>> "
         )
         self.region = typer.prompt(
             "Enter the region of cloud storage where your dataset is uploaded.",
             type=Choice(storage_region_map[self.vendor]),
-            prompt_suffix="\n>>"
+            prompt_suffix="\n>> "
         )
         self.storage_name = typer.prompt(
-            "Enter the storage name where your dataset is uploaded.", prompt_suffix="\n>>"
+            "Enter the storage name where your dataset is uploaded.", prompt_suffix="\n>> "
         )
         available_creds = self._list_available_credentials(self.vendor)
         cloud_cred_options = "\n".join(f"  - {cred['id']}: {cred['name']}" for cred in available_creds)
@@ -412,7 +412,7 @@ class DataConfigService(InteractiveConfigMixin):
             f"Your available credentials for cloud storages are:\n{cloud_cred_options}",
             type=Choice([ cred['id'] for cred in available_creds ]),
             show_choices=False,
-            prompt_suffix="\n>>"
+            prompt_suffix="\n>> "
         )
         credential_value = self._get_credential()
         storage_helper = build_storage_helper(self.vendor, credential_value)
@@ -436,7 +436,7 @@ class PredefinedDataConfigService(DataConfigService):
         self.model_name = typer.prompt(
             "Which job would you like to use this datastore? Choose one in the following catalog:\n",
             type=Choice(template_names),
-            prompt_suffix="\n>>"
+            prompt_suffix="\n>> "
         )
         template = job_template_client_service.get_job_template_by_name(self.model_name)
         assert template is not None
@@ -448,7 +448,7 @@ class PredefinedDataConfigService(DataConfigService):
         for field, field_info in properties.items():
             field_info: dict
             field_info_str = "\n".join(f"    - {k}: {v}" for k, v in field_info.items())
-            entered = typer.prompt(f"  {field}:\n{field_info_str}", prompt_suffix="\n  >>")
+            entered = typer.prompt(f"  {field}:\n{field_info_str}", prompt_suffix="\n  >> ")
             if field_info['type'] == 'array':
                 entered.split(',')
             self.metadata[field] = entered
@@ -478,7 +478,7 @@ class CustomDataConfigService(DataConfigService):
                 f"Your default editor is '{get_default_editor()}'. "
                 "If you want to use another editor, enter the name of your preferred editor.",
                 default=get_default_editor(),
-                prompt_suffix="\n>>"
+                prompt_suffix="\n>> "
             )
             with tempfile.TemporaryDirectory() as dir:
                 path = os.path.join(dir, 'metadata.yaml')

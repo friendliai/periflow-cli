@@ -92,7 +92,7 @@ def refine_config(config: dict) -> None:
             f"Experiment with the name ({experiment_name}) is not found.\n"
             "Do you want to proceed with creating a new experiment? "
             f"If yes, a new experiment will be created with the name: {experiment_name}",
-            prompt_suffix="\n>>"
+            prompt_suffix="\n>> "
         )
         if not create_new:
             typer.echo("Please run the job after creating an experiment first.")
@@ -329,7 +329,7 @@ def template_create(
     job_type = typer.prompt(
         "What kind job do you want?\n",
         type=Choice([ e.value for e in JobType ]),
-        prompt_suffix="\n>>"
+        prompt_suffix="\n>> "
     )
     configurator = build_job_configurator(job_type)
     yaml_str = configurator.render()
@@ -340,7 +340,7 @@ def template_create(
 
     continue_edit = typer.confirm(
         f"Do you want to open editor to configure the job YAML file? (default editor: {get_default_editor()})",
-        prompt_suffix="\n>>"
+        prompt_suffix="\n>> "
     )
     if continue_edit:
         open_editor(save_path.name)

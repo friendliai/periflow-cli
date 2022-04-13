@@ -62,7 +62,7 @@ def main(
         job_type = typer.prompt(
             "What kind job would you like to create a datastore for?\n",
             type=Choice([e.value for e in JobType]),
-            prompt_suffix="\n>>"
+            prompt_suffix="\n>> "
         )
         configurator = build_data_configurator(job_type)
         name, cloud, region, storage_name, credential_id, metadata, files = configurator.render()
