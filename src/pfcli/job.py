@@ -1,7 +1,6 @@
 # Copyright (C) 2021 FriendliAI
 
-"""PeriFlow Job
-"""
+"""PeriFlow Job"""
 
 import asyncio
 import textwrap
