@@ -33,11 +33,14 @@ COMMON_DEPS = [
     "tabulate>=0.8.0",
     "websockets>=10.1",
     "PyYaml>=6.0",
+    "ruamel.yaml>=0.17.21",
     "typer>=0.4.0",
+    "jsonschema>=4.4.0",
     "boto3>=1.20.*",
     "botocore>=1.23.*",
+    "tqdm>=4.64.0",
     "azure-mgmt-storage>=19.0.*",
-    "azure-storage-blob>=12.9.*"
+    "azure-storage-blob>=12.9.*",
 ]
 
 TEST_DEPS = [
