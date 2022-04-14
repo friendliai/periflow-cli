@@ -40,7 +40,7 @@ COMMON_DEPS = [
     "botocore>=1.23.*",
     "tqdm>=4.64.0",
     "azure-mgmt-storage>=19.0.*",
-    "azure-storage-blob>=12.9.*"
+    "azure-storage-blob>=12.9.*",
 ]
 
 TEST_DEPS = [
