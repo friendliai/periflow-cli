@@ -90,7 +90,7 @@ def refine_config(config: dict,
     if job_name is not None:
         config["name"] = job_name
 
-    if config["job_setting"] == "custom" and "workspace" not in config["job_setting"]:
+    if config["job_setting"]["type"] == "custom" and "workspace" not in config["job_setting"]:
         config["job_setting"]["workspace"] = {"mount_path": "/workspace"}
 
     experiment_client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
@@ -416,7 +416,7 @@ async def monitor_logs(job_id: int,
             if show_machine_id:
                 node_rank = response['node_rank']
                 if node_rank == -1:
-                    node_rank = "vm"
+                    node_rank = "sys"
                 log_list.append(f"💻 #{node_rank}")
             log_list.append(
                 "\n".join(
@@ -527,7 +527,7 @@ def log_view(
                 if show_machine_id:
                     node_rank = record['node_rank']
                     if node_rank == -1:
-                        node_rank = "vm"
+                        node_rank = "sys"
                     log_list.append(f"💻 #{node_rank}")
                 log_list.append(record['content'])
                 export_file.write(
@@ -546,7 +546,7 @@ def log_view(
             if show_machine_id:
                 node_rank = record['node_rank']
                 if node_rank == -1:
-                    node_rank = "vm"
+                    node_rank = "sys"
                 log_list.append(f"💻 #{node_rank}")
             log_list.append(
                 "\n".join(
