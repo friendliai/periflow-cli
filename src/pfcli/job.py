@@ -90,7 +90,7 @@ def refine_config(config: dict,
     if job_name is not None:
         config["name"] = job_name
 
-    if "workspace" not in config["job_setting"]:
+    if config["job_setting"] == "custom" and "workspace" not in config["job_setting"]:
         config["job_setting"]["workspace"] = {"mount_path": "/workspace"}
 
     experiment_client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)

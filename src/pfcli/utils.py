@@ -14,6 +14,7 @@ from subprocess import CalledProcessError, check_call
 
 import typer
 import requests
+from requests.exceptions import HTTPError
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
 
@@ -225,3 +226,7 @@ def download_file(url: str, out: str) -> None:
         download_file_parallel(url, out, file_size)
     else:
         download_file_simple(url, out, file_size)
+
+
+def decode_http_err(exc: HTTPError) -> str:
+    return exc.response.content.decode()
