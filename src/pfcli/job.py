@@ -416,8 +416,9 @@ async def monitor_logs(job_id: int,
             if show_machine_id:
                 node_rank = response['node_rank']
                 if node_rank == -1:
-                    node_rank = "sys"
-                log_list.append(f"💻 #{node_rank}")
+                    log_list.append("📈sys")
+                else:
+                    log_list.append(f"💻 #{node_rank}")
             log_list.append(
                 "\n".join(
                     textwrap.wrap(
@@ -527,8 +528,9 @@ def log_view(
                 if show_machine_id:
                     node_rank = record['node_rank']
                     if node_rank == -1:
-                        node_rank = "sys"
-                    log_list.append(f"💻 #{node_rank}")
+                        log_list.append("📈sys")
+                    else:
+                        log_list.append(f"💻 #{node_rank}")
                 log_list.append(record['content'])
                 export_file.write(
                     tabulate.tabulate(
@@ -546,8 +548,9 @@ def log_view(
             if show_machine_id:
                 node_rank = record['node_rank']
                 if node_rank == -1:
-                    node_rank = "sys"
-                log_list.append(f"💻 #{node_rank}")
+                    log_list.append("📈sys")
+                else:
+                    log_list.append(f"💻 #{node_rank}")
             log_list.append(
                 "\n".join(
                     textwrap.wrap(
