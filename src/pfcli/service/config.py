@@ -457,7 +457,7 @@ class PredefinedDataConfigService(DataConfigService):
             field_info_str = "\n".join(f"    - {k}: {v}" for k, v in field_info.items())
             entered = typer.prompt(f"  {field}:\n{field_info_str}", prompt_suffix="\n  >> ")
             if field_info['type'] == 'array':
-                entered.split(',')
+                entered = entered.split(',')
             self.metadata[field] = entered
 
         try:

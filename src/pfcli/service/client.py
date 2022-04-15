@@ -37,6 +37,7 @@ from pfcli.service.auth import (
     auto_token_refresh,
 )
 from pfcli.utils import (
+    decode_http_err,
     get_uri,
     get_wss_uri,
     secho_error_and_exit,
@@ -152,8 +153,8 @@ class UserGroupClientService(ClientService):
         try:
             response = self.group()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to get your group info.")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get your group info. {decode_http_err(exc)}")
         if response.status_code != 200:
             secho_error_and_exit(f"Cannot acquire group info.")
         groups = response.json()["results"]
@@ -169,16 +170,16 @@ class UserGroupClientService(ClientService):
         try:
             response = self.self()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to get my user info")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get my user info. {decode_http_err(exc)}")
         return response.json()
 
     def get_group_info(self) -> dict:
         try:
             response = self.group()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to get my group info")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get my group info. {decode_http_err(exc)}")
         return response.json()['results']
 
 
@@ -187,16 +188,16 @@ class JobClientService(ClientService):
         try:
             response = self.list()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to list jobs.")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list jobs. {decode_http_err(exc)}")
         return response.json()['results']
 
     def get_job(self, job_id: int) -> dict:
         try:
             response = self.retrieve(job_id)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Job ({job_id}) is not found. You may enter wrong ID.")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Job ({job_id}) is not found. You may enter wrong ID. {decode_http_err(exc)}")
         return response.json()
 
     def run_job(self, config: dict, training_dir: Optional[Path]) -> dict:
@@ -209,8 +210,8 @@ class JobClientService(ClientService):
             else:
                 response = self.create(json=config)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to run job.")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to run job. {decode_http_err(exc)}")
         return response.json()
 
     @auto_token_refresh
@@ -226,8 +227,8 @@ class JobClientService(ClientService):
         try:
             response = self.cancel(job_id)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Failed to cancel job ({job_id})")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to cancel job ({job_id}). {decode_http_err(exc)}")
 
     @auto_token_refresh
     def terminate(self, job_id: int) -> Response:
@@ -242,8 +243,8 @@ class JobClientService(ClientService):
         try:
             response = self.terminate(job_id)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Failed to terminate job ({job_id})")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to terminate job ({job_id}). {decode_http_err(exc)}")
 
     @auto_token_refresh
     def text_logs(self, job_id: int, request_data: dict) -> Response:
@@ -277,8 +278,8 @@ class JobClientService(ClientService):
         try:
             response = self.text_logs(job_id, request_data)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to fetch text logs")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to fetch text logs. {decode_http_err(exc)}")
         logs = response.json()['results']
         if not head:
             logs.reverse()
@@ -356,8 +357,8 @@ class JobCheckpointClientService(ClientService):
         try:
             response = self.list()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to list checkpoints")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list checkpoints. {decode_http_err(exc)}")
         return json.loads(response.content)
 
 
@@ -366,8 +367,8 @@ class JobArtifactClientService(ClientService):
         try:
             response = self.list()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to list artifacts")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list artifacts. {decode_http_err(exc)}")
         return json.loads(response.content)
 
 
@@ -380,8 +381,8 @@ class GroupJobClientService(ClientService, GroupRequestMixin):
         try:
             response = self.list(params={"group_id": self.group_id})
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to list jobs in your group")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list jobs in your group. {decode_http_err(exc)}")
         return response.json()['results']
 
 
@@ -390,8 +391,8 @@ class JobTemplateClientService(ClientService):
         try:
             response = self.list()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to list job templates")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list job templates. {decode_http_err(exc)}")
         template_list = []
         for template in response.json():
             result = {
@@ -409,16 +410,16 @@ class JobTemplateClientService(ClientService):
         try:
             response = self.list()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to list job template names")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list job template names. {decode_http_err(exc)}")
         return [ template['name'] for template in response.json() ]
 
     def get_job_template_by_name(self, name: str) -> Optional[dict]:
         try:
             response = self.list()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to get job template")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get job template. {decode_http_err(exc)}")
         for template in response.json():
             if template['name'] == name:
                 return template
@@ -439,23 +440,23 @@ class ExperimentClientService(ClientService):
         try:
             response = self.experiment_jobs(experiment_id)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to fetch jobs in the experiment.")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to fetch jobs in the experiment. {decode_http_err(exc)}")
         return response.json()['results']
 
     def delete_experiment(self, experiment_id: T) -> None:
         try:
             response = self.delete(experiment_id)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to delete experiment.")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to delete experiment. {exc}")
 
     def update_experiment_name(self, experiment_id: T, name: str) -> dict:
         try:
             response = self.partial_update(experiment_id, json={'name': name})
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Failed to update the name of experiment to {name}")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to update the name of experiment to {name}. {decode_http_err(exc)}")
         return response.json()
 
 
@@ -468,16 +469,16 @@ class GroupExperimentClientService(ClientService, GroupRequestMixin):
         try:
             response = self.list()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to list experiments")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list experiments. {decode_http_err(exc)}")
         return response.json()
 
     def get_id_by_name(self, name: str) -> Optional[T]:
         try:
             response = self.list()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to get experiment info.")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get experiment info. {decode_http_err(exc)}")
         for experiment in response.json():
             if experiment['name'] == name:
                 return experiment['id']
@@ -487,8 +488,8 @@ class GroupExperimentClientService(ClientService, GroupRequestMixin):
         try:
             response = self.create(data={'name': name})
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to create new experiment")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to create new experiment. {decode_http_err(exc)}")
         return response.json()
 
 
@@ -497,8 +498,8 @@ class DataClientService(ClientService):
         try:
             response = self.retrieve(datastore_id)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Datastore ({datastore_id}) is not found.")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Datastore ({datastore_id}) is not found. {decode_http_err(exc)}")
         return response.json()
 
     def update_datastore(self,
@@ -540,16 +541,16 @@ class DataClientService(ClientService):
         try:
             response = self.partial_update(datastore_id, json=request_data)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Cannot update datastore")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Cannot update datastore. {decode_http_err(exc)}")
         return response.json()
 
     def delete_datastore(self, datastore_id: T) -> dict:
         try:
             response = self.delete(datastore_id)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Failed to delete datastore ({datastore_id})")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to delete datastore ({datastore_id}). {decode_http_err(exc)}")
 
     @auto_token_refresh
     def upload(self, datastore_id: T, request_data: dict) -> Response:
@@ -569,8 +570,8 @@ class DataClientService(ClientService):
         try:
             response = self.upload(datastore_id, {'paths': paths})
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Failed to get presigned URLs")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get presigned URLs. {decode_http_err(exc)}")
         return response.json()
 
 
@@ -583,8 +584,8 @@ class GroupDataClientService(ClientService, GroupRequestMixin):
         try:
             response = self.list()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to list dataset info")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list dataset info. {decode_http_err(exc)}")
         return response.json()
 
     def get_id_by_name(self, name: str) -> Optional[T]:
@@ -617,8 +618,8 @@ class GroupDataClientService(ClientService, GroupRequestMixin):
         try:
             response = self.create(json=request_data)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to create a new datastore")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to create a new datastore. {decode_http_err(exc)}")
         return response.json()
 
 
@@ -631,8 +632,8 @@ class GroupVMClientService(ClientService, GroupRequestMixin):
         try:
             response = self.list()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to get VM info")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get VM info. {decode_http_err(exc)}")
         for vm_config in response.json():
             if vm_config['vm_config_type']['vm_instance_type']['code'] == name:
                 return vm_config['id']
@@ -651,8 +652,8 @@ class GroupVMQuotaClientService(ClientService, GroupRequestMixin):
         try:
             response = self.list()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Failed to list VM quota info")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list VM quota info. {decode_http_err(exc)}")
         vm_dict_list = response.json()
         if vendor is not None:
             vm_dict_list = list(filter(lambda info: info['vm_instance_type']['vendor'] == vendor, vm_dict_list))
@@ -668,8 +669,8 @@ class CredentialClientService(ClientService):
         try:
             response = self.retrieve(credential_id)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Credential ({credential_id}) is not found")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Credential ({credential_id}) is not found. {decode_http_err(exc)}")
         return response.json()
 
     def list_credentials(self, cred_type: CredType) -> List[dict]:
@@ -677,8 +678,8 @@ class CredentialClientService(ClientService):
         try:
             response = self.list(params={"type": type_name})
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Failed to credential for {cred_type}")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to credential for {cred_type}. {decode_http_err(exc)}")
         return response.json()
 
     def create_credential(self,
@@ -696,8 +697,8 @@ class CredentialClientService(ClientService):
         try:
             response = self.create(json=request_data)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to creat user credential")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to creat user credential. {decode_http_err(exc)}")
         return response.json()
 
     def update_credential(self,
@@ -720,16 +721,16 @@ class CredentialClientService(ClientService):
         try:
             response = self.partial_update(credential_id, json=request_data)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Failed to update credential ({credential_id})")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to update credential ({credential_id}). {decode_http_err(exc)}")
         return response.json()
 
     def delete_credential(self, credential_id) -> None:
         try:
             response = self.delete(credential_id)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Failed to delete credential ({credential_id})")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to delete credential ({credential_id}). {decode_http_err(exc)}")
 
 
 class GroupCredentialClientService(ClientService, GroupRequestMixin):
@@ -742,8 +743,8 @@ class GroupCredentialClientService(ClientService, GroupRequestMixin):
         try:
             response = self.list(params={"type": type_name})
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Failed to credential for {cred_type}")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to credential for {cred_type}. {decode_http_err(exc)}")
         return response.json()
 
     def create_credential(self,
@@ -761,8 +762,8 @@ class GroupCredentialClientService(ClientService, GroupRequestMixin):
         try:
             response = self.create(json=request_data)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to creat user credential")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to creat user credential. {decode_http_err(exc)}")
         return response.json()
 
 
@@ -772,8 +773,8 @@ class CredentialTypeClientService(ClientService):
         try:
             response = self.list()
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to get credential schema")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get credential schema. {decode_http_err(exc)}")
         for cred_type_json in response.json():
             if cred_type_json['type_name'] == type_name:
                 return cred_type_json['versions'][-1]['schema']     # use the latest version
@@ -785,8 +786,8 @@ class CheckpointClientService(ClientService):
         try:
             response = self.retrieve(checkpoint_id)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit(f"Failed to get info of checkpoint ({checkpoint_id})")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get info of checkpoint ({checkpoint_id}). {decode_http_err(exc)}")
         return response.json()
 
     def update_checkpoint(self,
@@ -811,15 +812,15 @@ class CheckpointClientService(ClientService):
         try:
             response = self.partial_update(checkpoint_id, json=request_data)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Cannot update checkpoint")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Cannot update checkpoint. {decode_http_err(exc)}")
         return response.json()
 
     def delete_checkpoint(self, checkpoint_id: T) -> None:
         try:
             response = self.delete(checkpoint_id)
-        except HTTPError:
-            secho_error_and_exit(f"Failed to delete checkpoint ({checkpoint_id})")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to delete checkpoint ({checkpoint_id}). {decode_http_err(exc)}")
         return response
 
     @auto_token_refresh
@@ -835,8 +836,8 @@ class CheckpointClientService(ClientService):
         try:
             response = self.download(checkpoint_id)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to get list of checkpoint files.")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get list of checkpoint files. {decode_http_err(exc)}")
         return response.json()['files']
 
 
@@ -853,8 +854,8 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
         try:
             response = self.list(json=request_data)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Cannot list checkpoints in your group")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Cannot list checkpoints in your group. {decode_http_err(exc)}")
         return response.json()['results']
 
     def create_checkpoint(self,
@@ -876,8 +877,8 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
         try:
             response = self.create(json=request_data)
             response.raise_for_status()
-        except HTTPError:
-            secho_error_and_exit("Failed to create checkpoint")
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to create checkpoint. {decode_http_err(exc)}")
         return response.json() 
 
 
