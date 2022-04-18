@@ -183,6 +183,73 @@ class UserGroupClientService(ClientService):
         return response.json()['results']
 
 
+class ExperimentClientService(ClientService):
+    @auto_token_refresh
+    def experiment_jobs(self, experiment_id: T) -> Response:
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('$experiment_id/job/')
+        return requests.get(
+            url_template.render(experiment_id=experiment_id, **self.url_kwargs),
+            headers=get_auth_header()
+        )
+
+    def get_jobs_in_experiment(self, experiment_id: T) -> List[dict]:
+        try:
+            response = self.experiment_jobs(experiment_id)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to fetch jobs in the experiment. {decode_http_err(exc)}")
+        return response.json()['results']
+
+    def delete_experiment(self, experiment_id: T) -> None:
+        try:
+            response = self.delete(experiment_id)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to delete experiment. {exc}")
+
+    def update_experiment_name(self, experiment_id: T, name: str) -> dict:
+        try:
+            response = self.partial_update(experiment_id, json={'name': name})
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to update the name of experiment to {name}. {decode_http_err(exc)}")
+        return response.json()
+
+
+class GroupExperimentClientService(ClientService, GroupRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
+        super().__init__(template, group_id=self.group_id, **kwargs)
+
+    def list_experiments(self):
+        try:
+            response = self.list()
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list experiments. {decode_http_err(exc)}")
+        return response.json()
+
+    def get_id_by_name(self, name: str) -> Optional[T]:
+        try:
+            response = self.list()
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get experiment info. {decode_http_err(exc)}")
+        for experiment in response.json():
+            if experiment['name'] == name:
+                return experiment['id']
+        return None
+
+    def create_experiment(self, name: str) -> dict:
+        try:
+            response = self.create(data={'name': name})
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to create new experiment. {decode_http_err(exc)}")
+        return response.json()
+
+
 class JobClientService(ClientService):
     def list_jobs(self) -> dict:
         try:
@@ -200,11 +267,11 @@ class JobClientService(ClientService):
             secho_error_and_exit(f"Job ({job_id}) is not found. You may enter wrong ID. {decode_http_err(exc)}")
         return response.json()
 
-    def run_job(self, config: dict, training_dir: Optional[Path]) -> dict:
+    def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
         try:
-            if training_dir is not None:
-                workspace_zip = Path(training_dir.parent / (training_dir.name + ".zip"))
-                with zip_dir(training_dir, workspace_zip) as zip_file:
+            if workspace_dir is not None:
+                workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
+                with zip_dir(workspace_dir, workspace_zip) as zip_file:
                     files = {'workspace_zip': ('workspace.zip', zip_file)}
                     response = self.create(data={"data": json.dumps(config)}, files=files)
             else:
@@ -307,8 +374,8 @@ class JobWebSocketClientService(ClientService):
         }
         await websocket.send(json.dumps(subscribe_json))
         response = await websocket.recv()
-        decoded_response = json.loads(response)
         try:
+            decoded_response = json.loads(response)
             assert decoded_response.get("response_type") == "subscribe" and \
                 set(sources) == set(decoded_response["sources"])
         except json.JSONDecodeError:
@@ -424,73 +491,6 @@ class JobTemplateClientService(ClientService):
             if template['name'] == name:
                 return template
         return None
-
-
-class ExperimentClientService(ClientService):
-    @auto_token_refresh
-    def experiment_jobs(self, experiment_id: T) -> Response:
-        url_template = copy.deepcopy(self.url_template)
-        url_template.attach_pattern('$experiment_id/job/')
-        return requests.get(
-            url_template.render(experiment_id=experiment_id, **self.url_kwargs),
-            headers=get_auth_header()
-        )
-
-    def get_jobs_in_experiment(self, experiment_id: T) -> List[dict]:
-        try:
-            response = self.experiment_jobs(experiment_id)
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to fetch jobs in the experiment. {decode_http_err(exc)}")
-        return response.json()['results']
-
-    def delete_experiment(self, experiment_id: T) -> None:
-        try:
-            response = self.delete(experiment_id)
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to delete experiment. {exc}")
-
-    def update_experiment_name(self, experiment_id: T, name: str) -> dict:
-        try:
-            response = self.partial_update(experiment_id, json={'name': name})
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to update the name of experiment to {name}. {decode_http_err(exc)}")
-        return response.json()
-
-
-class GroupExperimentClientService(ClientService, GroupRequestMixin):
-    def __init__(self, template: Template, **kwargs):
-        self.initialize_group()
-        super().__init__(template, group_id=self.group_id, **kwargs)
-
-    def list_experiments(self):
-        try:
-            response = self.list()
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to list experiments. {decode_http_err(exc)}")
-        return response.json()
-
-    def get_id_by_name(self, name: str) -> Optional[T]:
-        try:
-            response = self.list()
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to get experiment info. {decode_http_err(exc)}")
-        for experiment in response.json():
-            if experiment['name'] == name:
-                return experiment['id']
-        return None
-
-    def create_experiment(self, name: str) -> dict:
-        try:
-            response = self.create(data={'name': name})
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to create new experiment. {decode_http_err(exc)}")
-        return response.json()
 
 
 class DataClientService(ClientService):

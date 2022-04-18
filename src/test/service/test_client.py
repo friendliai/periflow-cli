@@ -1,0 +1,574 @@
+# Copyright (C) 2021 FriendliAI
+
+"""Test Client Service"""
+
+import json
+from copy import deepcopy
+from string import Template
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import AsyncMock, patch
+
+import pytest
+import typer
+import requests_mock
+from websockets.client import WebSocketClientProtocol
+
+from pfcli.service import LogType, ServiceType
+from pfcli.service.auth import TokenType
+from pfcli.service.client import (
+    CheckpointClientService,
+    ClientService,
+    CredentialClientService,
+    CredentialTypeClientService,
+    DataClientService,
+    ExperimentClientService,
+    GroupCheckpointClinetService,
+    GroupCredentialClientService,
+    GroupDataClientService,
+    GroupExperimentClientService,
+    GroupJobClientService,
+    GroupVMClientService,
+    GroupVMQuotaClientService,
+    JobArtifactClientService,
+    JobCheckpointClientService,
+    JobClientService,
+    JobTemplateClientService,
+    JobWebSocketClientService,
+    URLTemplate,
+    UserGroupClientService,
+    build_client,
+)
+
+
+@pytest.fixture
+def base_url() -> str:
+    return 'https://test.periflow.com/'
+
+
+@pytest.fixture
+def user_group_client() -> UserGroupClientService:
+    return build_client(ServiceType.USER_GROUP)
+
+
+@pytest.fixture
+def experiment_client() -> ExperimentClientService:
+    return build_client(ServiceType.EXPERIMENT)
+
+
+@pytest.fixture
+def group_experiment_client() -> GroupExperimentClientService:
+    return build_client(ServiceType.GROUP_EXPERIMENT)
+
+
+@pytest.fixture
+def job_client() -> JobClientService:
+    return build_client(ServiceType.JOB)
+
+
+@pytest.fixture
+def job_checkpoint_client() -> JobCheckpointClientService:
+    return build_client(ServiceType.JOB_CHECKPOINT)
+
+
+@pytest.fixture
+def job_artifact_client() -> JobArtifactClientService:
+    return build_client(ServiceType.JOB_ARTIFACT)
+
+
+@pytest.fixture
+def group_job_client() -> GroupJobClientService:
+    return build_client(ServiceType.GROUP_JOB)
+
+
+@pytest.fixture
+def job_template_client() -> JobTemplateClientService:
+    return build_client(ServiceType.JOB_TEMPLATE)
+
+
+@pytest.fixture
+def credential_client() -> CredentialClientService:
+    return build_client(ServiceType.CREDENTIAL)
+
+
+@pytest.fixture
+def group_credential_client() -> GroupCredentialClientService:
+    return build_client(ServiceType.GROUP_CREDENTIAL)
+
+
+@pytest.fixture
+def credential_type_client() -> CredentialTypeClientService:
+    return build_client(ServiceType.CREDENTIAL_TYPE)
+
+
+@pytest.fixture
+def data_client() -> DataClientService:
+    return build_client(ServiceType.DATA)
+
+
+@pytest.fixture
+def group_data_client() -> GroupDataClientService:
+    return build_client(ServiceType.GROUP_DATA)
+
+
+@pytest.fixture
+def group_vm_client() -> GroupVMClientService:
+    return build_client(ServiceType.GROUP_VM)
+
+
+@pytest.fixture
+def group_vm_quota_client() -> GroupVMQuotaClientService:
+    return build_client(ServiceType.GROUP_VM_QUOTA)
+
+
+@pytest.fixture
+def checkpoint_client() -> CheckpointClientService:
+    return build_client(ServiceType.CHECKPOINT)
+
+
+@pytest.fixture
+def group_checkpoint_client() -> GroupCheckpointClinetService:
+    return build_client(ServiceType.GROUP_CHECKPOINT)
+
+
+@pytest.fixture
+def job_ws_client() -> JobWebSocketClientService:
+    return build_client(ServiceType.JOB_WS)
+
+
+def test_url_template_render(base_url: str):
+    url_pattern = f'{base_url}test/'
+    template = URLTemplate(Template(url_pattern))
+    assert template.render() == url_pattern
+    assert template.render(pk=1) == f"{url_pattern}1/"
+    assert template.render(pk="abcd") == f"{url_pattern}abcd/"
+
+
+def test_url_template_render_complex_pattern(base_url: str):
+    url_pattern = f'{base_url}test/$test_id/job/'
+    template = URLTemplate(Template(url_pattern))
+
+    # Missing an url param
+    with pytest.raises(KeyError):
+        template.render()
+
+    assert template.render(test_id=1) == f'{base_url}test/1/job/'
+    assert template.render('abcd', test_id=1) == f'{base_url}test/1/job/abcd/'
+
+
+def test_url_template_attach_pattern(base_url: str):
+    url_pattern = f'{base_url}test/$test_id/job/'
+    template = URLTemplate(Template(url_pattern))
+
+    template.attach_pattern('$job_id/export/')
+
+    with pytest.raises(KeyError):
+        template.render(test_id=1)
+
+    assert template.render(test_id=1, job_id='abcd') == f'{base_url}test/1/job/abcd/export/'
+    assert template.render(0, test_id=1, job_id='abcd') == f'{base_url}test/1/job/abcd/export/0/'
+
+
+def test_client_service_base(requests_mock: requests_mock.Mocker, base_url: str):
+    url_pattern = f'{base_url}test/$test_id/job/'
+
+    # Mock CRUD requests
+    template = URLTemplate(Template(url_pattern))
+    requests_mock.get(template.render(test_id=1), json=[{'data': 'value'}])
+    requests_mock.get(template.render('abcd', test_id=1), json={'data': 'value'})
+    requests_mock.post(template.render(test_id=1), json={'data': 'value'}, status_code=201)
+    requests_mock.patch(template.render('abcd', test_id=1), json={'data': 'value'})
+    requests_mock.delete(template.render('abcd', test_id=1), status_code=204)
+
+    client = ClientService(Template(url_pattern), test_id=1)
+
+    resp = client.list()
+    assert resp.json() == [{'data': 'value'}]
+    assert resp.status_code == 200
+
+    resp = client.retrieve('abcd')
+    assert resp.json() == {'data': 'value'}
+    assert resp.status_code == 200
+
+    resp = client.create()
+    assert resp.json() == {'data': 'value'}
+    assert resp.status_code == 201
+
+    resp = client.partial_update('abcd')
+    assert resp.json() == {'data': 'value'}
+    assert resp.status_code == 200
+
+    resp = client.delete('abcd')
+    assert resp.status_code == 204
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_user_group_client_get_group_id(requests_mock: requests_mock.Mocker,
+                                        user_group_client: UserGroupClientService):
+    assert isinstance(user_group_client, UserGroupClientService)
+
+    # Success
+    url_template = deepcopy(user_group_client.url_template)
+    url_template.attach_pattern('group/')
+    requests_mock.get(
+        url_template.render(),
+        json={
+            'results': [
+                {
+                    'id': 0,
+                    'name': 'my-group'
+                }
+            ]
+        }
+    )
+    assert user_group_client.get_group_id() == 0
+
+    # Failed due to HTTP error
+    requests_mock.get(url_template.render(), status_code=404)
+    with pytest.raises(typer.Exit):
+        user_group_client.get_group_id()
+
+    # Failed due to no involved group
+    requests_mock.get(
+        url_template.render(),
+        json={
+            'results': []
+        }
+    )
+    with pytest.raises(typer.Exit):
+        user_group_client.get_group_id()
+
+    # Failed due to multiple group (TODO: multi-group will be supported very soon.)
+    requests_mock.get(
+        url_template.render(),
+        json={
+            'results': [
+                {
+                    'id': 0,
+                    'name': 'group-1'
+                },
+                {
+                    'id': 1,
+                    'name': 'group-2'
+                }
+            ]
+        }
+    )
+    with pytest.raises(typer.Exit):
+        user_group_client.get_group_id()
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_user_group_client_get_group_info(requests_mock: requests_mock.Mocker,
+                                          user_group_client: UserGroupClientService):
+    assert isinstance(user_group_client, UserGroupClientService)
+
+    # Success
+    url_template = deepcopy(user_group_client.url_template)
+    url_template.attach_pattern('group/')
+    requests_mock.get(
+        url_template.render(),
+        json={
+            'results': [
+                {
+                    'id': 0,
+                    'name': 'my-group'
+                }
+            ]
+        }
+    )
+    assert user_group_client.get_group_info() == [
+        {
+            'id': 0,
+            'name': 'my-group'
+        }
+    ]
+
+    # Failed
+    requests_mock.get(url_template.render(), status_code=404)
+    with pytest.raises(typer.Exit):
+        user_group_client.get_group_info()
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_user_group_client_get_user_info(requests_mock: requests_mock.Mocker,
+                                         user_group_client: UserGroupClientService):
+    assert isinstance(user_group_client, UserGroupClientService)
+
+    # Success
+    url_template = deepcopy(user_group_client.url_template)
+    url_template.attach_pattern('self/')
+    requests_mock.get(
+        url_template.render(),
+        json={
+            'id': 0,
+            'username': 'alice',
+            'email': 'alice@periflow.com'
+        }
+    )
+    assert user_group_client.get_user_info() == {
+        'id': 0,
+        'username': 'alice',
+        'email': 'alice@periflow.com'
+    }
+
+    # Failed
+    requests_mock.get(url_template.render(), status_code=404)
+    with pytest.raises(typer.Exit):
+        user_group_client.get_user_info()
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_job_client_list_jobs(requests_mock: requests_mock.Mocker, job_client: JobClientService):
+    assert isinstance(job_client, JobClientService)
+
+    # Success
+    requests_mock.get(
+        job_client.url_template.render(),
+        json={'results': [{'id': 1}, {'id': 2}]}
+    )
+    assert job_client.list_jobs() == [{'id': 1}, {'id': 2}]
+
+    # Failed due to HTTP error
+    requests_mock.get(job_client.url_template.render(), status_code=404)
+    with pytest.raises(typer.Exit):
+        job_client.list_jobs()
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_job_client_get_job(requests_mock: requests_mock.Mocker, job_client: JobClientService):
+    assert isinstance(job_client, JobClientService)
+
+    # Success
+    requests_mock.get(
+        job_client.url_template.render(1),
+        json={'id': 1}
+    )
+    assert job_client.get_job(1) == {'id': 1}
+
+    # Failed due to HTTP error
+    requests_mock.get(job_client.url_template.render(1), status_code=404)
+    with pytest.raises(typer.Exit):
+        job_client.get_job(1)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_job_client_run_job(requests_mock: requests_mock.Mocker, job_client: JobClientService):
+    assert isinstance(job_client, JobClientService)
+
+    # Success wo workspace dir
+    requests_mock.post(
+        job_client.url_template.render(),
+        json={'id': 1}
+    )
+    assert job_client.run_job({'k': 'v'}, None) == {'id': 1}
+
+    # Success w workspace dir
+    with TemporaryDirectory() as dir:
+        ws_dir = Path(dir)
+        assert job_client.run_job({'k': 'v'}, ws_dir) == {'id': 1}
+
+    # Failed due to HTTP error
+    requests_mock.post(job_client.url_template.render(), status_code=500)
+    with pytest.raises(typer.Exit):
+        job_client.run_job({'k': 'v'}, None)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_job_client_cancel_job(requests_mock: requests_mock.Mocker, job_client: JobClientService):
+    url_template = deepcopy(job_client.url_template)
+    url_template.attach_pattern('$job_id/cancel/')
+
+    # Success
+    requests_mock.post(url_template.render(job_id=1))
+    try:
+        job_client.cancel_job(1)
+    except typer.Exit as exc:
+        raise pytest.failed(f"Test failed: {exc!r}") from exc
+
+    # Failed
+    requests_mock.post(url_template.render(job_id=1), status_code=500)
+    with pytest.raises(typer.Exit):
+        job_client.cancel_job(1)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_job_client_terminate_job(requests_mock: requests_mock.Mocker, job_client: JobClientService):
+    url_template = deepcopy(job_client.url_template)
+    url_template.attach_pattern('$job_id/terminate/')
+
+    # Success
+    requests_mock.post(url_template.render(job_id=1))
+    try:
+        job_client.terminate_job(1)
+    except typer.Exit as exc:
+        raise pytest.failed(f"Test failed: {exc!r}") from exc
+
+    # Failed
+    requests_mock.post(url_template.render(job_id=1), status_code=500)
+    with pytest.raises(typer.Exit):
+        job_client.terminate_job(1)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_job_client_get_text_logs(requests_mock: requests_mock.Mocker, job_client: JobClientService):
+    url_template = deepcopy(job_client.url_template)
+    url_template.attach_pattern('$job_id/text_log/')
+
+    # Success
+    requests_mock.get(
+        url_template.render(job_id=1),
+        json={
+            'results': [
+                {
+                    'content': 'hello\n',
+                    'timestamp': '2022-04-18T05:55:14.365021Z',
+                    'type': 'stdout',
+                    'node_rank': 0
+                },
+                {
+                    'content': 'world\n',
+                    'timestamp': '2022-04-18T05:55:14.364470Z',
+                    'type': 'stdout',
+                    'node_rank': 0
+                }
+            ]
+        }
+    )
+    try:
+        job_client.get_text_logs(1, 2)
+    except typer.Exit as exc:
+        raise pytest.failed(f"Test failed: {exc!r}") from exc
+
+    # Failed
+    requests_mock.get(url_template.render(job_id=1), status_code=500)
+    with pytest.raises(typer.Exit):
+        job_client.get_text_logs(1, 2)
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+async def test_job_ws_client(job_ws_client: JobWebSocketClientService):
+    ws_mock = AsyncMock(WebSocketClientProtocol)
+    with patch(
+        'pfcli.service.client.get_token', return_value='ACCESS_TOKEN'
+    ) as get_token_mock, patch(
+        'websockets.connect', 
+    ) as ws_connect_mock:
+        ws_connect_mock.return_value.__aenter__.return_value = ws_mock
+        ws_mock.recv.side_effect = [
+            json.dumps(
+                {
+                    'response_type': 'subscribe',
+                    'sources': [f'process.{x.value}' for x in LogType]
+                }
+            ),
+            json.dumps(
+                {
+                    'content': 'hello\n',
+                    'timestamp': '2022-04-18T05:55:14.365021Z',
+                    'type': 'stdout',
+                    'node_rank': 0
+                }
+            ),
+            json.dumps(
+                {
+                    'content': 'world\n',
+                    'timestamp': '2022-04-18T05:55:14.364470Z',
+                    'type': 'stdout',
+                    'node_rank': 0
+                }
+            )
+        ]
+
+        resp_list = []
+        async with job_ws_client.open_connection(job_id=1, log_types=None, machines=None):
+            async for resp in job_ws_client:
+                resp_list.append(resp)
+
+        get_token_mock.assert_called_once_with(TokenType.ACCESS)
+        ws_connect_mock.assert_called_once_with(f'{job_ws_client.url_template.render(1)}?token=ACCESS_TOKEN')
+        ws_connect_mock.return_value.__aenter__.assert_awaited_once()
+        ws_connect_mock.return_value.__aexit__.assert_awaited_once()
+        ws_mock.send.assert_awaited_once_with(
+            json.dumps(
+                {
+                    'type': 'subscribe',
+                    'sources': [f'process.{x.value}' for x in LogType],
+                    'node_ranks': []
+                }
+            )
+        )
+        assert ws_mock.recv.call_count == 4
+
+        assert resp_list[0] == {
+            'content': 'hello\n',
+            'timestamp': '2022-04-18T05:55:14.365021Z',
+            'type': 'stdout',
+            'node_rank': 0
+        }
+        assert resp_list[1] == {
+            'content': 'world\n',
+            'timestamp': '2022-04-18T05:55:14.364470Z',
+            'type': 'stdout',
+            'node_rank': 0
+        }
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
+    ws_mock = AsyncMock(WebSocketClientProtocol)
+    with patch(
+        'pfcli.service.client.get_token', return_value='ACCESS_TOKEN'
+    ) as get_token_mock, patch(
+        'websockets.connect', 
+    ) as ws_connect_mock:
+        ws_connect_mock.return_value.__aenter__.return_value = ws_mock
+
+        # Invalid json in ws reponse
+        ws_mock.recv.side_effect = ['not_a_json']
+        with pytest.raises(typer.Exit):
+            async with job_ws_client.open_connection(job_id=1, log_types=None, machines=None):
+                pass
+
+        # Invalid ws response contents (invalid response_type)
+        ws_mock.recv.side_effect = [
+            json.dumps(
+                {
+                    'response_type': 'not_subscribe',
+                    'sources': [f'process.{x.value}' for x in LogType]
+                }
+            )
+        ]
+        with pytest.raises(typer.Exit):
+            async with job_ws_client.open_connection(job_id=1, log_types=None, machines=None):
+                pass
+
+        # Invalid ws response contents (sources are not matched)
+        ws_mock.recv.side_effect = [
+            json.dumps(
+                {
+                    'response_type': 'not_subscribe',
+                    'sources': [f'process.{x.value}' for x in LogType]
+                }
+            )
+        ]
+        with pytest.raises(typer.Exit):
+            async with job_ws_client.open_connection(job_id=1, log_types=[LogType.STDOUT], machines=None):
+                pass
+
+        # Errors while subscribing contents
+        ws_mock.recv.side_effect = [
+            json.dumps(
+                {
+                    'response_type': 'subscribe',
+                    'sources': [f'process.{x.value}' for x in LogType]
+                }
+            ),
+            'not_a_json'
+        ]
+        with pytest.raises(typer.Exit):
+            async with job_ws_client.open_connection(job_id=1, log_types=None, machines=None):
+                async for _ in job_ws_client:
+                    pass
