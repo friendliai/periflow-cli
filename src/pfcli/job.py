@@ -42,6 +42,8 @@ from pfcli.utils import (
     datetime_to_simple_string,
 )
 
+tabulate.PRESERVE_WHITESPACE = True
+
 app = typer.Typer()
 template_app = typer.Typer()
 log_app = typer.Typer()
@@ -410,21 +412,21 @@ async def monitor_logs(job_id: int,
 
     async with ws_client.open_connection(job_id, log_types, machines):
         async for response in ws_client:
-            log_list = []
+            log_row = []
             if show_time:
-                log_list.append(f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(response['timestamp'])))}")
+                log_row.append(f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(response['timestamp'])))}")
             if show_machine_id:
                 node_rank = response['node_rank']
                 if node_rank == -1:
-                    log_list.append("📈sys")
+                    log_row.append("📈sys")
                 else:
-                    log_list.append(f"💻 #{node_rank}")
-            log_list.append(
+                    log_row.append(f"💻 #{node_rank}")
+            log_row.append(
                 "\n".join(
                     textwrap.wrap(
                         response['content'],
                         width=get_remaining_terminal_columns(
-                            len(tabulate.tabulate([log_list], tablefmt='plain')) + 5
+                            len(tabulate.tabulate([log_row], tablefmt='plain')) + 5
                         ),
                         break_long_words=False,
                         replace_whitespace=False
@@ -433,7 +435,7 @@ async def monitor_logs(job_id: int,
             )
             typer.echo(
                 tabulate.tabulate(
-                    [log_list],
+                    [log_row],
                     tablefmt='plain'
                 )
             )
@@ -520,43 +522,43 @@ def log_view(
     if export_path is not None:
         with export_path.open("w") as export_file:
             for record in logs:
-                log_list = []
+                log_row = []
                 if show_time:
-                    log_list.append(
+                    log_row.append(
                         f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))}"
                     )
                 if show_machine_id:
                     node_rank = record['node_rank']
                     if node_rank == -1:
-                        log_list.append("📈sys")
+                        log_row.append("📈sys")
                     else:
-                        log_list.append(f"💻 #{node_rank}")
-                log_list.append(record['content'])
+                        log_row.append(f"💻 #{node_rank}")
+                log_row.append(record['content'])
                 export_file.write(
                     tabulate.tabulate(
-                        [ log_list ],
+                        [ log_row ],
                         tablefmt='plain'
                     ) + "\n"
                 )
     else:
         for record in logs:
-            log_list = []
+            log_row = []
             if show_time:
-                log_list.append(
+                log_row.append(
                     f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))}"
                 )
             if show_machine_id:
                 node_rank = record['node_rank']
                 if node_rank == -1:
-                    log_list.append("📈sys")
+                    log_row.append("📈sys")
                 else:
-                    log_list.append(f"💻 #{node_rank}")
-            log_list.append(
+                    log_row.append(f"💻 #{node_rank}")
+            log_row.append(
                 "\n".join(
                     textwrap.wrap(
                         record['content'],
                         width=get_remaining_terminal_columns(
-                            len(tabulate.tabulate([log_list], tablefmt='plain')) + 5
+                            len(tabulate.tabulate([log_row], tablefmt='plain')) + 5
                         ),
                         break_long_words=False,
                         replace_whitespace=False
@@ -564,7 +566,7 @@ def log_view(
                 )
             )
             typer.echo(
-                tabulate.tabulate([log_list], tablefmt='plain')
+                tabulate.tabulate([log_row], tablefmt='plain')
             )
 
     if follow:
