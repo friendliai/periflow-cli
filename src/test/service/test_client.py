@@ -14,7 +14,7 @@ import typer
 import requests_mock
 from websockets.client import WebSocketClientProtocol
 
-from pfcli.service import LogType, ServiceType
+from pfcli.service import LogType, ServiceType, StorageType
 from pfcli.service.auth import TokenType
 from pfcli.service.client import (
     CheckpointClientService,
@@ -787,7 +787,7 @@ def test_job_template_client_list_job_template_names(requests_mock: requests_moc
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
 def test_job_template_client_get_job_template_by_name(requests_mock: requests_mock.Mocker,
-                                                     job_template_client: JobTemplateClientService):
+                                                      job_template_client: JobTemplateClientService):
     assert isinstance(job_template_client, JobTemplateClientService)
 
     # Success
@@ -817,3 +817,214 @@ def test_job_template_client_get_job_template_by_name(requests_mock: requests_mo
     requests_mock.get(job_template_client.url_template.render(), status_code=404)
     with pytest.raises(typer.Exit):
         job_template_client.get_job_template_by_name('some-template')
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_data_client_get_datastore(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+    assert isinstance(data_client, DataClientService)
+
+    # Success
+    requests_mock.get(data_client.url_template.render(0), json={'id': 0, 'name': 'cifar100'})
+    assert data_client.get_datastore(0) == {'id': 0, 'name': 'cifar100'}
+
+    # Failed due to HTTP error
+    requests_mock.get(data_client.url_template.render(0), status_code=404)
+    with pytest.raises(typer.Exit):
+        data_client.get_datastore(0)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_data_client_update_datastore(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+    assert isinstance(data_client, DataClientService)
+
+    # Success
+    requests_mock.get(
+        data_client.url_template.render(0),
+        json={
+            'id': 0,
+            'name': 'cifar10',
+            'vendor': 'aws',
+            'region': 'us-west-2'
+        }
+    )
+    requests_mock.patch(data_client.url_template.render(0), json={'id': 0, 'name': 'cifar100'})
+    assert data_client.update_datastore(
+        0,
+        name='cifar100',
+        vendor=StorageType.S3,
+        region='us-east-1',
+        storage_name='my-bucket',
+        credential_id='f5609b48-5e7e-4431-81d3-23b141847211',
+        metadata={'k': 'v'},
+        files=[
+            {'name': 'cifar100', 'path': '/path/to/cifar100'}
+        ],
+        active=True
+    ) == {'id': 0, 'name': 'cifar100'}
+
+    # Failed at region validation
+    requests_mock.get(
+        data_client.url_template.render(0),
+        json={
+            'id': 0,
+            'name': 'cifar10',
+            'vendor': 'aws',
+            'region': 'us-west-2'
+        }
+    )
+    with pytest.raises(typer.Exit):
+        data_client.update_datastore(
+            0,
+            name='cifar100',
+            vendor=StorageType.S3,
+            region='busan',     # region not available in AWS S3
+            storage_name='my-bucket',
+            credential_id='f5609b48-5e7e-4431-81d3-23b141847211',
+            metadata={'k': 'v'},
+            files=[
+                {'name': 'cifar100', 'path': '/path/to/cifar100'}
+            ],
+            active=True
+        )
+
+    # Failed due to HTTP error
+    requests_mock.patch(data_client.url_template.render(0), status_code=400)
+    with pytest.raises(typer.Exit):
+        data_client.update_datastore(0)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_data_client_delete_datastore(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+    assert isinstance(data_client, DataClientService)
+
+    # Success
+    requests_mock.delete(data_client.url_template.render(0), status_code=204)
+    try:
+        data_client.delete_datastore(0)
+    except typer.Exit:
+        raise pytest.fail("Data client test failed.")
+
+    # Failed due to HTTP error
+    requests_mock.delete(data_client.url_template.render(0), status_code=404)
+    with pytest.raises(typer.Exit):
+        data_client.delete_datastore(0)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_data_client_get_upload_urls(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+    assert isinstance(data_client, DataClientService)
+
+    url_template = deepcopy(data_client.url_template)
+    url_template.attach_pattern('$datastore_id/upload/')
+
+    # Success
+    requests_mock.post(
+        url_template.render(datastore_id=0),
+        json=[
+            {'path': '/path/to/local/file', 'upload_url': 'https://s3.bucket.com'}
+        ]
+    )
+    with TemporaryDirectory() as dir:
+        (Path(dir) / 'file').touch()
+        assert data_client.get_upload_urls(0, Path(dir)) == [
+            {'path': '/path/to/local/file', 'upload_url': 'https://s3.bucket.com'}
+        ]
+
+    # Failed when uploading empty directory.
+    with TemporaryDirectory() as dir:
+        with pytest.raises(typer.Exit):
+            data_client.get_upload_urls(0, Path(dir))
+
+    # Failed due to HTTP error
+    requests_mock.post(url_template.render(datastore_id=0), status_code=500)
+    with TemporaryDirectory() as dir:
+        (Path(dir) / 'file').touch()
+        with pytest.raises(typer.Exit):
+            data_client.get_upload_urls(0, Path(dir))
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_data_client_list_datastores(requests_mock: requests_mock.Mocker,
+                                           group_data_client: GroupDataClientService):
+    assert isinstance(group_data_client, GroupDataClientService)
+
+    # Success
+    requests_mock.get(
+        group_data_client.url_template.render(group_id=0),
+        json=[{'id': 0, 'name': 'wikitext'}, {'id': 1, 'name': 'imagenet'}]
+    )
+    assert group_data_client.list_datastores() == [{'id': 0, 'name': 'wikitext'}, {'id': 1, 'name': 'imagenet'}]
+
+    # Failed due to HTTP error
+    requests_mock.get(group_data_client.url_template.render(group_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        group_data_client.list_datastores()
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_data_client_get_id_by_name(requests_mock: requests_mock.Mocker,
+                                          group_data_client: GroupDataClientService):
+    assert isinstance(group_data_client, GroupDataClientService)
+
+    # Success
+    requests_mock.get(
+        group_data_client.url_template.render(group_id=0),
+        json=[{'id': 0, 'name': 'wikitext'}, {'id': 1, 'name': 'imagenet'}]
+    )
+    assert group_data_client.get_id_by_name('wikitext') == 0
+    assert group_data_client.get_id_by_name('imagenet') == 1
+    assert group_data_client.get_id_by_name('openwebtext') is None
+
+    # Failed due to HTTP error
+    requests_mock.get(group_data_client.url_template.render(group_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        group_data_client.get_id_by_name('glue')
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_data_client_create_datastore(requests_mock: requests_mock.Mocker,
+                                            group_data_client: GroupDataClientService):
+    assert isinstance(group_data_client, GroupDataClientService)
+
+    # Success
+    requests_mock.post(
+        group_data_client.url_template.render(group_id=0),
+        json={'id': 0, 'name': 'cifar100'}
+    )
+    assert group_data_client.create_datastore(
+        name='cifar100',
+        vendor=StorageType.FAI,
+        region='',
+        storage_name='',
+        credential_id='f5609b48-5e7e-4431-81d3-23b141847211',
+        metadata={'k': 'v'},
+        files=[],
+        active=False
+    ) == {'id': 0, 'name': 'cifar100'}
+
+    # Failed at region validation
+    with pytest.raises(typer.Exit):
+        group_data_client.create_datastore(
+            name='cifar100',
+            vendor=StorageType.FAI,
+            region='us-east-1',   # not supported by FAI storage type
+            storage_name='',
+            credential_id='f5609b48-5e7e-4431-81d3-23b141847211',
+            metadata={'k': 'v'},
+            files=[],
+            active=False
+        )
+
+    # Failed due to HTTP error
+    requests_mock.post(group_data_client.url_template.render(group_id=0), status_code=400)
+    with pytest.raises(typer.Exit):
+        group_data_client.create_datastore(
+            name='cifar100',
+            vendor=StorageType.FAI,
+            region='',
+            storage_name='',
+            credential_id='f5609b48-5e7e-4431-81d3-23b141847211',
+            metadata={'k': 'v'},
+            files=[],
+            active=False
+        )

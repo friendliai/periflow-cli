@@ -526,7 +526,7 @@ class DataClientService(ClientService):
             secho_error_and_exit(f"Cannot update datastore. {decode_http_err(exc)}")
         return response.json()
 
-    def delete_datastore(self, datastore_id: T) -> dict:
+    def delete_datastore(self, datastore_id: T) -> None:
         try:
             response = self.delete(datastore_id)
             response.raise_for_status()
@@ -585,6 +585,8 @@ class GroupDataClientService(ClientService, GroupRequestMixin):
                          metadata: dict,
                          files: List[dict],
                          active: bool) -> dict:
+        validate_storage_region(vendor, region)
+
         vendor_name = storage_type_map[vendor]
         request_data = {
             "name": name,
