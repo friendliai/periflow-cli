@@ -757,3 +757,63 @@ def test_group_job_client_list_jobs(requests_mock: requests_mock.Mocker,
     requests_mock.get(group_job_client.url_template.render(group_id=0), status_code=404)
     with pytest.raises(typer.Exit):
         group_job_client.list_jobs()
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_job_template_client_list_job_template_names(requests_mock: requests_mock.Mocker,
+                                                     job_template_client: JobTemplateClientService):
+    assert isinstance(job_template_client, JobTemplateClientService)
+
+    # Success
+    requests_mock.get(
+        job_template_client.url_template.render(),
+        json=[
+            {
+                'id': 0,
+                'name': 'gpt-template',
+            },
+            {
+                'id': 1,
+                'name': 'bert-template'
+            }
+        ]
+    )
+    assert job_template_client.list_job_template_names() == ['gpt-template', 'bert-template']
+
+    requests_mock.get(job_template_client.url_template.render(), status_code=404)
+    with pytest.raises(typer.Exit):
+        job_template_client.list_job_template_names()
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_job_template_client_get_job_template_by_name(requests_mock: requests_mock.Mocker,
+                                                     job_template_client: JobTemplateClientService):
+    assert isinstance(job_template_client, JobTemplateClientService)
+
+    # Success
+    requests_mock.get(
+        job_template_client.url_template.render(),
+        json=[
+            {
+                'id': 0,
+                'name': 'gpt-template',
+            },
+            {
+                'id': 1,
+                'name': 'bert-template'
+            }
+        ]
+    )
+    assert job_template_client.get_job_template_by_name('gpt-template') == {
+        'id': 0,
+        'name': 'gpt-template'
+    }
+    assert job_template_client.get_job_template_by_name('bert-template') == {
+        'id': 1,
+        'name': 'bert-template'
+    }
+    assert job_template_client.get_job_template_by_name('dalle-template') is None
+
+    requests_mock.get(job_template_client.url_template.render(), status_code=404)
+    with pytest.raises(typer.Exit):
+        job_template_client.get_job_template_by_name('some-template')

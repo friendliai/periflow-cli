@@ -454,25 +454,6 @@ class GroupJobClientService(ClientService, GroupRequestMixin):
 
 
 class JobTemplateClientService(ClientService):
-    def list_job_templates(self) -> List[Tuple[str, str]]:
-        try:
-            response = self.list()
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to list job templates. {decode_http_err(exc)}")
-        template_list = []
-        for template in response.json():
-            result = {
-                "job_setting": {
-                    "type": "predefined",
-                    "model_code": template["model_code"],
-                    "engine_code": template["engine_code"],
-                    "model_config": template["data_example"]
-                }
-            }
-            template_list.append((template["name"], yaml.dump(result, sort_keys=False, indent=2)))
-        return template_list
-
     def list_job_template_names(self) -> List[str]:
         try:
             response = self.list()
