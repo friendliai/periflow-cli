@@ -193,7 +193,7 @@ class ExperimentClientService(ClientService):
             headers=get_auth_header()
         )
 
-    def get_jobs_in_experiment(self, experiment_id: T) -> List[dict]:
+    def list_jobs_in_experiment(self, experiment_id: T) -> List[dict]:
         try:
             response = self.experiment_jobs(experiment_id)
             response.raise_for_status()
@@ -426,7 +426,7 @@ class JobCheckpointClientService(ClientService):
             response.raise_for_status()
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to list checkpoints. {decode_http_err(exc)}")
-        return json.loads(response.content)
+        return response.json()
 
 
 class JobArtifactClientService(ClientService):
@@ -436,7 +436,7 @@ class JobArtifactClientService(ClientService):
             response.raise_for_status()
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to list artifacts. {decode_http_err(exc)}")
-        return json.loads(response.content)
+        return response.json()
 
 
 class GroupJobClientService(ClientService, GroupRequestMixin):

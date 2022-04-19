@@ -63,7 +63,7 @@ def view(
     client: ExperimentClientService = build_client(ServiceType.EXPERIMENT)
     group_client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
     experiment_id = group_client.get_id_by_name(name)
-    jobs = client.get_jobs_in_experiment(experiment_id)
+    jobs = client.list_jobs_in_experiment(experiment_id)
 
     for job in jobs:
         started_at = job.get("started_at")

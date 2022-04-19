@@ -68,12 +68,12 @@ def job_client() -> JobClientService:
 
 @pytest.fixture
 def job_checkpoint_client() -> JobCheckpointClientService:
-    return build_client(ServiceType.JOB_CHECKPOINT)
+    return build_client(ServiceType.JOB_CHECKPOINT, job_id=1)
 
 
 @pytest.fixture
 def job_artifact_client() -> JobArtifactClientService:
-    return build_client(ServiceType.JOB_ARTIFACT)
+    return build_client(ServiceType.JOB_ARTIFACT, job_id=1)
 
 
 @pytest.fixture
@@ -134,6 +134,24 @@ def group_checkpoint_client() -> GroupCheckpointClinetService:
 @pytest.fixture
 def job_ws_client() -> JobWebSocketClientService:
     return build_client(ServiceType.JOB_WS)
+
+
+@pytest.fixture
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def patch_init_group(requests_mock: requests_mock.Mocker, user_group_client: UserGroupClientService):
+    url_template = deepcopy(user_group_client.url_template)
+    url_template.attach_pattern('group/')
+    requests_mock.get(
+        url_template.render(),
+        json={
+            'results': [
+                {
+                    'id': 0,
+                    'name': 'my-group'
+                }
+            ]
+        }
+    )
 
 
 def test_url_template_render(base_url: str):
@@ -316,6 +334,119 @@ def test_user_group_client_get_user_info(requests_mock: requests_mock.Mocker,
     requests_mock.get(url_template.render(), status_code=404)
     with pytest.raises(typer.Exit):
         user_group_client.get_user_info()
+
+
+@pytest.mark.usefixture('patch_auto_token_refresh')
+def test_experiment_client_list_jobs_in_experiment(requests_mock: requests_mock.Mocker,
+                                                   experiment_client: ExperimentClientService):
+    assert isinstance(experiment_client, ExperimentClientService)
+
+    # Success
+    url_template = deepcopy(experiment_client.url_template)
+    url_template.attach_pattern('$experiment_id/job/')
+    requests_mock.get(
+        url_template.render(experiment_id=1),
+        json={'results': [{'id': 0}, {'id': 1}]}
+    )
+    assert experiment_client.list_jobs_in_experiment(1) == [{'id': 0}, {'id': 1}]
+
+    # Failed due to HTTP error
+    requests_mock.get(url_template.render(experiment_id=1), status_code=404)
+    with pytest.raises(typer.Exit):
+        experiment_client.list_jobs_in_experiment(1)
+
+
+@pytest.mark.usefixture('patch_auto_token_refresh')
+def test_experiment_client_delete_experiment(requests_mock: requests_mock.Mocker,
+                                             experiment_client: ExperimentClientService):
+    assert isinstance(experiment_client, ExperimentClientService)
+
+    # Success
+    url_template = deepcopy(experiment_client.url_template)
+    url_template.attach_pattern('$experiment_id/')
+    requests_mock.delete(url_template.render(experiment_id=1), status_code=204)
+    try:
+        experiment_client.delete_experiment(1)
+    except typer.Exit:
+        raise pytest.fail("Test delete experiment failed.")
+
+    # Failed due to HTTP error
+    requests_mock.delete(url_template.render(experiment_id=1), status_code=404)
+    with pytest.raises(typer.Exit):
+        experiment_client.delete_experiment(1)
+
+
+@pytest.mark.usefixture('patch_auto_token_refresh')
+def test_experiment_client_update_experiment(requests_mock: requests_mock.Mocker,
+                                             experiment_client: ExperimentClientService):
+    assert isinstance(experiment_client, ExperimentClientService)
+
+    # Success
+    url_template = deepcopy(experiment_client.url_template)
+    url_template.attach_pattern('$experiment_id/')
+    requests_mock.patch(url_template.render(experiment_id=1), json={'id': 0, 'name': 'my-exp'})
+    assert experiment_client.update_experiment_name(1, 'my-exp') == {'id': 0, 'name': 'my-exp'}
+
+    # Failed due to HTTP error
+    requests_mock.patch(url_template.render(experiment_id=1), status_code=404)
+    with pytest.raises(typer.Exit):
+        experiment_client.update_experiment_name(1, 'new-exp')
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_experiment_client_list_experiments(requests_mock: requests_mock.Mocker,
+                                                  group_experiment_client: GroupExperimentClientService):
+    assert isinstance(group_experiment_client, GroupExperimentClientService)
+
+    # Success
+    requests_mock.get(
+        group_experiment_client.url_template.render(group_id=0),
+        json=[{'id': 0, 'name': 'exp-0'}, {'id': 1, 'name': 'exp-1'}]
+    )
+    assert group_experiment_client.list_experiments() == [{'id': 0, 'name': 'exp-0'}, {'id': 1, 'name': 'exp-1'}]
+
+    # Failed due to HTTP error
+    requests_mock.get(group_experiment_client.url_template.render(group_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        group_experiment_client.list_experiments()
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_experiment_client_get_id_by_name(requests_mock: requests_mock.Mocker,
+                                                group_experiment_client: GroupExperimentClientService):
+    assert isinstance(group_experiment_client, GroupExperimentClientService)
+
+    # Success
+    requests_mock.get(
+        group_experiment_client.url_template.render(group_id=0),
+        json=[{'id': 0, 'name': 'exp-0'}, {'id': 1, 'name': 'exp-1'}]
+    )
+    assert group_experiment_client.get_id_by_name('exp-0') == 0
+    assert group_experiment_client.get_id_by_name('exp-1') == 1
+    assert group_experiment_client.get_id_by_name('exp-2') is None
+
+    # Failed due to HTTP error
+    requests_mock.get(group_experiment_client.url_template.render(group_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        group_experiment_client.get_id_by_name('exp-3')
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_experiment_client_create_experiment(requests_mock: requests_mock.Mocker,
+                                                   group_experiment_client: GroupExperimentClientService):
+    assert isinstance(group_experiment_client, GroupExperimentClientService)
+
+    # Success
+    requests_mock.post(
+        group_experiment_client.url_template.render(group_id=0),
+        json={'id': 0, 'name': 'exp-0'}
+    )
+    assert group_experiment_client.create_experiment('exp-0') == {'id': 0, 'name': 'exp-0'}
+
+    # Failed due to HTTP error
+    requests_mock.post(group_experiment_client.url_template.render(group_id=0), status_code=400)
+    with pytest.raises(typer.Exit):
+        group_experiment_client.create_experiment('exp-0')
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
@@ -572,3 +703,57 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
             async with job_ws_client.open_connection(job_id=1, log_types=None, machines=None):
                 async for _ in job_ws_client:
                     pass
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_job_checkpoint_client_list_checkpoints(requests_mock: requests_mock.Mocker,
+                                                job_checkpoint_client: JobCheckpointClientService):
+    assert isinstance(job_checkpoint_client, JobCheckpointClientService)
+
+    # Success
+    requests_mock.get(
+        job_checkpoint_client.url_template.render(job_id=1),
+        json=[{'id': 1}]
+    )
+    assert job_checkpoint_client.list_checkpoints() == [{'id' : 1}]
+
+    # Failed due to HTTP error
+    requests_mock.get(job_checkpoint_client.url_template.render(job_id=1), status_code=404)
+    with pytest.raises(typer.Exit):
+        job_checkpoint_client.list_checkpoints()
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_job_artifact_client_list_artifacts(requests_mock: requests_mock.Mocker,
+                                            job_artifact_client: JobCheckpointClientService):
+    assert isinstance(job_artifact_client, JobArtifactClientService)
+
+    # Success
+    requests_mock.get(
+        job_artifact_client.url_template.render(job_id=1),
+        json=[{'id': 1}]
+    )
+    assert job_artifact_client.list_artifacts() == [{'id' : 1}]
+
+    # Failed due to HTTP error
+    requests_mock.get(job_artifact_client.url_template.render(job_id=1), status_code=404)
+    with pytest.raises(typer.Exit):
+        job_artifact_client.list_artifacts()
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_job_client_list_jobs(requests_mock: requests_mock.Mocker,
+                                    group_job_client: GroupJobClientService):
+    assert isinstance(group_job_client, GroupJobClientService)
+
+    # Success
+    requests_mock.get(
+        group_job_client.url_template.render(group_id=0),
+        json={'results': [{'id': 0}, {'id': 1}]}
+    )
+    assert group_job_client.list_jobs() == [{'id' : 0}, {'id': 1}]
+
+    # Failed due to HTTP error
+    requests_mock.get(group_job_client.url_template.render(group_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        group_job_client.list_jobs()
