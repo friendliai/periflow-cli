@@ -405,7 +405,7 @@ def _split_machine_ids(value: Optional[str]) -> Optional[List[int]]:
 
 async def monitor_logs(job_id: int,
                        log_types: Optional[List[str]],
-                       machines: Optional[List[str]],
+                       machines: Optional[List[int]],
                        show_time: bool,
                        show_machine_id: bool):
     ws_client: JobWebSocketClientService = build_client(ServiceType.JOB_WS)

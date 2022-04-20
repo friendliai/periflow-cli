@@ -553,30 +553,39 @@ def test_job_client_get_text_logs(requests_mock: requests_mock.Mocker, job_clien
     url_template = deepcopy(job_client.url_template)
     url_template.attach_pattern('$job_id/text_log/')
 
+    data = {
+        'results': [
+            {
+                'content': 'hello\n',
+                'timestamp': '2022-04-18T05:55:14.365021Z',
+                'type': 'stdout',
+                'node_rank': 0
+            },
+            {
+                'content': 'world\n',
+                'timestamp': '2022-04-18T05:55:14.364470Z',
+                'type': 'stdout',
+                'node_rank': 0
+            }
+        ]
+    }
+
     # Success
     requests_mock.get(
         url_template.render(job_id=1),
-        json={
-            'results': [
-                {
-                    'content': 'hello\n',
-                    'timestamp': '2022-04-18T05:55:14.365021Z',
-                    'type': 'stdout',
-                    'node_rank': 0
-                },
-                {
-                    'content': 'world\n',
-                    'timestamp': '2022-04-18T05:55:14.364470Z',
-                    'type': 'stdout',
-                    'node_rank': 0
-                }
-            ]
-        }
+        json=data
     )
-    try:
-        job_client.get_text_logs(1, 2)
-    except typer.Exit as exc:
-        raise pytest.failed(f"Test failed: {exc!r}") from exc
+    assert job_client.get_text_logs(1, 2) == list(reversed(data['results']))
+
+    # Success w options
+    assert job_client.get_text_logs(
+        1,
+        2,
+        head=True,
+        log_types=['stdout'],
+        machines=[0],
+        content='2022'
+    ) == data['results']
 
     # Failed
     requests_mock.get(url_template.render(job_id=1), status_code=500)
@@ -620,7 +629,7 @@ async def test_job_ws_client(job_ws_client: JobWebSocketClientService):
         ]
 
         resp_list = []
-        async with job_ws_client.open_connection(job_id=1, log_types=None, machines=None):
+        async with job_ws_client.open_connection(job_id=1, log_types=['stdout', 'stderr', 'vmlog'], machines=[0]):
             async for resp in job_ws_client:
                 resp_list.append(resp)
 
@@ -633,7 +642,7 @@ async def test_job_ws_client(job_ws_client: JobWebSocketClientService):
                 {
                     'type': 'subscribe',
                     'sources': [f'process.{x.value}' for x in LogType],
-                    'node_ranks': []
+                    'node_ranks': [0]
                 }
             )
         )
@@ -1231,6 +1240,11 @@ def test_group_vm_quota_client_list_vm_quotas(requests_mock: requests_mock.Mocke
         }
     ]
 
+    # Failed due to HTTP error
+    requests_mock.get(group_vm_quota_client.url_template.render(group_id=0), status_code=400)
+    with pytest.raises(typer.Exit):
+        group_vm_quota_client.list_vm_quotas()
+
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
 def test_credential_client_list_credentials(requests_mock: requests_mock.Mocker,
@@ -1334,11 +1348,15 @@ def test_credential_client_update_credential(requests_mock: requests_mock.Mocker
     )
     assert credential_client.update_credential(
         0,
-        cred_type=CredType.DOCKER,
         name='my-docker-secret',
         type_version=1,
         value={'k': 'v'}
     ) == {
+        'id': 0,
+        'name': 'my-docker-secret',
+        'type': 'docker'
+    }
+    assert credential_client.update_credential(0) == {  # no updated field
         'id': 0,
         'name': 'my-docker-secret',
         'type': 'docker'
@@ -1349,7 +1367,6 @@ def test_credential_client_update_credential(requests_mock: requests_mock.Mocker
     with pytest.raises(typer.Exit):
         credential_client.update_credential(
             0,
-            cred_type=CredType.GCS,
             name='my-gcs-secret',
             type_version=1,
             value={'k': 'v'}

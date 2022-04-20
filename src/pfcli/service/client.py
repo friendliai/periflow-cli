@@ -157,8 +157,7 @@ class UserGroupClientService(ClientService):
             response.raise_for_status()
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to get your group info. {decode_http_err(exc)}")
-        if response.status_code != 200:
-            secho_error_and_exit(f"Cannot acquire group info.")
+
         groups = response.json()["results"]
         if len(groups) == 0:
             secho_error_and_exit("You are not assigned to any group... Please contact admin")
@@ -331,7 +330,7 @@ class JobClientService(ClientService):
                       head: bool = False,
                       log_types: Optional[List[str]] = None,
                       machines: Optional[List[int]] = None,
-                      content: Optional[str] = None) -> Response:
+                      content: Optional[str] = None) -> List[dict]:
         request_data = {'limit': num_records}
         if head:
             request_data['ascending'] = 'true'
@@ -389,7 +388,7 @@ class JobWebSocketClientService(ClientService):
     async def open_connection(self,
                               job_id: int,
                               log_types: Optional[List[str]],
-                              machines: Optional[List[str]]):
+                              machines: Optional[List[int]]):
         if log_types is None:
             sources = [f"process.{x.value}" for x in LogType]
         else:
@@ -413,7 +412,7 @@ class JobWebSocketClientService(ClientService):
         try:
             response = await self._websocket.recv()
         except ConnectionClosed as exc:
-            raise StopAsyncIteration from exc
+            raise StopAsyncIteration from exc   # pragma: no cover
 
         try:
             return json.loads(response)
@@ -689,14 +688,10 @@ class CredentialClientService(ClientService):
     def update_credential(self,
                           credential_id: T,
                           *,
-                          cred_type: Optional[CredType] = None,
                           name: Optional[str] = None,
                           type_version: Optional[str] = None,
                           value: Optional[dict]= None) -> dict:
         request_data = {}
-        if cred_type is not None:
-            type_name = cred_type_map[cred_type]
-            request_data['type'] = type_name
         if name is not None:
             request_data['name'] = name
         if type_version is not None:

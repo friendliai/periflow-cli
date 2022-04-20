@@ -306,11 +306,11 @@ def update(
     configurator = CredentialConfigService()
 
     configurator.start_interaction_for_update(cred_id)
-    name, cred_type, value = configurator.render()
+    name, _, value = configurator.render()
 
     client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
 
-    info = client.update_credential(cred_id, cred_type=cred_type, name=name, type_version=1, value=value)
+    info = client.update_credential(cred_id, name=name, type_version=1, value=value)
 
     typer.secho("Credential updated successfully!", fg=typer.colors.BLUE)
     typer.echo(formatter.render([info]))
