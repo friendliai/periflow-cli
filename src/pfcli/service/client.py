@@ -45,6 +45,7 @@ from pfcli.utils import (
     zip_dir,
 )
 from pfcli.service import (
+    CloudType,
     StorageType,
     CredType,
     ServiceType,
@@ -629,7 +630,7 @@ class GroupVMQuotaClientService(ClientService, GroupRequestMixin):
         super().__init__(template, group_id=self.group_id, **kwargs)
 
     def list_vm_quotas(self,
-                       vendor: Optional[StorageType] = None,
+                       vendor: Optional[CloudType] = None,
                        region: Optional[str] = None,
                        device_type: Optional[str] = None) -> Optional[List[dict]]:
         try:
@@ -643,7 +644,7 @@ class GroupVMQuotaClientService(ClientService, GroupRequestMixin):
         if region is not None:
             vm_dict_list = list(filter(lambda info: info['vm_instance_type']['region'] == region, vm_dict_list))
         if device_type is not None:
-            vm_dict_list = list(filter(lambda info: info['vm_instance_type']['devcie_type'] == device_type, vm_dict_list))
+            vm_dict_list = list(filter(lambda info: info['vm_instance_type']['device_type'] == device_type, vm_dict_list))
         return vm_dict_list
 
 

@@ -14,7 +14,12 @@ import typer
 import requests_mock
 from websockets.client import WebSocketClientProtocol
 
-from pfcli.service import LogType, ServiceType, StorageType
+from pfcli.service import (
+    CloudType,
+    LogType,
+    ServiceType,
+    StorageType,
+)
 from pfcli.service.auth import TokenType
 from pfcli.service.client import (
     CheckpointClientService,
@@ -1028,3 +1033,198 @@ def test_group_data_client_create_datastore(requests_mock: requests_mock.Mocker,
             files=[],
             active=False
         )
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_vm_client_get_id_by_name(requests_mock: requests_mock.Mocker,
+                                        group_vm_client: GroupVMClientService):
+    assert isinstance(group_vm_client, GroupVMClientService)
+
+    example_data = [
+        {
+            "id": 0,
+            "vm_config_type": {
+                "id": 0,
+                "name": "azure-v100",
+                "code": "azure-v100",
+                "vm_instance_type": {
+                    "id": 0,
+                    "name": "azure-v100",
+                    "code": "azure-v100",
+                    "vendor": "azure",
+                    "region": "eastus",
+                    "device_type": "V100"
+                }
+            }
+        },
+        {
+            "id": 1,
+            "vm_config_type": {
+                "id": 1,
+                "name": "aws-a100",
+                "code": "aws-a100",
+                "vm_instance_type": {
+                    "id": 1,
+                    "name": "aws-a100",
+                    "code": "aws-a100",
+                    "vendor": "aws",
+                    "region": "us-east-1",
+                    "device_type": "A100"
+                }
+            }
+        },
+    ]
+
+    # Success
+    requests_mock.get(group_vm_client.url_template.render(group_id=0), json=example_data)
+    assert group_vm_client.get_id_by_name('azure-v100') == 0
+    assert group_vm_client.get_id_by_name('aws-a100') == 1
+    assert group_vm_client.get_id_by_name('gcp-k80') is None
+
+    # Failed due to HTTP error
+    requests_mock.get(group_vm_client.url_template.render(group_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        group_vm_client.get_id_by_name('azure-a100')
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_vm_quota_client_list_vm_quotas(requests_mock: requests_mock.Mocker,
+                                              group_vm_quota_client: GroupVMQuotaClientService):
+    assert isinstance(group_vm_quota_client, GroupVMQuotaClientService)
+
+    example_data = [
+        {
+            "vm_instance_type": {
+                "id": 0,
+                "name": "azure-v100",
+                "code": "azure-v100",
+                "vendor": "azure",
+                "region": "eastus",
+                "device_type": "V100"
+            },
+            "quota": 4
+        },
+        {
+            "vm_instance_type": {
+                "id": 0,
+                "name": "azure-a100",
+                "code": "azure-a100",
+                "vendor": "azure",
+                "region": "westus2",
+                "device_type": "A100"
+            },
+            "quota": 8
+        },
+        {
+            "vm_instance_type": {
+                "id": 1,
+                "name": "aws-a100",
+                "code": "aws-a100",
+                "vendor": "aws",
+                "region": "us-east-1",
+                "device_type": "A100"
+            },
+            "quota": 16
+        }
+    ]
+
+    # Success
+    requests_mock.get(group_vm_quota_client.url_template.render(group_id=0), json=example_data)
+
+    # List VMs without filters
+    assert group_vm_quota_client.list_vm_quotas() == example_data
+
+    # List VMs filtered by vendor
+    assert group_vm_quota_client.list_vm_quotas(vendor=CloudType.AWS) == [
+        {
+            "vm_instance_type": {
+                "id": 1,
+                "name": "aws-a100",
+                "code": "aws-a100",
+                "vendor": "aws",
+                "region": "us-east-1",
+                "device_type": "A100"
+            },
+            "quota": 16
+        }
+    ]
+    assert group_vm_quota_client.list_vm_quotas(vendor=CloudType.AZURE) == [
+        {
+            "vm_instance_type": {
+                "id": 0,
+                "name": "azure-v100",
+                "code": "azure-v100",
+                "vendor": "azure",
+                "region": "eastus",
+                "device_type": "V100"
+            },
+            "quota": 4
+        },
+        {
+            "vm_instance_type": {
+                "id": 0,
+                "name": "azure-a100",
+                "code": "azure-a100",
+                "vendor": "azure",
+                "region": "westus2",
+                "device_type": "A100"
+            },
+            "quota": 8
+        }
+    ]
+
+    # List VMs filtered by region
+    assert group_vm_quota_client.list_vm_quotas(region='us-east-1') == [
+        {
+            "vm_instance_type": {
+                "id": 1,
+                "name": "aws-a100",
+                "code": "aws-a100",
+                "vendor": "aws",
+                "region": "us-east-1",
+                "device_type": "A100"
+            },
+            "quota": 16
+        }
+    ]
+
+    # List VMs filtered by device type
+    assert group_vm_quota_client.list_vm_quotas(device_type='A100') == [
+        {
+            "vm_instance_type": {
+                "id": 0,
+                "name": "azure-a100",
+                "code": "azure-a100",
+                "vendor": "azure",
+                "region": "westus2",
+                "device_type": "A100"
+            },
+            "quota": 8
+        },
+        {
+            "vm_instance_type": {
+                "id": 1,
+                "name": "aws-a100",
+                "code": "aws-a100",
+                "vendor": "aws",
+                "region": "us-east-1",
+                "device_type": "A100"
+            },
+            "quota": 16
+        }
+    ]
+
+    # List VMs filtered by vendor, region and device type
+    assert group_vm_quota_client.list_vm_quotas(vendor='azure', region='westus2', device_type='A100') == [
+        {
+            "vm_instance_type": {
+                "id": 0,
+                "name": "azure-a100",
+                "code": "azure-a100",
+                "vendor": "azure",
+                "region": "westus2",
+                "device_type": "A100"
+            },
+            "quota": 8
+        }
+    ]
