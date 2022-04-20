@@ -15,6 +15,7 @@ import requests_mock
 from websockets.client import WebSocketClientProtocol
 
 from pfcli.service import (
+    CheckpointCategory,
     CloudType,
     CredType,
     LogType,
@@ -1438,4 +1439,487 @@ def test_group_credential_client_service(requests_mock: requests_mock.Mocker,
             name='our-docker-secret',
             type_version=1,
             value={'k': 'v'}
+        )
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_credential_type_client_get_schema_by_type(requests_mock: requests_mock.Mocker,
+                                                   credential_type_client: CredentialTypeClientService):
+    assert isinstance(credential_type_client, CredentialTypeClientService)
+
+    data = [
+        {
+            "type_name": "docker",
+            "versions": [
+                {
+                    "type_version": 1,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "username": {
+                                "type": "string"
+                            },
+                            "password": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "username",
+                            "password"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "type_name": "aws",
+            "versions": [
+                {
+                    "type_version": 1,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "aws_access_key_id": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "aws_secret_access_key": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "aws_default_region": {
+                                "type": "string",
+                                "examples": [
+                                    "us-east-1",
+                                    "us-east-2",
+                                    "us-west-1",
+                                    "us-west-2",
+                                    "eu-west-1",
+                                    "eu-central-1",
+                                    "ap-northeast-1",
+                                    "ap-northeast-2",
+                                    "ap-southeast-1",
+                                    "ap-southeast-2",
+                                    "ap-south-1",
+                                    "sa-east-1"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "aws_access_key_id",
+                            "aws_secret_access_key",
+                            "aws_default_region"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "type_name": "gcp",
+            "versions": [
+                {
+                    "type_version": 1,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "default": "service_account"
+                            },
+                            "project_id": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "private_key_id": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "private_key": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "client_email": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "client_id": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "auth_uri": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "token_uri": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "auth_provider_x509_cert_url": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "client_x509_cert_url": {
+                                "type": "string",
+                                "minLength": 1
+                            }
+                        },
+                        "required": [
+                            "project_id",
+                            "private_key_id",
+                            "private_key",
+                            "client_email",
+                            "client_id",
+                            "auth_uri",
+                            "token_uri",
+                            "auth_provider_x509_cert_url",
+                            "client_x509_cert_url"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "type_name": "azure.blob",
+            "versions": [
+                {
+                    "type_version": 1,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "storage_account_name": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 24
+                            },
+                            "storage_account_key": {
+                                "type": "string",
+                                "minLength": 1
+                            }
+                        },
+                        "required": [
+                            "storage_account_name",
+                            "storage_account_key"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "type_name": "slack",
+            "versions": [
+                {
+                    "type_version": 1,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "token": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "token"
+                        ]
+                    }
+                }
+            ]
+        }
+    ]
+
+    # Success
+    requests_mock.get(credential_type_client.url_template.render(), json=data)
+    assert credential_type_client.get_schema_by_type(CredType.DOCKER) == data[0]['versions'][-1]['schema']
+    assert credential_type_client.get_schema_by_type(CredType.S3) == data[1]['versions'][-1]['schema']
+    assert credential_type_client.get_schema_by_type(CredType.GCS) == data[2]['versions'][-1]['schema']
+    assert credential_type_client.get_schema_by_type(CredType.BLOB) == data[3]['versions'][-1]['schema']
+    assert credential_type_client.get_schema_by_type(CredType.SLACK) == data[4]['versions'][-1]['schema']
+    assert credential_type_client.get_schema_by_type(CredType.WANDB) is None
+
+    # Failed due to HTTP error
+    requests_mock.get(credential_type_client.url_template.render(), status_code=404)
+    with pytest.raises(typer.Exit):
+        credential_type_client.get_schema_by_type(CredType.DOCKER)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_checkpoint_client_get_checkpoint(requests_mock: requests_mock.Mocker,
+                                          checkpoint_client: CheckpointClientService):
+    assert isinstance(checkpoint_client, CheckpointClientService)
+
+    url_template = deepcopy(checkpoint_client.url_template)
+    url_template.attach_pattern('$checkpoint_id/')
+
+    # Success
+    requests_mock.get(url_template.render(checkpoint_id=0), json={'id': 0})
+    assert checkpoint_client.get_checkpoint(0) == {'id': 0}
+
+    # Failed due to HTTP error
+    requests_mock.get(url_template.render(checkpoint_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        assert checkpoint_client.get_checkpoint(0)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_checkpoint_client_update_checkpoint(requests_mock: requests_mock.Mocker,
+                                             checkpoint_client: CheckpointClientService):
+    assert isinstance(checkpoint_client, CheckpointClientService)
+
+    url_template = deepcopy(checkpoint_client.url_template)
+    url_template.attach_pattern('$checkpoint_id/')
+
+    data = {
+        "vendor": "azure.blob",
+        "region": "eastus",
+        "credential_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "iteration": 1000,
+        "storage_name": "my-container",
+        "files": [
+            {
+                "name": "new_ckpt_1000.pth",
+                "path": "ckpt/new_ckpt_1000.pth",
+                "mtime": "2022-04-20T06:27:37.907Z",
+                "size": 2048
+            }
+        ]
+    }
+
+    # Success
+    requests_mock.patch(url_template.render(checkpoint_id=0), json=data)
+    assert checkpoint_client.update_checkpoint(
+        0,
+        vendor=StorageType.BLOB,
+        region='eastus',
+        credential_id='3fa85f64-5717-4562-b3fc-2c963f66afa6',
+        iteration=1000,
+        storage_name='my-container',
+        files=[
+            {
+                "name": "new_ckpt_1000.pth",
+                "path": "ckpt/new_ckpt_1000.pth",
+                "mtime": "2022-04-20T06:27:37.907Z",
+                "size": 2048
+            }
+        ],
+        dist_config={'k': 'v'},
+        data_config={'k': 'v'},
+        job_setting_config={'k': 'v'},
+    ) == data
+
+    # Failed due to HTTP error
+    requests_mock.patch(url_template.render(checkpoint_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        checkpoint_client.update_checkpoint(
+            0,
+            vendor=StorageType.BLOB,
+            region='eastus',
+            credential_id='3fa85f64-5717-4562-b3fc-2c963f66afa6',
+            iteration=1000,
+            storage_name='my-container',
+            files=[
+                {
+                    "name": "new_ckpt_1000.pth",
+                    "path": "ckpt/new_ckpt_1000.pth",
+                    "mtime": "2022-04-20T06:27:37.907Z",
+                    "size": 2048
+                }
+            ],
+            dist_config={'k': 'v'},
+            data_config={'k': 'v'},
+            job_setting_config={'k': 'v'},
+        )
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_checkpoint_client_delete_checkpoint(requests_mock: requests_mock.Mocker,
+                                             checkpoint_client: CheckpointClientService):
+    assert isinstance(checkpoint_client, CheckpointClientService)
+
+    url_template = deepcopy(checkpoint_client.url_template)
+    url_template.attach_pattern('$checkpoint_id/')
+
+    # Success
+    requests_mock.delete(url_template.render(checkpoint_id=0), status_code=204)
+    try:
+        checkpoint_client.delete_checkpoint(0)
+    except typer.Exit:
+        raise pytest.fail("Checkpoint delete test failed.")
+
+    # Failed due to HTTP error
+    requests_mock.delete(url_template.render(checkpoint_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        assert checkpoint_client.delete_checkpoint(0)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_checkpoint_client_get_checkpoint_download_urls(requests_mock: requests_mock.Mocker,
+                                                        checkpoint_client: CheckpointClientService):
+    assert isinstance(checkpoint_client, CheckpointClientService)
+
+    url_template = deepcopy(checkpoint_client.url_template)
+    url_template.attach_pattern('$checkpoint_id/download/')
+
+    data = {
+        "files": [
+            {
+                "name": "new_ckpt_1000.pth",
+                "path": "ckpt/new_ckpt_1000.pth",
+                "mtime": "2022-04-20T06:27:37.907Z",
+                "size": 2048,
+                "download_url": "https://s3.download.url.com"
+            }
+        ]
+    }
+
+    # Success
+    requests_mock.get(
+        url_template.render(checkpoint_id=0),
+        json=data
+    )
+    assert checkpoint_client.get_checkpoint_download_urls(0) == data['files']
+
+    # Failed due to HTTP error
+    requests_mock.get(url_template.render(checkpoint_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        assert checkpoint_client.get_checkpoint_download_urls(0)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
+                                           group_checkpoint_client: GroupCheckpointClinetService):
+    assert isinstance(group_checkpoint_client, GroupCheckpointClinetService)
+
+    data = {
+        "results": [
+            {
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "category": "user_provided",
+                "vendor": "aws",
+                "region": "us-east-1",
+                "credential_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "storage_name": "my-ckpt",
+                "iteration": 1000,
+                "files": [
+                    {
+                        "name": "new_ckpt_1000.pth",
+                        "path": "ckpt/new_ckpt_1000.pth",
+                        "mtime": "2022-04-20T06:27:37.907Z",
+                        "size": 2048,
+                    }
+                ]
+            },
+            {
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "category": "job_generated",
+                "vendor": "aws",
+                "region": "us-west-2",
+                "credential_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "storage_name": "periflow-ckpt-1-1",
+                "iteration": 1000,
+                "files": [
+                    {
+                        "name": "new_ckpt_2000.pth",
+                        "path": "ckpt/new_ckpt_2000.pth",
+                        "mtime": "2022-04-20T06:27:37.907Z",
+                        "size": 2048,
+                    }
+                ]
+            }
+        ]
+    }
+
+    # Success
+    requests_mock.get(group_checkpoint_client.url_template.render(group_id=0), json=data)
+    group_checkpoint_client.list_checkpoints(CheckpointCategory.USER_PROVIDED) == data['results'][1]
+    group_checkpoint_client.list_checkpoints(CheckpointCategory.JOB_GENERATED) == data['results'][1]
+
+    # Failed due to HTTP error
+    requests_mock.get(group_checkpoint_client.url_template.render(group_id=0), status_code=400)
+    with pytest.raises(typer.Exit):
+        group_checkpoint_client.list_checkpoints(CheckpointCategory.USER_PROVIDED)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
+                                           group_checkpoint_client: GroupCheckpointClinetService):
+    assert isinstance(group_checkpoint_client, GroupCheckpointClinetService)
+
+    data = {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "category": "user_provided",
+        "vendor": "aws",
+        "region": "us-east-1",
+        "credential_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "storage_name": "my-ckpt",
+        "iteration": 1000,
+        "files": [
+            {
+                "name": "new_ckpt_1000.pth",
+                "path": "ckpt/new_ckpt_1000.pth",
+                "mtime": "2022-04-20T06:27:37.907Z",
+                "size": 2048,
+            }
+        ]
+    }
+
+    # Success
+    requests_mock.post(group_checkpoint_client.url_template.render(group_id=0), json=data)
+    assert group_checkpoint_client.create_checkpoint(
+        vendor=StorageType.S3,
+        region='us-east-1',
+        credential_id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        iteration=1000,
+        storage_name="my-ckpt",
+        files=[
+            {
+                "name": "new_ckpt_1000.pth",
+                "path": "ckpt/new_ckpt_1000.pth",
+                "mtime": "2022-04-20T06:27:37.907Z",
+                "size": 2048,
+            }
+        ],
+        dist_config={"k": "v"},
+        data_config={"k": "v"},
+        job_setting_config={"k": "v"}
+    ) == data
+
+    # Failed due to invalid region
+    with pytest.raises(typer.Exit):
+        group_checkpoint_client.create_checkpoint(
+            vendor=StorageType.S3,
+            region='busan',
+            credential_id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            iteration=1000,
+            storage_name="my-ckpt",
+            files=[
+                {
+                    "name": "new_ckpt_1000.pth",
+                    "path": "ckpt/new_ckpt_1000.pth",
+                    "mtime": "2022-04-20T06:27:37.907Z",
+                    "size": 2048,
+                }
+            ],
+            dist_config={"k": "v"},
+            data_config={"k": "v"},
+            job_setting_config={"k": "v"}
+        )
+
+    # Failed due to HTTP error
+    requests_mock.post(group_checkpoint_client.url_template.render(group_id=0), status_code=400)
+    with pytest.raises(typer.Exit):
+        group_checkpoint_client.create_checkpoint(
+            vendor=StorageType.S3,
+            region='us-east-1',
+            credential_id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            iteration=1000,
+            storage_name="my-ckpt",
+            files=[
+                {
+                    "name": "new_ckpt_1000.pth",
+                    "path": "ckpt/new_ckpt_1000.pth",
+                    "mtime": "2022-04-20T06:27:37.907Z",
+                    "size": 2048,
+                }
+            ],
+            dist_config={"k": "v"},
+            data_config={"k": "v"},
+            job_setting_config={"k": "v"}
         )

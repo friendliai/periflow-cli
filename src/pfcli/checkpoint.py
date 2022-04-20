@@ -89,6 +89,12 @@ def checkpoint_create(
         "-v",
         help="The cloud storage vendor type where the checkpoint is uploaded."
     ),
+    region: str = typer.Option(
+        ...,
+        "--region",
+        "-r",
+        help="The cloud storage region where the checkpoint is uploaded."
+    ),
     storage_name: str = typer.Option(
         ...,
         "--storage-name",
@@ -163,11 +169,14 @@ def checkpoint_create(
     checkpoint_client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
     info = checkpoint_client.create_checkpoint(
         vendor=cloud,
+        region=region,
+        credential_id=credential_id,
         iteration=iteration,
         storage_name=storage_name,
+        files=files,
         dist_config=dist_config,
-        credential_id=credential_id,
-        files=files
+        data_config={},
+        job_setting_config={}   # TODO: make configurable
     )
 
     typer.echo(ckpt_formatter.render([info], in_list=True))
@@ -224,7 +233,7 @@ def checkpoint_download(
     save_directory = save_directory or os.getcwd()
 
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
-    files = client.get_checkpoint_files(checkpoint_id)
+    files = client.get_checkpoint_download_urls(checkpoint_id)
 
     for i, file in enumerate(files):
         typer.secho(f"Downloading files {i + 1}/{len(files)}...")

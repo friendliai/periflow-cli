@@ -45,6 +45,7 @@ from pfcli.utils import (
     zip_dir,
 )
 from pfcli.service import (
+    CheckpointCategory,
     CloudType,
     StorageType,
     CredType,
@@ -777,22 +778,35 @@ class CheckpointClientService(ClientService):
     def update_checkpoint(self,
                           checkpoint_id: T,
                           *,
-                          vendor: Optional[str] = None,
+                          vendor: Optional[StorageType] = None,
+                          region: Optional[str] = None,
+                          credential_id: Optional[str] = None,
                           iteration: Optional[int] = None,
                           storage_name: Optional[str] = None,
+                          files: Optional[List[dict]] = None,
                           dist_config: Optional[dict] = None,
-                          credential_id: Optional[str] = None,
-                          files: Optional[List[dict]] = None) -> dict:
-        prev_info = self.get_checkpoint(checkpoint_id)
-        request_data = {
-            "vendor": vendor or prev_info['vendor'],
-            "iteration": iteration or prev_info['iteration'],
-            "storage_name": storage_name or prev_info['storage_name'],
-            "dist_json": dist_config or prev_info['dist_json'],
-            "credential_id": credential_id or prev_info['credential_id'],
-            "job_setting_json": None,
-            "files": files or prev_info['files']
-        }
+                          data_config: Optional[dict] = None,
+                          job_setting_config: Optional[dict] = None) -> dict:
+        request_data = {}
+        if vendor is not None:
+            request_data['vendor'] = vendor
+        if region is not None:
+            request_data['region'] = region
+        if credential_id is not None:
+            request_data['credential_id'] = credential_id
+        if iteration is not None:
+            request_data['iteration'] = iteration
+        if storage_name is not None:
+            request_data['storage_name'] = storage_name
+        if files is not None:
+            request_data['files'] = files
+        if dist_config is not None:
+            request_data['dist_json'] = dist_config
+        if data_config is not None:
+            request_data['data_json'] = data_config
+        if job_setting_config is not None:
+            request_data['job_setting_json'] = job_setting_config
+
         try:
             response = self.partial_update(checkpoint_id, json=request_data)
             response.raise_for_status()
@@ -816,7 +830,7 @@ class CheckpointClientService(ClientService):
             headers=get_auth_header(),
         )
 
-    def get_checkpoint_files(self, checkpoint_id: T) -> List[dict]:
+    def get_checkpoint_download_urls(self, checkpoint_id: T) -> List[dict]:
         try:
             response = self.download(checkpoint_id)
             response.raise_for_status()
@@ -830,7 +844,7 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
         self.initialize_group()
         super().__init__(template, group_id=self.group_id, **kwargs)
 
-    def list_checkpoints(self, category: Optional[str]) -> dict:
+    def list_checkpoints(self, category: Optional[CheckpointCategory]) -> dict:
         request_data = {}
         if category is not None:
             request_data['category'] = category
@@ -843,20 +857,27 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
         return response.json()['results']
 
     def create_checkpoint(self,
-                          vendor: str,
+                          vendor: StorageType,
+                          region: str,
+                          credential_id: str,
                           iteration: int,
                           storage_name: str,
+                          files: List[dict],
                           dist_config: dict,
-                          credential_id: str,
-                          files: List[dict]) -> dict:
+                          data_config: dict,
+                          job_setting_config: dict) -> dict:
+        validate_storage_region(vendor, region)
+
         request_data = {
             "vendor": vendor,
+            "region": region,
+            "credential_id": credential_id,
             "iteration": iteration,
             "storage_name": storage_name,
+            "files": files,
             "dist_json": dist_config,
-            "credential_id": credential_id,
-            "job_setting_json": None,
-            "files": files
+            "data_config": data_config,
+            "job_setting_json": job_setting_config,
         }
         try:
             response = self.create(json=request_data)
