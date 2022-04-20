@@ -2,12 +2,6 @@
 branch = true
 omit =
     */tests/*
-    */admin/*
-    */settings/*
-    manage.py
-    */wsgi.py
-    */urls.py
-    */migrations/*
 
 [report]
 show_missing = true
