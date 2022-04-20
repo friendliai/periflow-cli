@@ -54,7 +54,7 @@ def checkpoint_list(
         help="Category of checkpoints. One of 'user_provided' and 'job_generated'."
     )
 ):
-    """List all checkpoints that belong to the user's group
+    """List all checkpoints that belong to the user's organization.
     """
     client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
     checkpoints = client.list_checkpoints(category)
@@ -227,6 +227,8 @@ def checkpoint_download(
         help="Path to directory to save checkpoint files."
     )
 ):
+    """Download checkpoint files to local storage.
+    """
     if save_directory is not None and not os.path.isdir(save_directory):
         secho_error_and_exit(f"Directory {save_directory} is not found.")
 

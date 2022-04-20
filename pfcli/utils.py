@@ -193,7 +193,7 @@ def download_range(url: str, start: int, end: int, output: str, ctx: tqdm) -> No
 
 def download_file_simple(url: str, out: str, content_length: int) -> None:
     response = requests.get(url, stream=True)
-    with tqdm.wrapattr(open(os.devnull, "wb"), "write", miniters=1, desc=out, total=content_length) as fout:
+    with tqdm.wrapattr(open(out, "wb"), "write", miniters=1, total=content_length) as fout:
         for chunk in response.iter_content(chunk_size=4096):
             fout.write(chunk)
 
@@ -201,26 +201,40 @@ def download_file_simple(url: str, out: str, content_length: int) -> None:
 def download_file_parallel(url: str, out: str, content_length: int, chunk_size: int = 1024 * 1024 * 4) -> None:
     chunks = range(0, content_length, chunk_size)
 
-    with tqdm(total=content_length, unit='B', unit_scale=True, unit_divisor=1024) as t:
-        with ThreadPoolExecutor() as executor:
-            futs = [
-                executor.submit(
-                    download_range, url, start, start + chunk_size - 1, f'{out}.part{i}', t
-                ) for i, start in enumerate(chunks)
-            ]
-            wait(futs, return_when=FIRST_EXCEPTION)
+    temp_out_prefix = os.path.join(os.path.dirname(out), f'.{os.path.basename(out)}')
 
-    with open(out, 'wb') as f:
+    try:
+        with tqdm(total=content_length, unit='B', unit_scale=True, unit_divisor=1024) as t:
+            with ThreadPoolExecutor() as executor:
+                futs = [
+                    executor.submit(
+                        download_range, url, start, start + chunk_size - 1, f'{temp_out_prefix}.part{i}', t
+                    ) for i, start in enumerate(chunks)
+                ]
+                wait(futs, return_when=FIRST_EXCEPTION)
+
+        # Merge partitioned files
+        with open(out, 'wb') as f:
+            for i in range(len(chunks)):
+                chunk_path = f'{temp_out_prefix}.part{i}'
+                with open(chunk_path, 'rb') as chunk_f:
+                    f.write(chunk_f.read())
+
+                os.remove(chunk_path)
+    finally:
+        # Clean up zombie temporary partitioned files
         for i in range(len(chunks)):
-            chunk_path = f'{out}.part{i}'
-            with open(chunk_path, 'rb') as chunk_f:
-                f.write(chunk_f.read())
-
-            os.remove(chunk_path)
+            chunk_path = f'{temp_out_prefix}.part{i}'
+            if os.path.isfile(chunk_path):
+                os.remove(chunk_path)
 
 
 def download_file(url: str, out: str) -> None:
     file_size = get_content_size(url)
+
+    # Create directory if not exists
+    dirpath = os.path.dirname(out)
+    os.makedirs(dirpath, exist_ok=True)
 
     if file_size >= 16 * 1024 * 1024:
         download_file_parallel(url, out, file_size)
