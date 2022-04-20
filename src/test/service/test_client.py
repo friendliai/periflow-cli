@@ -1373,3 +1373,69 @@ def test_credential_client_delete_credential(requests_mock: requests_mock.Mocker
     requests_mock.delete(url_template.render(credential_id=0), status_code=404)
     with pytest.raises(typer.Exit):
         credential_client.delete_credential(0)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_credential_client_service(requests_mock: requests_mock.Mocker,
+                                         group_credential_client: GroupCredentialClientService):
+    assert isinstance(group_credential_client, GroupCredentialClientService)
+
+    # Sucess
+    requests_mock.get(
+        group_credential_client.url_template.render(group_id=0),
+        json=[
+            {
+                'id': 0,
+                'name': 'our-docker-secret',
+                'type': 'docker'
+            }
+        ]
+    )
+    assert group_credential_client.list_credentials(CredType.DOCKER) == [
+        {
+            'id': 0,
+            'name': 'our-docker-secret',
+            'type': 'docker'
+        }
+    ]
+
+    # Failed due to HTTP error
+    requests_mock.get(group_credential_client.url_template.render(group_id=0), status_code=400)
+    with pytest.raises(typer.Exit):
+        group_credential_client.list_credentials(CredType.SLACK)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_credential_client_service(requests_mock: requests_mock.Mocker,
+                                         group_credential_client: GroupCredentialClientService):
+    assert isinstance(group_credential_client, GroupCredentialClientService)
+
+    # Sucess
+    requests_mock.post(
+        group_credential_client.url_template.render(group_id=0),
+        json={
+            'id': 0,
+            'name': 'our-docker-secret',
+            'type': 'docker'
+        }
+    )
+    assert group_credential_client.create_credential(
+        cred_type=CredType.DOCKER,
+        name='our-docker-secret',
+        type_version=1,
+        value={'k': 'v'}
+    ) == {
+        'id': 0,
+        'name': 'our-docker-secret',
+        'type': 'docker'
+    }
+
+    # Failed due to HTTP error
+    requests_mock.post(group_credential_client.url_template.render(group_id=0), status_code=400)
+    with pytest.raises(typer.Exit):
+        group_credential_client.create_credential(
+            cred_type=CredType.DOCKER,
+            name='our-docker-secret',
+            type_version=1,
+            value={'k': 'v'}
+        )
