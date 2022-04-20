@@ -341,7 +341,3 @@ def delete(
     client.delete_credential(cred_id)
 
     typer.secho(f"Credential ({cred_id}) is deleted successfully!", fg=typer.colors.BLUE)
-
-
-if __name__ == '__main__':
-    app()

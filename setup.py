@@ -57,15 +57,14 @@ setup(
     license="Apache License 2.0",
     url="https://github.com/friendliai/periflow-cli",
     description="PeriFlow Cli",
-    packages=find_packages(where='src'),
-    package_dir={'':'src'},
+    packages=find_packages(include=['pfcli', 'pfcli.*']),
     classifiers=[
         "Programming Language :: Python :: 3",
         "Natural Language :: English",
     ],
     entry_points={
         "console_scripts": [
-            "pf=pfcli.__main__:main",
+            "pf = pfcli:app",
         ]
     },
     include_package_data=True,

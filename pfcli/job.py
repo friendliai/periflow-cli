@@ -577,7 +577,3 @@ def log_view(
             )
         except KeyboardInterrupt:
             secho_error_and_exit(f"Keyboard Interrupt...", color=typer.colors.MAGENTA)
-
-
-if __name__ == '__main__':
-    app()

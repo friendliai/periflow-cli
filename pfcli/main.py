@@ -21,7 +21,7 @@ from pfcli.service.auth import TokenType, update_token
 from pfcli.service.client import UserGroupClientService, build_client
 from pfcli.utils import get_uri, secho_error_and_exit
 
-app = typer.Typer()
+app = typer.Typer(help="Welcome to PeriFlow 🤗")
 app.add_typer(credential.app, name="credential", help="Manage credentials")
 app.add_typer(job.app, name="job", help="Manage jobs")
 app.add_typer(checkpoint.app, name="checkpoint", help="Manage checkpoints")
@@ -30,7 +30,7 @@ app.add_typer(vm.app, name="vm", help="Manage VMs")
 app.add_typer(experiment.app, name="experiment", help="Manage experiments")
 
 
-@app.command()
+@app.command(help="Show who am I")
 def self():
     client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
     info = client.get_user_info()
@@ -38,15 +38,15 @@ def self():
     typer.echo(tabulate.tabulate(results, headers=["id", "username", "email"]))
 
 
-@app.command()
-def group():
+@app.command(name="org", help="Show what organizations I belong to")
+def organization():
     client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
     info =  client.get_group_info()
     results = [[g["name"] for g in info]]
     typer.echo(tabulate.tabulate(results, headers=["name"]))
 
 
-@app.command()
+@app.command(help="Sign in PeriFlow")
 def login(
     username: str = typer.Option(..., prompt="Enter Username"),
     password: str = typer.Option(..., prompt="Enter Password", hide_input=True)
@@ -67,11 +67,3 @@ def login(
         typer.echo("\n\n")
     except HTTPError:
         secho_error_and_exit("Login failed... Please check your username and password.")
-
-
-def main():
-    app()
-
-
-if __name__ == "__main__":
-    main()
