@@ -238,7 +238,3 @@ def checkpoint_download(
     for i, file in enumerate(files):
         typer.secho(f"Downloading files {i + 1}/{len(files)}...")
         download_file(file['download_url'], out=os.path.join(save_directory, file['name']))
-
-
-if __name__ == '__main__':
-    app()

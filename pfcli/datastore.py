@@ -329,7 +329,3 @@ def delete(
     client.delete_datastore(datastore_id)
 
     typer.secho(f"Datastore ({name}) deleted successfully!", fg=typer.colors.BLUE)
-
-
-if __name__ == '__main__':
-    app()

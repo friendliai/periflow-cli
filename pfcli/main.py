@@ -67,11 +67,3 @@ def login(
         typer.echo("\n\n")
     except HTTPError:
         secho_error_and_exit("Login failed... Please check your username and password.")
-
-
-def main():
-    app()
-
-
-if __name__ == "__main__":
-    main()
