@@ -45,6 +45,8 @@ from pfcli.utils import (
     zip_dir,
 )
 from pfcli.service import (
+    CheckpointCategory,
+    CloudType,
     StorageType,
     CredType,
     ServiceType,
@@ -155,8 +157,7 @@ class UserGroupClientService(ClientService):
             response.raise_for_status()
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to get your group info. {decode_http_err(exc)}")
-        if response.status_code != 200:
-            secho_error_and_exit(f"Cannot acquire group info.")
+
         groups = response.json()["results"]
         if len(groups) == 0:
             secho_error_and_exit("You are not assigned to any group... Please contact admin")
@@ -183,6 +184,73 @@ class UserGroupClientService(ClientService):
         return response.json()['results']
 
 
+class ExperimentClientService(ClientService):
+    @auto_token_refresh
+    def experiment_jobs(self, experiment_id: T) -> Response:
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('$experiment_id/job/')
+        return requests.get(
+            url_template.render(experiment_id=experiment_id, **self.url_kwargs),
+            headers=get_auth_header()
+        )
+
+    def list_jobs_in_experiment(self, experiment_id: T) -> List[dict]:
+        try:
+            response = self.experiment_jobs(experiment_id)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to fetch jobs in the experiment. {decode_http_err(exc)}")
+        return response.json()['results']
+
+    def delete_experiment(self, experiment_id: T) -> None:
+        try:
+            response = self.delete(experiment_id)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to delete experiment. {exc}")
+
+    def update_experiment_name(self, experiment_id: T, name: str) -> dict:
+        try:
+            response = self.partial_update(experiment_id, json={'name': name})
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to update the name of experiment to {name}. {decode_http_err(exc)}")
+        return response.json()
+
+
+class GroupExperimentClientService(ClientService, GroupRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
+        super().__init__(template, group_id=self.group_id, **kwargs)
+
+    def list_experiments(self):
+        try:
+            response = self.list()
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list experiments. {decode_http_err(exc)}")
+        return response.json()
+
+    def get_id_by_name(self, name: str) -> Optional[T]:
+        try:
+            response = self.list()
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get experiment info. {decode_http_err(exc)}")
+        for experiment in response.json():
+            if experiment['name'] == name:
+                return experiment['id']
+        return None
+
+    def create_experiment(self, name: str) -> dict:
+        try:
+            response = self.create(data={'name': name})
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to create new experiment. {decode_http_err(exc)}")
+        return response.json()
+
+
 class JobClientService(ClientService):
     def list_jobs(self) -> dict:
         try:
@@ -200,11 +268,11 @@ class JobClientService(ClientService):
             secho_error_and_exit(f"Job ({job_id}) is not found. You may enter wrong ID. {decode_http_err(exc)}")
         return response.json()
 
-    def run_job(self, config: dict, training_dir: Optional[Path]) -> dict:
+    def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
         try:
-            if training_dir is not None:
-                workspace_zip = Path(training_dir.parent / (training_dir.name + ".zip"))
-                with zip_dir(training_dir, workspace_zip) as zip_file:
+            if workspace_dir is not None:
+                workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
+                with zip_dir(workspace_dir, workspace_zip) as zip_file:
                     files = {'workspace_zip': ('workspace.zip', zip_file)}
                     response = self.create(data={"data": json.dumps(config)}, files=files)
             else:
@@ -262,7 +330,7 @@ class JobClientService(ClientService):
                       head: bool = False,
                       log_types: Optional[List[str]] = None,
                       machines: Optional[List[int]] = None,
-                      content: Optional[str] = None) -> Response:
+                      content: Optional[str] = None) -> List[dict]:
         request_data = {'limit': num_records}
         if head:
             request_data['ascending'] = 'true'
@@ -307,8 +375,8 @@ class JobWebSocketClientService(ClientService):
         }
         await websocket.send(json.dumps(subscribe_json))
         response = await websocket.recv()
-        decoded_response = json.loads(response)
         try:
+            decoded_response = json.loads(response)
             assert decoded_response.get("response_type") == "subscribe" and \
                 set(sources) == set(decoded_response["sources"])
         except json.JSONDecodeError:
@@ -320,7 +388,7 @@ class JobWebSocketClientService(ClientService):
     async def open_connection(self,
                               job_id: int,
                               log_types: Optional[List[str]],
-                              machines: Optional[List[str]]):
+                              machines: Optional[List[int]]):
         if log_types is None:
             sources = [f"process.{x.value}" for x in LogType]
         else:
@@ -344,7 +412,7 @@ class JobWebSocketClientService(ClientService):
         try:
             response = await self._websocket.recv()
         except ConnectionClosed as exc:
-            raise StopAsyncIteration from exc
+            raise StopAsyncIteration from exc   # pragma: no cover
 
         try:
             return json.loads(response)
@@ -359,7 +427,7 @@ class JobCheckpointClientService(ClientService):
             response.raise_for_status()
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to list checkpoints. {decode_http_err(exc)}")
-        return json.loads(response.content)
+        return response.json()
 
 
 class JobArtifactClientService(ClientService):
@@ -369,7 +437,7 @@ class JobArtifactClientService(ClientService):
             response.raise_for_status()
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to list artifacts. {decode_http_err(exc)}")
-        return json.loads(response.content)
+        return response.json()
 
 
 class GroupJobClientService(ClientService, GroupRequestMixin):
@@ -387,25 +455,6 @@ class GroupJobClientService(ClientService, GroupRequestMixin):
 
 
 class JobTemplateClientService(ClientService):
-    def list_job_templates(self) -> List[Tuple[str, str]]:
-        try:
-            response = self.list()
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to list job templates. {decode_http_err(exc)}")
-        template_list = []
-        for template in response.json():
-            result = {
-                "job_setting": {
-                    "type": "predefined",
-                    "model_code": template["model_code"],
-                    "engine_code": template["engine_code"],
-                    "model_config": template["data_example"]
-                }
-            }
-            template_list.append((template["name"], yaml.dump(result, sort_keys=False, indent=2)))
-        return template_list
-
     def list_job_template_names(self) -> List[str]:
         try:
             response = self.list()
@@ -424,73 +473,6 @@ class JobTemplateClientService(ClientService):
             if template['name'] == name:
                 return template
         return None
-
-
-class ExperimentClientService(ClientService):
-    @auto_token_refresh
-    def experiment_jobs(self, experiment_id: T) -> Response:
-        url_template = copy.deepcopy(self.url_template)
-        url_template.attach_pattern('$experiment_id/job/')
-        return requests.get(
-            url_template.render(experiment_id=experiment_id, **self.url_kwargs),
-            headers=get_auth_header()
-        )
-
-    def get_jobs_in_experiment(self, experiment_id: T) -> List[dict]:
-        try:
-            response = self.experiment_jobs(experiment_id)
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to fetch jobs in the experiment. {decode_http_err(exc)}")
-        return response.json()['results']
-
-    def delete_experiment(self, experiment_id: T) -> None:
-        try:
-            response = self.delete(experiment_id)
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to delete experiment. {exc}")
-
-    def update_experiment_name(self, experiment_id: T, name: str) -> dict:
-        try:
-            response = self.partial_update(experiment_id, json={'name': name})
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to update the name of experiment to {name}. {decode_http_err(exc)}")
-        return response.json()
-
-
-class GroupExperimentClientService(ClientService, GroupRequestMixin):
-    def __init__(self, template: Template, **kwargs):
-        self.initialize_group()
-        super().__init__(template, group_id=self.group_id, **kwargs)
-
-    def list_experiments(self):
-        try:
-            response = self.list()
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to list experiments. {decode_http_err(exc)}")
-        return response.json()
-
-    def get_id_by_name(self, name: str) -> Optional[T]:
-        try:
-            response = self.list()
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to get experiment info. {decode_http_err(exc)}")
-        for experiment in response.json():
-            if experiment['name'] == name:
-                return experiment['id']
-        return None
-
-    def create_experiment(self, name: str) -> dict:
-        try:
-            response = self.create(data={'name': name})
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to create new experiment. {decode_http_err(exc)}")
-        return response.json()
 
 
 class DataClientService(ClientService):
@@ -545,7 +527,7 @@ class DataClientService(ClientService):
             secho_error_and_exit(f"Cannot update datastore. {decode_http_err(exc)}")
         return response.json()
 
-    def delete_datastore(self, datastore_id: T) -> dict:
+    def delete_datastore(self, datastore_id: T) -> None:
         try:
             response = self.delete(datastore_id)
             response.raise_for_status()
@@ -604,6 +586,8 @@ class GroupDataClientService(ClientService, GroupRequestMixin):
                          metadata: dict,
                          files: List[dict],
                          active: bool) -> dict:
+        validate_storage_region(vendor, region)
+
         vendor_name = storage_type_map[vendor]
         request_data = {
             "name": name,
@@ -646,7 +630,7 @@ class GroupVMQuotaClientService(ClientService, GroupRequestMixin):
         super().__init__(template, group_id=self.group_id, **kwargs)
 
     def list_vm_quotas(self,
-                       vendor: Optional[StorageType] = None,
+                       vendor: Optional[CloudType] = None,
                        region: Optional[str] = None,
                        device_type: Optional[str] = None) -> Optional[List[dict]]:
         try:
@@ -660,19 +644,11 @@ class GroupVMQuotaClientService(ClientService, GroupRequestMixin):
         if region is not None:
             vm_dict_list = list(filter(lambda info: info['vm_instance_type']['region'] == region, vm_dict_list))
         if device_type is not None:
-            vm_dict_list = list(filter(lambda info: info['vm_instance_type']['devcie_type'] == device_type, vm_dict_list))
+            vm_dict_list = list(filter(lambda info: info['vm_instance_type']['device_type'] == device_type, vm_dict_list))
         return vm_dict_list
 
 
 class CredentialClientService(ClientService):
-    def get_credential(self, credential_id: T) -> dict:
-        try:
-            response = self.retrieve(credential_id)
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Credential ({credential_id}) is not found. {decode_http_err(exc)}")
-        return response.json()
-
     def list_credentials(self, cred_type: CredType) -> List[dict]:
         type_name = cred_type_map[cred_type]
         try:
@@ -680,6 +656,14 @@ class CredentialClientService(ClientService):
             response.raise_for_status()
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to credential for {cred_type}. {decode_http_err(exc)}")
+        return response.json()
+
+    def get_credential(self, credential_id: T) -> dict:
+        try:
+            response = self.retrieve(credential_id)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Credential ({credential_id}) is not found. {decode_http_err(exc)}")
         return response.json()
 
     def create_credential(self,
@@ -704,14 +688,10 @@ class CredentialClientService(ClientService):
     def update_credential(self,
                           credential_id: T,
                           *,
-                          cred_type: Optional[CredType] = None,
                           name: Optional[str] = None,
                           type_version: Optional[str] = None,
                           value: Optional[dict]= None) -> dict:
         request_data = {}
-        if cred_type is not None:
-            type_name = cred_type_map[cred_type]
-            request_data['type'] = type_name
         if name is not None:
             request_data['name'] = name
         if type_version is not None:
@@ -793,22 +773,35 @@ class CheckpointClientService(ClientService):
     def update_checkpoint(self,
                           checkpoint_id: T,
                           *,
-                          vendor: Optional[str] = None,
+                          vendor: Optional[StorageType] = None,
+                          region: Optional[str] = None,
+                          credential_id: Optional[str] = None,
                           iteration: Optional[int] = None,
                           storage_name: Optional[str] = None,
+                          files: Optional[List[dict]] = None,
                           dist_config: Optional[dict] = None,
-                          credential_id: Optional[str] = None,
-                          files: Optional[List[dict]] = None) -> dict:
-        prev_info = self.get_checkpoint(checkpoint_id)
-        request_data = {
-            "vendor": vendor or prev_info['vendor'],
-            "iteration": iteration or prev_info['iteration'],
-            "storage_name": storage_name or prev_info['storage_name'],
-            "dist_json": dist_config or prev_info['dist_json'],
-            "credential_id": credential_id or prev_info['credential_id'],
-            "job_setting_json": None,
-            "files": files or prev_info['files']
-        }
+                          data_config: Optional[dict] = None,
+                          job_setting_config: Optional[dict] = None) -> dict:
+        request_data = {}
+        if vendor is not None:
+            request_data['vendor'] = vendor
+        if region is not None:
+            request_data['region'] = region
+        if credential_id is not None:
+            request_data['credential_id'] = credential_id
+        if iteration is not None:
+            request_data['iteration'] = iteration
+        if storage_name is not None:
+            request_data['storage_name'] = storage_name
+        if files is not None:
+            request_data['files'] = files
+        if dist_config is not None:
+            request_data['dist_json'] = dist_config
+        if data_config is not None:
+            request_data['data_json'] = data_config
+        if job_setting_config is not None:
+            request_data['job_setting_json'] = job_setting_config
+
         try:
             response = self.partial_update(checkpoint_id, json=request_data)
             response.raise_for_status()
@@ -832,7 +825,7 @@ class CheckpointClientService(ClientService):
             headers=get_auth_header(),
         )
 
-    def get_checkpoint_files(self, checkpoint_id: T) -> List[dict]:
+    def get_checkpoint_download_urls(self, checkpoint_id: T) -> List[dict]:
         try:
             response = self.download(checkpoint_id)
             response.raise_for_status()
@@ -846,7 +839,7 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
         self.initialize_group()
         super().__init__(template, group_id=self.group_id, **kwargs)
 
-    def list_checkpoints(self, category: Optional[str]) -> dict:
+    def list_checkpoints(self, category: Optional[CheckpointCategory]) -> dict:
         request_data = {}
         if category is not None:
             request_data['category'] = category
@@ -859,20 +852,27 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
         return response.json()['results']
 
     def create_checkpoint(self,
-                          vendor: str,
+                          vendor: StorageType,
+                          region: str,
+                          credential_id: str,
                           iteration: int,
                           storage_name: str,
+                          files: List[dict],
                           dist_config: dict,
-                          credential_id: str,
-                          files: List[dict]) -> dict:
+                          data_config: dict,
+                          job_setting_config: dict) -> dict:
+        validate_storage_region(vendor, region)
+
         request_data = {
             "vendor": vendor,
+            "region": region,
+            "credential_id": credential_id,
             "iteration": iteration,
             "storage_name": storage_name,
+            "files": files,
             "dist_json": dist_config,
-            "credential_id": credential_id,
-            "job_setting_json": None,
-            "files": files
+            "data_config": data_config,
+            "job_setting_json": job_setting_config,
         }
         try:
             response = self.create(json=request_data)

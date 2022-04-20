@@ -234,10 +234,15 @@ AWS_REGION_NAMES = [
     "sa-east-1",
 ]
 
+FAI_REGION_NAMES = [
+    '',
+]
+
 storage_region_map = {
     StorageType.S3: AWS_REGION_NAMES,
     StorageType.BLOB: AZURE_REGION_NAMES,
     StorageType.GCS: GCP_REGION_NAMES,
+    StorageType.FAI: FAI_REGION_NAMES,
 }
 
 

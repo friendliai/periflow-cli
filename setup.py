@@ -17,14 +17,11 @@ import os
 from setuptools import setup, find_packages
 
 
-def read(fname):
-    """
-    Args:
-        fname:
-    """
+def read(fname: str) -> str:
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-def read_version():
+
+def read_version() -> str:
     return read("VERSION").strip()
 
 
@@ -50,6 +47,7 @@ TEST_DEPS = [
     "pytest-cov==2.11.1",
     "pytest-benchmark==3.4.1",
     "pytest-lazy-fixture==0.6.3",
+    "requests-mock>=1.9.3",
 ]
 
 setup(

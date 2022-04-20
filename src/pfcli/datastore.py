@@ -28,7 +28,6 @@ from pfcli.service.formatter import TableFormatter
 from pfcli.utils import (
     secho_error_and_exit,
     upload_files,
-    validate_storage_region,
     get_file_info,
 )
 
@@ -143,8 +142,6 @@ def create(
         help="Path to file containing the metadata describing your dataset."
     ),
 ):
-    validate_storage_region(cloud, region)
-
     credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     credential = credential_client.get_credential(credential_id)
     if credential["type"] != cred_type_map[cloud]:
