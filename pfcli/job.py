@@ -3,7 +3,6 @@
 """PeriFlow Job"""
 
 import asyncio
-import textwrap
 from pathlib import Path
 from typing import Optional, List
 from dateutil import parser
@@ -33,7 +32,6 @@ from pfcli.service.config import build_job_configurator
 from pfcli.service.formatter import TableFormatter
 from pfcli.utils import (
     get_default_editor,
-    get_remaining_terminal_columns,
     open_editor,
     secho_error_and_exit,
     datetime_to_pretty_str,
