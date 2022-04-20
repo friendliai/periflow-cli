@@ -649,14 +649,6 @@ class GroupVMQuotaClientService(ClientService, GroupRequestMixin):
 
 
 class CredentialClientService(ClientService):
-    def get_credential(self, credential_id: T) -> dict:
-        try:
-            response = self.retrieve(credential_id)
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Credential ({credential_id}) is not found. {decode_http_err(exc)}")
-        return response.json()
-
     def list_credentials(self, cred_type: CredType) -> List[dict]:
         type_name = cred_type_map[cred_type]
         try:
@@ -664,6 +656,14 @@ class CredentialClientService(ClientService):
             response.raise_for_status()
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to credential for {cred_type}. {decode_http_err(exc)}")
+        return response.json()
+
+    def get_credential(self, credential_id: T) -> dict:
+        try:
+            response = self.retrieve(credential_id)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Credential ({credential_id}) is not found. {decode_http_err(exc)}")
         return response.json()
 
     def create_credential(self,

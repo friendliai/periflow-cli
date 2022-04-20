@@ -16,6 +16,7 @@ from websockets.client import WebSocketClientProtocol
 
 from pfcli.service import (
     CloudType,
+    CredType,
     LogType,
     ServiceType,
     StorageType,
@@ -1228,3 +1229,147 @@ def test_group_vm_quota_client_list_vm_quotas(requests_mock: requests_mock.Mocke
             "quota": 8
         }
     ]
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_credential_client_list_credentials(requests_mock: requests_mock.Mocker,
+                                            credential_client: CredentialClientService):
+    assert isinstance(credential_client, CredentialClientService)
+
+    # Success
+    requests_mock.get(
+        credential_client.url_template.render(),
+        json=[
+            {
+                'id': 0,
+                'name': 'my-docker-secret',
+                'type': 'docker'
+            }
+        ]
+    )
+    assert credential_client.list_credentials(CredType.DOCKER) == [
+        {
+            'id': 0,
+            'name': 'my-docker-secret',
+            'type': 'docker'
+        }
+    ]
+
+    # Failed due to HTTP error
+    requests_mock.get(credential_client.url_template.render(credential_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        credential_client.list_credentials(CredType.BLOB)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_credential_client_get_credential(requests_mock: requests_mock.Mocker,
+                                          credential_client: CredentialClientService):
+    assert isinstance(credential_client, CredentialClientService)
+
+    # Success
+    url_template = deepcopy(credential_client.url_template)
+    url_template.attach_pattern('$credential_id/')
+    requests_mock.get(
+        url_template.render(credential_id=0),
+        json={
+            'id': 0,
+            'name': 'my-docker-secret',
+            'type': 'docker'
+        }
+    )
+    assert credential_client.get_credential(0) == {
+        'id': 0,
+        'name': 'my-docker-secret',
+        'type': 'docker'
+    }
+
+    # Failed due to HTTP error
+    requests_mock.get(url_template.render(credential_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        credential_client.get_credential(0)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_credential_client_create_credential(requests_mock: requests_mock.Mocker,
+                                             credential_client: CredentialClientService):
+    assert isinstance(credential_client, CredentialClientService)
+
+    # Success
+    requests_mock.post(
+        credential_client.url_template.render(),
+        json={
+            'id': 0,
+            'name': 'my-slack-token',
+            'type': 'slack'
+        }
+    )
+    assert credential_client.create_credential(CredType.SLACK, 'my-slack-token', 1, {'k': 'v'}) == {
+        'id': 0,
+        'name': 'my-slack-token',
+        'type': 'slack'
+    }
+
+    # Failed due to HTTP error
+    requests_mock.post(credential_client.url_template.render(), status_code=404)
+    with pytest.raises(typer.Exit):
+        credential_client.create_credential(CredType.S3, 'aws-secret', 1, {'k': 'v'})
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_credential_client_update_credential(requests_mock: requests_mock.Mocker,
+                                          credential_client: CredentialClientService):
+    assert isinstance(credential_client, CredentialClientService)
+
+    # Success
+    url_template = deepcopy(credential_client.url_template)
+    url_template.attach_pattern('$credential_id/')
+    requests_mock.patch(
+        url_template.render(credential_id=0),
+        json={
+            'id': 0,
+            'name': 'my-docker-secret',
+            'type': 'docker'
+        }
+    )
+    assert credential_client.update_credential(
+        0,
+        cred_type=CredType.DOCKER,
+        name='my-docker-secret',
+        type_version=1,
+        value={'k': 'v'}
+    ) == {
+        'id': 0,
+        'name': 'my-docker-secret',
+        'type': 'docker'
+    }
+
+    # Failed due to HTTP error
+    requests_mock.patch(url_template.render(credential_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        credential_client.update_credential(
+            0,
+            cred_type=CredType.GCS,
+            name='my-gcs-secret',
+            type_version=1,
+            value={'k': 'v'}
+        )
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_credential_client_delete_credential(requests_mock: requests_mock.Mocker,
+                                             credential_client: CredentialClientService):
+    assert isinstance(credential_client, CredentialClientService)
+
+    # Success
+    url_template = deepcopy(credential_client.url_template)
+    url_template.attach_pattern('$credential_id/')
+    requests_mock.delete(url_template.render(credential_id=0), status_code=204)
+    try:
+        credential_client.delete_credential(0)
+    except typer.Exit:
+        raise pytest.fail("Credential delete test failed.")
+
+    # Failed due to HTTP error
+    requests_mock.delete(url_template.render(credential_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        credential_client.delete_credential(0)
