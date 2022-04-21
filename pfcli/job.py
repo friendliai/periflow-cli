@@ -2,6 +2,7 @@
 
 """PeriFlow Job"""
 
+import re
 import asyncio
 from pathlib import Path
 from typing import Optional, List
@@ -412,8 +413,8 @@ async def monitor_logs(job_id: int,
         async for response in ws_client:
             timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(response['timestamp'])))} "
             node_rank = response['node_rank']
-            node_rank_str = "📈sys " if node_rank == -1 else f"💻 #{node_rank} "
-            lines = response['content'].split('\n')
+            node_rank_str = "📈 PF " if node_rank == -1 else f"💻 #{node_rank} "
+            lines = re.split(r'\n|\r', response['content'])
 
             for line in lines:
                 if show_time:
@@ -506,8 +507,8 @@ def log_view(
             for record in logs:
                 timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))} "
                 node_rank = record['node_rank']
-                node_rank_str = "📈sys " if node_rank == -1 else f"💻 #{node_rank} "
-                lines = record['content'].split('\n')
+                node_rank_str = "📈 PF " if node_rank == -1 else f"💻 #{node_rank} "
+                lines = re.split(r'\n|\r', record['content'])
 
                 for line in lines:
                     if show_time:
@@ -519,8 +520,8 @@ def log_view(
         for record in logs:
             timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))} "
             node_rank = record['node_rank']
-            node_rank_str = "📈sys " if node_rank == -1 else f"💻 #{node_rank} "
-            lines = record['content'].split('\n')
+            node_rank_str = "📈 PF " if node_rank == -1 else f"💻 #{node_rank} "
+            lines = re.split(r'\n|\r', record['content'])
 
             for line in lines:
                 if show_time:

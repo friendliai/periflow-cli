@@ -222,8 +222,6 @@ class CustomJobConfigService(JobConfigService):
             yaml_str += PRIVATE_DOCKER_IMG_CONFIG
         if self.use_workspace:
             yaml_str += JOB_WORKSPACE_CONFIG
-        if self.use_dist:
-            yaml_str += DIST_CONFIG
         if self.use_data:
             yaml_str += DATA_CONFIG
             yaml_str += DATA_MOUNT_CONFIG
@@ -234,6 +232,8 @@ class CustomJobConfigService(JobConfigService):
                 yaml_str += INPUT_CHECKPOINT_MOUNT_PATH
             if self.use_output_checkpoint:
                 yaml_str += OUTPUT_CHECKPOINT_CONFIG
+        if self.use_dist:
+            yaml_str += DIST_CONFIG
         yaml_str += self._render_plugins()
 
         return yaml_str
