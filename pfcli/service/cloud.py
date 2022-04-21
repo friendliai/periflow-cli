@@ -2,11 +2,21 @@
 
 """PeriFlow Cloud Service"""
 
-from typing import Dict, List, TypeVar, Type, Optional
+from typing import (
+    Callable,
+    Dict,
+    List,
+    TypeVar,
+    Type,
+    Optional,
+    Union,
+    Tuple,
+)
 from dataclasses import dataclass
 
 import boto3
 from botocore.exceptions import ClientError
+from botocore.client import BaseClient
 from azure.storage.blob import BlobServiceClient
 
 from pfcli.service import StorageType
@@ -14,11 +24,12 @@ from pfcli.utils import secho_error_and_exit
 
 
 C = TypeVar('C', bound='CloudStorageHelper')
+T = TypeVar('T', bound=Union[BaseClient, BlobServiceClient])
 
 
 @dataclass
 class CloudStorageHelper:
-    credential_json: Dict[str, str]
+    client: T
 
     def list_storage_files(self, storage_name: str, path_prefix: Optional[str] = None) -> List[dict]:
         raise NotImplementedError   # pragma: no cover
@@ -26,17 +37,9 @@ class CloudStorageHelper:
 
 @dataclass
 class AWSCloudStorageHelper(CloudStorageHelper):
-    def __post_init__(self):
-        self._s3_client = boto3.client(
-            's3',
-            aws_access_key_id=self.credential_json['aws_access_key_id'],
-            aws_secret_access_key=self.credential_json['aws_secret_access_key'],
-            region_name=self.credential_json.get('aws_default_region', None)
-        )
-
     def _check_aws_bucket_exists(self, storage_name: str) -> bool:
         try:
-            self._s3_client.head_bucket(Bucket=storage_name)
+            self.client.head_bucket(Bucket=storage_name)
             return True
         except ClientError:
             # include both Forbidden access, Not Exists
@@ -48,7 +51,7 @@ class AWSCloudStorageHelper(CloudStorageHelper):
 
         file_list = []
         prefix_option = {'Prefix': path_prefix} if path_prefix is not None else {}
-        object_contents = self._s3_client.list_objects(Bucket=storage_name, **prefix_option)['Contents']
+        object_contents = self.client.list_objects(Bucket=storage_name, **prefix_option)['Contents']
         for object_content in object_contents:
             object_key = object_content['Key']
             file_list.append({
@@ -59,22 +62,15 @@ class AWSCloudStorageHelper(CloudStorageHelper):
             })
 
         if not file_list:
-            secho_error_and_exit(f"No file exists in Bucket {self.storage_name}")
+            secho_error_and_exit(f"No file exists in Bucket {storage_name}")
 
         return file_list
 
 
 @dataclass
 class AzureCloudStorageHelper(CloudStorageHelper):
-    def __post_init__(self):
-        url = f"https://{self.credential_json['storage_account_name']}.blob.core.windows.net/"
-        self._blob_service_client = BlobServiceClient(
-            account_url=url,
-            credential=self.credential_json['storage_account_key']
-        )
-
     def list_storage_files(self, storage_name: str, path_prefix: Optional[str] = None):
-        container_client = self._blob_service_client.get_container_client(storage_name)
+        container_client = self.client.get_container_client(storage_name)
         if not container_client.exists():
             secho_error_and_exit(f"Container {storage_name} does not exist")
 
@@ -91,18 +87,36 @@ class AzureCloudStorageHelper(CloudStorageHelper):
             })
 
         if not file_list:
-            secho_error_and_exit(f"No file exists in Bucket {self.storage_name}")
+            secho_error_and_exit(f"No file exists in Bucket {storage_name}")
 
         return file_list
 
 
+def build_s3_client(credential_json: Dict[str, str]) -> BaseClient:
+    return boto3.client(
+        's3',
+        aws_access_key_id=credential_json['aws_access_key_id'],
+        aws_secret_access_key=credential_json['aws_secret_access_key'],
+        region_name=credential_json.get('aws_default_region', None)
+    )
+
+
+def build_blob_client(credential_json: Dict[str, str]) -> BlobServiceClient:
+    url = f"https://{credential_json['storage_account_name']}.blob.core.windows.net/"
+    return BlobServiceClient(
+        account_url=url,
+        credential=credential_json['storage_account_key']
+    )
+
+
 # TODO: Add GCP support
-vendor_helper_map: Dict[StorageType, Type[C]] = {
-    StorageType.S3: AWSCloudStorageHelper,
-    StorageType.BLOB: AzureCloudStorageHelper,
+vendor_helper_map: Dict[StorageType, Tuple[Type[C], Callable[[Dict[str, str]], T]]] = {
+    StorageType.S3: (AWSCloudStorageHelper, build_s3_client),
+    StorageType.BLOB: (AzureCloudStorageHelper, build_blob_client),
 }
 
 
 def build_storage_helper(vendor: StorageType, credential_json: dict) -> C:
-    cls = vendor_helper_map[vendor]
-    return cls(credential_json=credential_json)
+    cls, client_build_fn = vendor_helper_map[vendor]
+    client = client_build_fn(credential_json)
+    return cls(client)

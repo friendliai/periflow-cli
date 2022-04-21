@@ -3,7 +3,6 @@
 """PeriFlow Job"""
 
 import asyncio
-import textwrap
 from pathlib import Path
 from typing import Optional, List
 from dateutil import parser
@@ -33,7 +32,6 @@ from pfcli.service.config import build_job_configurator
 from pfcli.service.formatter import TableFormatter
 from pfcli.utils import (
     get_default_editor,
-    get_remaining_terminal_columns,
     open_editor,
     secho_error_and_exit,
     datetime_to_pretty_str,
@@ -412,33 +410,17 @@ async def monitor_logs(job_id: int,
 
     async with ws_client.open_connection(job_id, log_types, machines):
         async for response in ws_client:
-            log_row = []
-            if show_time:
-                log_row.append(f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(response['timestamp'])))}")
-            if show_machine_id:
-                node_rank = response['node_rank']
-                if node_rank == -1:
-                    log_row.append("📈sys")
-                else:
-                    log_row.append(f"💻 #{node_rank}")
-            log_row.append(
-                "\n".join(
-                    textwrap.wrap(
-                        response['content'],
-                        width=get_remaining_terminal_columns(
-                            len(tabulate.tabulate([log_row], tablefmt='plain')) + 5
-                        ),
-                        break_long_words=False,
-                        replace_whitespace=False
-                    )
-                )
-            )
-            typer.echo(
-                tabulate.tabulate(
-                    [log_row],
-                    tablefmt='plain'
-                )
-            )
+            timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(response['timestamp'])))} "
+            node_rank = response['node_rank']
+            node_rank_str = "📈sys " if node_rank == -1 else f"💻 #{node_rank} "
+            lines = response['content'].split('\n')
+
+            for line in lines:
+                if show_time:
+                    typer.secho(timestamp_str, nl=False, fg=typer.colors.BLUE)
+                if show_machine_id:
+                    typer.secho(node_rank_str, nl=False, fg=typer.colors.GREEN)
+                typer.echo(line)
 
 
 # TODO: Implement since/until if necessary
@@ -522,52 +504,30 @@ def log_view(
     if export_path is not None:
         with export_path.open("w") as export_file:
             for record in logs:
-                log_row = []
-                if show_time:
-                    log_row.append(
-                        f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))}"
-                    )
-                if show_machine_id:
-                    node_rank = record['node_rank']
-                    if node_rank == -1:
-                        log_row.append("📈sys")
-                    else:
-                        log_row.append(f"💻 #{node_rank}")
-                log_row.append(record['content'])
-                export_file.write(
-                    tabulate.tabulate(
-                        [ log_row ],
-                        tablefmt='plain'
-                    ) + "\n"
-                )
+                timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))} "
+                node_rank = record['node_rank']
+                node_rank_str = "📈sys " if node_rank == -1 else f"💻 #{node_rank} "
+                lines = record['content'].split('\n')
+
+                for line in lines:
+                    if show_time:
+                        export_file.write(timestamp_str)
+                    if show_machine_id:
+                        export_file.write(node_rank_str)
+                    export_file.write(line + "\n")
     else:
         for record in logs:
-            log_row = []
-            if show_time:
-                log_row.append(
-                    f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))}"
-                )
-            if show_machine_id:
-                node_rank = record['node_rank']
-                if node_rank == -1:
-                    log_row.append("📈sys")
-                else:
-                    log_row.append(f"💻 #{node_rank}")
-            log_row.append(
-                "\n".join(
-                    textwrap.wrap(
-                        record['content'],
-                        width=get_remaining_terminal_columns(
-                            len(tabulate.tabulate([log_row], tablefmt='plain')) + 5
-                        ),
-                        break_long_words=False,
-                        replace_whitespace=False
-                    )
-                )
-            )
-            typer.echo(
-                tabulate.tabulate([log_row], tablefmt='plain')
-            )
+            timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))} "
+            node_rank = record['node_rank']
+            node_rank_str = "📈sys " if node_rank == -1 else f"💻 #{node_rank} "
+            lines = record['content'].split('\n')
+
+            for line in lines:
+                if show_time:
+                    typer.secho(timestamp_str, nl=False, fg=typer.colors.BLUE)
+                if show_machine_id:
+                    typer.secho(node_rank_str, nl=False, fg=typer.colors.GREEN)
+                typer.echo(line)
 
     if follow:
         try:
