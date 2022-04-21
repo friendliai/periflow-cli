@@ -34,8 +34,8 @@ from pfcli.utils import (
 app = typer.Typer()
 
 formatter = TableFormatter(
-    fields=['id', 'name', 'vendor', 'storage_name', 'active'],
-    headers=['id', 'name', 'cloud', 'storage name', 'active'],
+    fields=['id', 'name', 'vendor', 'region', 'storage_name', 'active'],
+    headers=['id', 'name', 'cloud', 'region', 'storage name', 'active'],
     extra_fields=['metadata', 'files'],
     extra_headers=['metadata', 'files']
 )
