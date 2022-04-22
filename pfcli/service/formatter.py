@@ -2,7 +2,6 @@
 
 """PeriFlow CLI Output Formatter"""
 
-import os
 import json
 from dataclasses import dataclass, field
 from typing import List, TypeVar, Union, Optional, Dict, Any
@@ -139,7 +138,7 @@ def find_and_insert(parent: Tree, edges: List[Edge]) -> None:
 
     is_dir = len(edges) > 1
 
-    match = [tree for tree in parent.children if tree.label == edges[0].name]
+    match = [tree for tree in parent.children if edges[0].name in tree.label]
 
     if match:
         tree = match[0]
