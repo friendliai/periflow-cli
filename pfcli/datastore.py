@@ -2,7 +2,6 @@
 
 """PeriFlow Datastore CLI"""
 
-import json
 from pathlib import Path
 from typing import Optional
 from click import Choice
@@ -39,16 +38,16 @@ from pfcli.utils import (
 
 app = typer.Typer()
 
-table = TableFormatter(
+table_formatter = TableFormatter(
     name="Datastore",
     fields=['name', 'vendor', 'region', 'storage_name', 'active'],
     headers=['Name', 'Cloud', 'Region', 'Storage Name', 'Active'],
 )
-table.add_substitution_rule("True", "✔️")
-table.add_substitution_rule("False", "x")
-table.apply_styling("Active", style="cyan")
+table_formatter.add_substitution_rule("True", "✔️")
+table_formatter.add_substitution_rule("False", "x")
+table_formatter.apply_styling("Active", style="cyan")
 
-panel = PanelFormatter(
+panel_formatter = PanelFormatter(
     name="Overview",
     fields=['name', 'vendor', 'region', 'storage_name', 'active'],
     headers=['Name', 'Cloud', 'Region', 'Storage Name', 'Active'],
@@ -88,7 +87,7 @@ def main(
 
         typer.secho("Datastore created successfully!", fg=typer.colors.BLUE)
 
-    panel.render([datastore], show_detail=True)
+    panel_formatter.render([datastore], show_detail=True)
     exit(0)
 
 
@@ -96,7 +95,7 @@ def main(
 def list():
     client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
     datastores = client.list_datastores()
-    table.render(datastores)
+    table_formatter.render(datastores)
 
 
 @app.command()
@@ -113,7 +112,7 @@ def view(
 
     datastore_id = group_client.get_id_by_name(name)
     datastore = client.get_datastore(datastore_id)
-    panel.render([datastore], show_detail=True)
+    panel_formatter.render([datastore], show_detail=True)
     tree_formatter.render(datastore['files'])
     json_formatter.render(datastore['metadata'])
 
@@ -178,7 +177,9 @@ def create(
     datastore = client.create_datastore(name, cloud, region, storage_name, credential_id, metadata, files, True)
 
     typer.secho(f"Datastore ({name}) is created successfully!", fg=typer.colors.BLUE)
-    typer.echo(table.render([datastore], show_detail=True))
+    panel_formatter.render([datastore], show_detail=True)
+    tree_formatter.render(datastore['files'])
+    json_formatter.render(datastore['metadata'])
 
 
 @app.command()
@@ -233,7 +234,9 @@ def upload(
         active=True
     )
     typer.secho(f"Objects are uploaded to datastore ({name}) successfully!", fg=typer.colors.BLUE)
-    typer.echo(table.render([datastore], show_detail=True))
+    panel_formatter.render([datastore], show_detail=True)
+    tree_formatter.render(datastore['files'])
+    json_formatter.render(datastore['metadata'])
 
 
 @app.command()
@@ -305,7 +308,9 @@ def update(
     )
 
     typer.secho("Datastore is updated successfully!", fg=typer.colors.BLUE)
-    typer.echo(table.render([datastore], show_detail=True))
+    panel_formatter.render([datastore], show_detail=True)
+    tree_formatter.render(datastore['files'])
+    json_formatter.render(datastore['metadata'])
 
 
 @app.command()

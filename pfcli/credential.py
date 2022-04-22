@@ -9,7 +9,7 @@ import typer
 from pfcli.service import ServiceType, CredType
 from pfcli.service.client import CredentialClientService, GroupCredentialClientService, build_client
 from pfcli.service.config import CredentialConfigService
-from pfcli.service.formatter import TableFormatter
+from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import secho_error_and_exit
 
 
@@ -19,10 +19,16 @@ update_app = typer.Typer()
 
 app.add_typer(create_app, name='create')
 
-formatter = TableFormatter(
+table_formatter = TableFormatter(
     name="Credentials",
     fields=['id', 'name', 'type', 'created_at', 'owner_type'],
-    headers=['id', 'name', 'type', 'created at', 'scope']
+    headers=['ID', 'Name', 'Type', 'Created at', 'Scope']
+)
+
+panel_formatter = PanelFormatter(
+    name="Credentials",
+    fields=['id', 'name', 'type', 'created_at', 'owner_type'],
+    headers=['ID', 'Name', 'Type', 'Created at', 'Scope']
 )
 
 
@@ -64,7 +70,7 @@ def main(
     info = client.create_credential(cred_type, name, 1, value)
 
     typer.secho("Credential created successfully!", fg=typer.colors.BLUE)
-    typer.echo(formatter.render([info]))
+    panel_formatter.render([info])
     exit(0)
 
 
@@ -100,7 +106,7 @@ def docker(
         'password': password
     }
     cred = client.create_credential(CredType.DOCKER, name, 1, value)
-    typer.echo(formatter.render([cred]))
+    panel_formatter.render([cred])
 
 
 @create_app.command()
@@ -140,7 +146,7 @@ def s3(
         'aws_default_region': aws_default_region
     }
     cred = client.create_credential(CredType.S3, name, 1, value)
-    typer.echo(formatter.render([cred]))
+    panel_formatter.render([cred])
 
 
 @create_app.command()
@@ -175,7 +181,7 @@ def azure_blob(
         'storage_account_key': storage_account_key,
     }
     cred = client.create_credential(CredType.BLOB, name, 1, value)
-    typer.echo(formatter.render([cred]))
+    panel_formatter.render([cred])
 
 
 @create_app.command()
@@ -208,7 +214,7 @@ def gcs(
         secho_error_and_exit(f"Error occurred while parsing JSON file... {exc}")
     del value['type']
     cred = client.create_credential(CredType.GCS, name, 1, value)
-    typer.echo(formatter.render([cred]))
+    panel_formatter.render([cred])
 
 
 @create_app.command()
@@ -238,7 +244,7 @@ def slack(
         'token': token
     }
     cred = client.create_credential(CredType.SLACK, name, 1, value)
-    typer.echo(formatter.render([cred]))
+    panel_formatter.render([cred])
 
 
 @create_app.command()
@@ -268,7 +274,7 @@ def wandb(
         'token': api_key
     }
     cred = client.create_credential(CredType.WANDB, name, 1, value)
-    typer.echo(formatter.render([cred]))
+    panel_formatter.render([cred])
 
 
 @app.command()
@@ -292,7 +298,7 @@ def list(
         client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     creds = client.list_credentials(cred_type)
 
-    typer.echo(formatter.render(creds))
+    table_formatter.render(creds)
 
 
 @app.command()
@@ -311,10 +317,10 @@ def update(
 
     client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
 
-    info = client.update_credential(cred_id, name=name, type_version=1, value=value)
+    cred = client.update_credential(cred_id, name=name, type_version=1, value=value)
 
     typer.secho("Credential updated successfully!", fg=typer.colors.BLUE)
-    typer.echo(formatter.render([info]))
+    panel_formatter.render([cred])
 
 
 @app.command()

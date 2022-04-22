@@ -22,22 +22,23 @@ from pfcli.service.client import (
     build_client,
 )
 from pfcli.service.cloud import build_storage_helper
-from pfcli.service.formatter import TableFormatter
+from pfcli.service.formatter import PanelFormatter, TableFormatter, TreeFormatter
 from pfcli.utils import download_file, secho_error_and_exit
 
 
 app = typer.Typer()
 
-ckpt_formatter = TableFormatter(
+table_formatter = TableFormatter(
     name="Checkpoints",
     fields=['id', 'category', 'vendor', 'storage_name', 'iteration', 'created_at'],
-    headers=['id', 'category', 'cloud', 'storage name', 'iteration', 'created at']
+    headers=['ID', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Created at']
 )
-file_formatter = TableFormatter(
-    name="Checkpoints Files",
-    fields=['name', 'path', 'mtime', 'size'],
-    headers=['name', 'path', 'mtime', 'size']
+panel_formatter = PanelFormatter(
+    name="Checkpoints",
+    fields=['id', 'category', 'vendor', 'storage_name', 'iteration', 'created_at'],
+    headers=['ID', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Created at']
 )
+tree_formatter = TreeFormatter(name="Files")
 
 
 def _validate_parallelism_order(value: str) -> List[str]:
@@ -61,7 +62,7 @@ def checkpoint_list(
     client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
     checkpoints = client.list_checkpoints(category)
 
-    typer.echo(ckpt_formatter.render(checkpoints))
+    table_formatter.render(checkpoints)
 
 
 @app.command("view")
@@ -78,9 +79,8 @@ def checkpoint_detail(
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
     info = client.get_checkpoint(checkpoint_id)
 
-    typer.echo(ckpt_formatter.render([info], in_list=True))
-    typer.echo("\nFILES\n")
-    typer.echo(file_formatter.render(info['files']))
+    panel_formatter.render([info])
+    tree_formatter.render(info['files'])
 
 
 @app.command("create")
@@ -181,9 +181,8 @@ def checkpoint_create(
         job_setting_config={}   # TODO: make configurable
     )
 
-    typer.echo(ckpt_formatter.render([info], in_list=True))
-    typer.echo("\nFILES\n")
-    typer.echo(file_formatter.render(info['files']))
+    panel_formatter.render([info])
+    tree_formatter.render(info['files'])
 
 
 @app.command("delete")
