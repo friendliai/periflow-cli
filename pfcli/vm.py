@@ -2,7 +2,7 @@
 
 """PeriFlow VM CLI"""
 
-from typing import Optional, List, Dict
+from typing import Optional
 
 import typer
 
@@ -15,6 +15,7 @@ from pfcli.utils import validate_cloud_region
 app = typer.Typer()
 
 formatter = TableFormatter(
+    name="VM Instances",
     fields=[
         'vm_instance_type.code',
         'vm_instance_type.vendor',

@@ -11,11 +11,11 @@ import typer
 from pfcli.service import ServiceType
 from pfcli.service.client import ExperimentClientService, GroupExperimentClientService, build_client
 from pfcli.service.formatter import TableFormatter
-from pfcli.job import job_formatter
+from pfcli.job import job_table
 from pfcli.utils import datetime_to_pretty_str, timedelta_to_pretty_str
 
 app = typer.Typer()
-formatter = TableFormatter(fields=['id', 'name'], headers=['id', 'name'])
+formatter = TableFormatter(name="Experiments", fields=['id', 'name'], headers=['id', 'name'])
 
 
 @app.command()
@@ -94,7 +94,7 @@ def view(
             target_job_list.extend(jobs[-head:]) 
     else:
         target_job_list = jobs
-    typer.echo(job_formatter.render(target_job_list))
+    typer.echo(job_table.render(target_job_list))
 
 
 @app.command()

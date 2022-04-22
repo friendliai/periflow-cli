@@ -29,10 +29,12 @@ from pfcli.utils import download_file, secho_error_and_exit
 app = typer.Typer()
 
 ckpt_formatter = TableFormatter(
+    name="Checkpoints",
     fields=['id', 'category', 'vendor', 'storage_name', 'iteration', 'created_at'],
     headers=['id', 'category', 'cloud', 'storage name', 'iteration', 'created at']
 )
 file_formatter = TableFormatter(
+    name="Checkpoints Files",
     fields=['name', 'path', 'mtime', 'size'],
     headers=['name', 'path', 'mtime', 'size']
 )

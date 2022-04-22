@@ -20,6 +20,7 @@ update_app = typer.Typer()
 app.add_typer(create_app, name='create')
 
 formatter = TableFormatter(
+    name="Credentials",
     fields=['id', 'name', 'type', 'created_at', 'owner_type'],
     headers=['id', 'name', 'type', 'created at', 'scope']
 )

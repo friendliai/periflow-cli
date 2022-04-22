@@ -30,7 +30,7 @@ from pfcli.service.client import (
     build_client,
 )
 from pfcli.service.config import build_job_configurator
-from pfcli.service.formatter import TableFormatter
+from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import (
     get_default_editor,
     open_editor,
@@ -50,7 +50,8 @@ log_app = typer.Typer()
 app.add_typer(template_app, name="template", help="Manager job templates.")
 app.add_typer(log_app, name="log", help="Manage job logs.")
 
-job_formatter = TableFormatter(
+job_table = TableFormatter(
+    name="Jobs",
     fields=[
         'id',
         'name',
@@ -62,17 +63,37 @@ job_formatter = TableFormatter(
         'started_at',
         'duration',
     ],
-    headers=['id', 'name', 'status', 'vm', 'device', '# devices', 'data', 'start', 'duration'],
+    headers=['ID', 'Name', 'Status', 'VM', 'Device', 'Device Cnt', 'Data', 'Start', 'Duration'],
     extra_fields=['error_message'],
     extra_headers=['error']
 )
-ckpt_formatter = TableFormatter(
-    fields=['id', 'vendor', 'region', 'iteration', 'created_at'],
-    headers=['id', 'cloud', 'region', 'iteration', 'created at']
+job_table.apply_styling("Status", style="blue")
+job_panel = PanelFormatter(
+    name="Jobs",
+    fields=[
+        'id',
+        'name',
+        'status',
+        'vm_config.vm_config_type.vm_instance_type.name',
+        'vm_config.vm_config_type.vm_instance_type.device_type',
+        'num_desired_devices',
+        'data_name',
+        'started_at',
+        'duration',
+    ],
+    headers=['ID', 'Name', 'Status', 'VM', 'Device', 'Device Cnt', 'Data', 'Start', 'Duration'],
+    extra_fields=['error_message'],
+    extra_headers=['error']
 )
-artifact_formatter = TableFormatter(
+ckpt_table = TableFormatter(
+    name="Checkpoints",
+    fields=['id', 'vendor', 'region', 'iteration', 'created_at'],
+    headers=['ID', 'Cloud', 'Region', 'Iteration', 'Created at']
+)
+artifact_table = TableFormatter(
+    name="Artifacts",
     fields=['id', 'name', 'path', 'mtime', 'mime_type'],
-    headers=['id', 'name', 'path', 'mtime', 'media type']
+    headers=['ID', 'Name', 'Path', 'Mtime', 'Media Type']
 )
 
 
@@ -258,14 +279,12 @@ def list(
         target_job_list = []
         if tail:
             target_job_list.extend(jobs[:tail])
-            target_job_list.append(["..."])
         if head:
-            target_job_list.append(["..."])
             target_job_list.extend(jobs[-head:]) 
     else:
         target_job_list = jobs
 
-    typer.echo(job_formatter.render(target_job_list))
+    job_table.render(target_job_list)
 
 
 @app.command("stop", help="Stop running job.")
@@ -326,36 +345,12 @@ def view(
 
     checkpoint_list = []
     for checkpoint in reversed(job_checkpoints):
-        checkpoint_list.append(
-            [
-                checkpoint["id"],
-                checkpoint["vendor"],
-                checkpoint["region"],
-                checkpoint["iteration"],
-                datetime_to_pretty_str(parse(checkpoint["created_at"]), long_list=True),
-            ]
-        )
+        checkpoint['created_at'] = datetime_to_pretty_str(parse(checkpoint["created_at"]), long_list=True)
+        checkpoint_list.append(checkpoint)
 
-    artifact_list = []
-    for artifact in reversed(job_artifacts):
-        artifact_list.append(
-            [
-                artifact["id"],
-                artifact["name"],
-                artifact["path"],
-                artifact["mtime"],
-                artifact["mime_type"]
-            ]
-        )
-
-    typer.echo(
-        "OVERVIEW\n\n" + \
-        job_formatter.render([job], show_detail=True, in_list=True) + \
-        "\n\nCHECKPOINTS\n\n" + \
-        ckpt_formatter.render(checkpoint_list) + \
-        "\n\nARTIFACTS\n\n" + \
-        artifact_formatter.render(artifact_list)
-    )
+    job_panel.render([job], show_detail=True)
+    ckpt_table.render(checkpoint_list)
+    artifact_table.render(job_artifacts)
 
 
 @template_app.command("create")
