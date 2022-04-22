@@ -10,12 +10,13 @@ import typer
 
 from pfcli.service import ServiceType
 from pfcli.service.client import ExperimentClientService, GroupExperimentClientService, build_client
-from pfcli.service.formatter import TableFormatter
-from pfcli.job import job_formatter
+from pfcli.service.formatter import PanelFormatter, TableFormatter
+from pfcli.job import job_table
 from pfcli.utils import datetime_to_pretty_str, timedelta_to_pretty_str
 
 app = typer.Typer()
-formatter = TableFormatter(fields=['id', 'name'], headers=['id', 'name'])
+table_formatter = TableFormatter(name="Experiments", fields=['name'], headers=['Name'])
+panel_formatter = PanelFormatter(name="Experiments", fields=['name'], headers=['Name'])
 
 
 @app.command()
@@ -29,14 +30,14 @@ def create(
 ):
     client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
     experiment = client.create_experiment(name)
-    typer.echo(formatter.render([experiment]))
+    panel_formatter.render([experiment])
 
 
 @app.command()
 def list():
     client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
     experiments = client.list_experiments()
-    typer.echo(formatter.render(experiments))
+    table_formatter.render(experiments)
 
 
 @app.command()
@@ -88,13 +89,12 @@ def view(
         target_job_list = []
         if tail:
             target_job_list.extend(jobs[:tail])
-            target_job_list.append(["..."])
         if head:
-            target_job_list.append(["..."])
             target_job_list.extend(jobs[-head:]) 
     else:
         target_job_list = jobs
-    typer.echo(job_formatter.render(target_job_list))
+
+    job_table.render(target_job_list)
 
 
 @app.command()
@@ -117,7 +117,7 @@ def update(
 
     experiment_id = group_client.get_id_by_name(name)
     experiment = client.update_experiment_name(experiment_id, new_name)
-    typer.echo(formatter.render([experiment]))
+    panel_formatter.render([experiment])
 
 
 @app.command()

@@ -3,7 +3,6 @@
 """PeriFlow CLI"""
 
 import requests
-import tabulate
 from requests import HTTPError
 
 import typer
@@ -19,6 +18,7 @@ from pfcli import (
 from pfcli.service import ServiceType
 from pfcli.service.auth import TokenType, update_token
 from pfcli.service.client import UserGroupClientService, build_client
+from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import get_uri, secho_error_and_exit
 
 app = typer.Typer(help="Welcome to PeriFlow 🤗")
@@ -30,20 +30,30 @@ app.add_typer(vm.app, name="vm", help="Manage VMs")
 app.add_typer(experiment.app, name="experiment", help="Manage experiments")
 
 
+user_panel_formatter = PanelFormatter(
+    name="My Info",
+    fields=['username', 'email'],
+    headers=["Name", "Email"]
+)
+org_table_formatter = TableFormatter(
+    name="My Organizations",
+    fields=['name'],
+    headers=["Name"]
+)
+
+
 @app.command(help="Show who am I")
 def self():
     client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
     info = client.get_user_info()
-    results = [(info["id"], info["username"], info["email"])]
-    typer.echo(tabulate.tabulate(results, headers=["id", "username", "email"]))
+    user_panel_formatter.render([info])
 
 
 @app.command(name="org", help="Show what organizations I belong to")
 def organization():
     client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
-    info =  client.get_group_info()
-    results = [[g["name"] for g in info]]
-    typer.echo(tabulate.tabulate(results, headers=["name"]))
+    orgs =  client.get_group_info()
+    org_table_formatter.render(orgs)
 
 
 @app.command(help="Sign in PeriFlow")

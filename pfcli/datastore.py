@@ -24,7 +24,12 @@ from pfcli.service.client import (
 )
 from pfcli.service.cloud import build_storage_helper
 from pfcli.service.config import build_data_configurator
-from pfcli.service.formatter import TableFormatter
+from pfcli.service.formatter import (
+    JSONFormatter,
+    PanelFormatter,
+    TableFormatter,
+    TreeFormatter,
+)
 from pfcli.utils import (
     secho_error_and_exit,
     upload_files,
@@ -33,12 +38,23 @@ from pfcli.utils import (
 
 app = typer.Typer()
 
-formatter = TableFormatter(
-    fields=['id', 'name', 'vendor', 'region', 'storage_name', 'active'],
-    headers=['id', 'name', 'cloud', 'region', 'storage name', 'active'],
-    extra_fields=['metadata', 'files'],
-    extra_headers=['metadata', 'files']
+table_formatter = TableFormatter(
+    name="Datastore",
+    fields=['name', 'vendor', 'region', 'storage_name', 'active'],
+    headers=['Name', 'Cloud', 'Region', 'Storage Name', 'Active'],
 )
+table_formatter.add_substitution_rule("True", "✔️")
+table_formatter.add_substitution_rule("False", "x")
+table_formatter.apply_styling("Active", style="cyan")
+
+panel_formatter = PanelFormatter(
+    name="Overview",
+    fields=['name', 'vendor', 'region', 'storage_name', 'active'],
+    headers=['Name', 'Cloud', 'Region', 'Storage Name', 'Active'],
+)
+
+json_formatter = JSONFormatter(name="Metadata")
+tree_formatter = TreeFormatter(name="Files")
 
 
 @app.callback(invoke_without_command=True)
@@ -71,9 +87,7 @@ def main(
 
         typer.secho("Datastore created successfully!", fg=typer.colors.BLUE)
 
-    datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
-    datastore['files'] = yaml.dump(datastore['files'], indent=2, sort_keys=False) if datastore['files'] else "N/A"
-    typer.echo(formatter.render([datastore], show_detail=True))
+    panel_formatter.render([datastore], show_detail=True)
     exit(0)
 
 
@@ -81,7 +95,7 @@ def main(
 def list():
     client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
     datastores = client.list_datastores()
-    typer.echo(formatter.render(datastores))
+    table_formatter.render(datastores)
 
 
 @app.command()
@@ -98,9 +112,9 @@ def view(
 
     datastore_id = group_client.get_id_by_name(name)
     datastore = client.get_datastore(datastore_id)
-    datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
-    datastore['files'] = "\n" + yaml.dump(datastore['files'], indent=2, sort_keys=False) if datastore['files'] else "N/A"
-    typer.echo(formatter.render([datastore], show_detail=True, in_list=True))
+    panel_formatter.render([datastore], show_detail=True)
+    tree_formatter.render(datastore['files'])
+    json_formatter.render(datastore['metadata'])
 
 
 @app.command()
@@ -163,9 +177,9 @@ def create(
     datastore = client.create_datastore(name, cloud, region, storage_name, credential_id, metadata, files, True)
 
     typer.secho(f"Datastore ({name}) is created successfully!", fg=typer.colors.BLUE)
-    datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
-    datastore['files'] = yaml.dump(datastore['files'], indent=2, sort_keys=False) if datastore['files'] else "N/A"
-    typer.echo(formatter.render([datastore], show_detail=True))
+    panel_formatter.render([datastore], show_detail=True)
+    tree_formatter.render(datastore['files'])
+    json_formatter.render(datastore['metadata'])
 
 
 @app.command()
@@ -220,9 +234,9 @@ def upload(
         active=True
     )
     typer.secho(f"Objects are uploaded to datastore ({name}) successfully!", fg=typer.colors.BLUE)
-    datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
-    datastore['files'] = yaml.dump(datastore['files'], indent=2) if datastore['files'] else "N/A"
-    typer.echo(formatter.render([datastore], show_detail=True))
+    panel_formatter.render([datastore], show_detail=True)
+    tree_formatter.render(datastore['files'])
+    json_formatter.render(datastore['metadata'])
 
 
 @app.command()
@@ -294,9 +308,9 @@ def update(
     )
 
     typer.secho("Datastore is updated successfully!", fg=typer.colors.BLUE)
-    datastore['metadata'] = yaml.dump(datastore['metadata'], indent=2) if datastore['metadata'] else "N/A"
-    datastore['files'] = yaml.dump(datastore['files'], indent=2) if datastore['files'] else "N/A"
-    typer.echo(formatter.render([datastore], show_detail=True))
+    panel_formatter.render([datastore], show_detail=True)
+    tree_formatter.render(datastore['files'])
+    json_formatter.render(datastore['metadata'])
 
 
 @app.command()
