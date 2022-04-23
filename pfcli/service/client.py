@@ -22,7 +22,6 @@ from dataclasses import dataclass
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import yaml
 import requests
 import websockets
 from websockets.client import WebSocketClientProtocol

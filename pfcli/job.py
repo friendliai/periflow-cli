@@ -69,7 +69,7 @@ job_table = TableFormatter(
 )
 job_table.apply_styling("Status", style="blue")
 job_panel = PanelFormatter(
-    name="Jobs",
+    name="Overview",
     fields=[
         'id',
         'name',

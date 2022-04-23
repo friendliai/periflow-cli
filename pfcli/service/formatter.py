@@ -4,7 +4,14 @@
 
 import json
 from dataclasses import dataclass, field
-from typing import List, TypeVar, Union, Optional, Dict, Any
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 from rich.table import Table
 from rich.panel import Panel
