@@ -43,7 +43,7 @@ table_formatter = TableFormatter(
     fields=['name', 'vendor', 'region', 'storage_name', 'active'],
     headers=['Name', 'Cloud', 'Region', 'Storage Name', 'Active'],
 )
-table_formatter.add_substitution_rule("True", "✔️")
+table_formatter.add_substitution_rule("True", "✓")
 table_formatter.add_substitution_rule("False", "x")
 table_formatter.apply_styling("Active", style="cyan")
 

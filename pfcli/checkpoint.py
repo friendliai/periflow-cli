@@ -34,7 +34,7 @@ table_formatter = TableFormatter(
     headers=['ID', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Created at']
 )
 panel_formatter = PanelFormatter(
-    name="Checkpoints",
+    name="Overview",
     fields=['id', 'category', 'vendor', 'storage_name', 'iteration', 'created_at'],
     headers=['ID', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Created at']
 )

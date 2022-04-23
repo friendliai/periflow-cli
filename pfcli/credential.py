@@ -26,7 +26,7 @@ table_formatter = TableFormatter(
 )
 
 panel_formatter = PanelFormatter(
-    name="Credentials",
+    name="Overview",
     fields=['id', 'name', 'type', 'created_at', 'owner_type'],
     headers=['ID', 'Name', 'Type', 'Created at', 'Scope']
 )

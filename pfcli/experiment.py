@@ -16,7 +16,7 @@ from pfcli.utils import datetime_to_pretty_str, timedelta_to_pretty_str
 
 app = typer.Typer()
 table_formatter = TableFormatter(name="Experiments", fields=['name'], headers=['Name'])
-panel_formatter = PanelFormatter(name="Experiments", fields=['name'], headers=['Name'])
+panel_formatter = PanelFormatter(name="Overview", fields=['name'], headers=['Name'])
 
 
 @app.command()
