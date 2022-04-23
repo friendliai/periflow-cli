@@ -67,6 +67,7 @@ job_table = TableFormatter(
     extra_fields=['error_message'],
     extra_headers=['error']
 )
+job_table.apply_styling("ID", style="bold")
 job_table.add_substitution_rule("waiting", "[bold]waiting")
 job_table.add_substitution_rule("enqueued", "[bold cyan]enqueued")
 job_table.add_substitution_rule("running", "[bold blue]running")
