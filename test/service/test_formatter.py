@@ -4,10 +4,14 @@
 
 import pytest
 from rich.table import Table
+from rich.panel import Panel
+from rich.tree import Tree
 
 from pfcli.service.formatter import (
+    JSONFormatter,
     PanelFormatter,
     TableFormatter,
+    TreeFormatter,
     get_value,
 )
 
@@ -34,6 +38,16 @@ def panel_formatter() -> PanelFormatter:
         extra_headers=['Occupation', 'Active'],
         subtitle="This table shows user's personal info"
     )
+
+
+@pytest.fixture
+def tree_formatter() -> TreeFormatter:
+    return TreeFormatter(name='Files')
+
+
+@pytest.fixture
+def json_formatter() -> JSONFormatter:
+    return JSONFormatter(name='Metadata')
 
 
 def test_get_value():
@@ -95,5 +109,94 @@ def test_table_formatter(table_formatter: TableFormatter, capsys: pytest.Capture
     assert 'No' in out
 
 
-def test_panel_formatter():
-    ...
+def test_panel_formatter(panel_formatter: PanelFormatter, capsys: pytest.CaptureFixture):
+    data = [
+        {
+            'required': {
+                'name': 'koo'
+            },
+            'email': 'koo@friendli.ai',
+            'age': 26,
+            'job': 'historian',
+            'active': True
+        },
+        {
+            'required': {
+                'name': 'kim'
+            },
+            'email': 'kim@friendli.ai',
+            'age': 28,
+            'job': 'scientist',
+            'active': False
+        }
+    ]
+    panel = panel_formatter.get_renderable(data)
+    assert isinstance(panel, Panel)
+    panel_formatter.render(data)
+    out = capsys.readouterr().out
+    assert 'Active' not in out
+    assert 'Occupation' not in out
+
+    panel_formatter.add_substitution_rule('True', 'Yes')
+    panel_formatter.add_substitution_rule('False', 'No')
+    panel_formatter.apply_styling('Active', style='blue')
+    panel_formatter.get_renderable(data, show_detail=True)
+    assert isinstance(panel, Panel)
+    panel_formatter.render(data, show_detail=True)
+    out = capsys.readouterr().out
+    assert 'Active' in out
+    assert 'Occupation' in out
+    assert 'Yes' in out
+    assert 'No' in out
+
+
+def test_tree_formatter(tree_formatter: TreeFormatter, capsys: pytest.CaptureFixture):
+    data = [
+        {
+            'path': 'a',
+            'size': 4
+        },
+        {
+            'path': 'dir1/b',
+            'size': 1024
+        },
+        {
+            'path': 'dir1/dir2/c',
+            'size': 1024 * 1024
+        }
+    ]
+    tree = tree_formatter._build_tree(data)
+    assert "/" in tree.label
+    assert len(tree.children) == 2
+    assert "a" in tree.children[1].label
+    assert "dir1" in tree.children[1].label
+    assert len(tree.children[1].children)
+    assert "b" in tree.children[1].children[0].label
+    assert "dir2" in tree.children[1].children[1].label
+    assert len(tree.children[1].children[1].children) == 1
+    assert "c" in tree.children[1].children[1].children[0].label
+
+    panel = tree_formatter.get_renderable(data)
+    assert isinstance(panel, Panel)
+    tree_formatter.render(data)
+    out = capsys.readouterr().out
+    assert "a" in out
+    assert "dir1" in out
+    assert "b" in out
+    assert "dir2" in out
+    assert "c" in out
+
+
+def test_json_formatter(json_formatter: JSONFormatter, capsys: pytest.CaptureFixture):
+    data = {
+        'k1': 'v1',
+        'k2': 'v2'
+    }
+    panel = json_formatter.get_renderable(data)
+    assert isinstance(panel, Panel)
+    json_formatter.render(data)
+    out = capsys.readouterr().out
+    assert "k1" in out
+    assert "v1" in out
+    assert "k2" in out
+    assert "v2" in out

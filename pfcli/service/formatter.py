@@ -194,16 +194,16 @@ class TreeFormatter(Formatter):
         super().__post_init__()
 
     def render(self, data: List[dict]) -> None:
-        self._build_tree(data)
+        self._build_renderable(data)
         self._console.print(self._panel)
 
     def get_renderable(self, data: List[dict]) -> Panel:
-        self._build_tree(data)
+        self._build_renderable(data)
         return self._panel
 
-    def _build_tree(self, data: List[dict]):
+    def _build_tree(self, data: List[dict]) -> Tree:
         root = Tree("/")
-        paths = [ f"/{d['path']}" for d in data ]
+        paths = [ f"/{d['path'].lstrip()}" for d in data ]
         sizes = [ d['size'] for d in data]
         for path, size in zip(paths, sizes):
             edges = []
@@ -212,6 +212,10 @@ class TreeFormatter(Formatter):
                 file_size = size if i == len(parts) - 1 else None
                 edges.append(Edge(part, file_size))
             find_and_insert(root, edges)
+        return root
+
+    def _build_renderable(self, data: List[dict]) -> None:
+        root = self._build_tree(data)
         self._panel = Panel(root, title=self.name)
 
 
@@ -227,5 +231,5 @@ class JSONFormatter(Formatter):
         self._build_json(data)
         return self._panel
 
-    def _build_json(self, data: dict):
+    def _build_json(self, data: dict) -> None:
         self._panel = Panel(JSON(json.dumps(data)), title=self.name)
