@@ -67,9 +67,17 @@ job_table = TableFormatter(
     extra_fields=['error_message'],
     extra_headers=['error']
 )
-job_table.apply_styling("Status", style="blue")
+job_table.apply_styling("ID", style="bold")
+job_table.add_substitution_rule("waiting", "[bold]waiting")
+job_table.add_substitution_rule("enqueued", "[bold cyan]enqueued")
+job_table.add_substitution_rule("running", "[bold blue]running")
+job_table.add_substitution_rule("success", "[bold green]success")
+job_table.add_substitution_rule("failed", "[bold red]failed")
+job_table.add_substitution_rule("terminated", "[bold yellow]terminated")
+job_table.add_substitution_rule("terminating", "[bold magenta]terminating")
+job_table.add_substitution_rule("cancelling", "[bold magenta]cancelling")
 job_panel = PanelFormatter(
-    name="Jobs",
+    name="Overview",
     fields=[
         'id',
         'name',
@@ -85,6 +93,14 @@ job_panel = PanelFormatter(
     extra_fields=['error_message'],
     extra_headers=['error']
 )
+job_panel.add_substitution_rule("waiting", "[bold]waiting")
+job_panel.add_substitution_rule("enqueued", "[bold cyan]enqueued")
+job_panel.add_substitution_rule("running", "[bold blue]running")
+job_panel.add_substitution_rule("success", "[bold green]success")
+job_panel.add_substitution_rule("failed", "[bold red]failed")
+job_panel.add_substitution_rule("terminated", "[bold yellow]terminated")
+job_panel.add_substitution_rule("terminating", "[bold magenta]terminating")
+job_panel.add_substitution_rule("cancelling", "[bold magenta]cancelling")
 ckpt_table = TableFormatter(
     name="Checkpoints",
     fields=['id', 'vendor', 'region', 'iteration', 'created_at'],
@@ -477,11 +493,13 @@ def log_view(
     show_time: bool = typer.Option(
         False,
         "--show-time",
+        "-st",
         help="Print logs with timestamp"
     ),
     show_machine_id: bool = typer.Option(
         False,
         "--show-machine-id",
+        "-sm",
         help="Print logs with machine index"
     )
 ):

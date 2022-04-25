@@ -4,7 +4,14 @@
 
 import json
 from dataclasses import dataclass, field
-from typing import List, TypeVar, Union, Optional, Dict, Any
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 from rich.table import Table
 from rich.panel import Panel
@@ -19,6 +26,16 @@ T = TypeVar('T', bound=Union[int, str])
 
 
 def get_value(data: dict, key: str) -> T:
+    """Get value of `key` from `data`.
+    Unlike dict.get method, it is available to access the nested value in `data`.
+
+    Args:
+        data (dict): Data to read.
+        key (str): Dot(.)-separated nested keys in data to access the value.
+
+    Returns:
+        T: The retrieved data.
+    """
     value = data
     keys = key.split('.')
     for key in keys:
@@ -29,6 +46,8 @@ def get_value(data: dict, key: str) -> T:
 
 @dataclass
 class Formatter:
+    """Formatter helps data formatting and visualization.
+    """
     name: str
 
     def __post_init__(self):
@@ -37,6 +56,8 @@ class Formatter:
 
 @dataclass
 class ListFormatter(Formatter):
+    """Base interface for list data formatter.
+    """
     fields: List[str]
     headers: List[str]
     extra_fields: List[str] = field(default_factory=list)
@@ -56,9 +77,22 @@ class ListFormatter(Formatter):
     def get_renderable(self, data: List[dict], show_detail: bool = False) -> RenderableType:
         raise NotImplementedError   # pragma: no cover
 
+    def apply_styling(self, header: str, **kwargs) -> None:
+        self._styling_map[header] = kwargs
+
+    def add_substitution_rule(self, before: str, after: str) -> None:
+        self._substitution_rule[before] = after
+
+    def _substitute(self, val: str) -> str:
+        if val in self._substitution_rule:
+            return self._substitution_rule[val]
+        return val
+
 
 @dataclass
 class TableFormatter(ListFormatter):
+    """Table formatter for visualizing tabulated data.
+    """
     caption: Optional[str] = None
 
     def _init(self, show_detail: bool):
@@ -90,20 +124,11 @@ class TableFormatter(ListFormatter):
             for extra_header in self.extra_headers:
                 self._table.add_column(extra_header)
 
-    def apply_styling(self, header: str, **kwargs) -> None:
-        self._styling_map[header] = kwargs
-
-    def add_substitution_rule(self, before: str, after: str) -> None:
-        self._substitution_rule[before] = after
-
-    def _substitute(self, val: str) -> str:
-        if val in self._substitution_rule:
-            return self._substitution_rule[val]
-        return val
-
 
 @dataclass
 class PanelFormatter(ListFormatter):
+    """Panel formatter for visualizing information detail in a panel.
+    """
     subtitle: Optional[str] = None
 
     def render(self, data: List[dict], show_detail: bool = False) -> None:
@@ -116,18 +141,23 @@ class PanelFormatter(ListFormatter):
 
     def _build_panel(self, data: List[dict], show_detail: bool):
         headers = self.headers + self.extra_headers if show_detail else self.headers
-        text = Text()
+        table = Table(box=None, show_header=False)
+        table.add_column('k', style='dim bold')
+        table.add_column('v')
 
         for d in data:
-            info = [ get_value(d, f) for f in self.fields ]
+            info = [ self._substitute(get_value(d, f)) for f in self.fields ]
             if show_detail:
-                info.extend([ get_value(d, f) for f in self.extra_fields ])
-            text.append("\n".join(f"{k}: {v}" for k, v in zip(headers, info)))
-        self._panel = Panel(text, title=self.name, subtitle=self.subtitle)
+                info.extend([ self._substitute(get_value(d, f)) for f in self.extra_fields ])
+            for k, v in zip(headers, info):
+                table.add_row(k, v)
+        self._panel = Panel(table, title=self.name, subtitle=self.subtitle)
 
 
 @dataclass
 class Edge:
+    """Edge of file traversal tree.
+    """
     name: str
     size: int
 
@@ -158,21 +188,22 @@ def find_and_insert(parent: Tree, edges: List[Edge]) -> None:
 
 @dataclass
 class TreeFormatter(Formatter):
-
+    """Tree formatter for visualizing file tree.
+    """
     def __post_init__(self):
         super().__post_init__()
 
     def render(self, data: List[dict]) -> None:
-        self._build_tree(data)
+        self._build_renderable(data)
         self._console.print(self._panel)
 
     def get_renderable(self, data: List[dict]) -> Panel:
-        self._build_tree(data)
+        self._build_renderable(data)
         return self._panel
 
-    def _build_tree(self, data: List[dict]):
+    def _build_tree(self, data: List[dict]) -> Tree:
         root = Tree("/")
-        paths = [ f"/{d['path']}" for d in data ]
+        paths = [ f"/{d['path'].lstrip()}" for d in data ]
         sizes = [ d['size'] for d in data]
         for path, size in zip(paths, sizes):
             edges = []
@@ -181,11 +212,17 @@ class TreeFormatter(Formatter):
                 file_size = size if i == len(parts) - 1 else None
                 edges.append(Edge(part, file_size))
             find_and_insert(root, edges)
+        return root
+
+    def _build_renderable(self, data: List[dict]) -> None:
+        root = self._build_tree(data)
         self._panel = Panel(root, title=self.name)
 
 
 @dataclass
 class JSONFormatter(Formatter):
+    """JSON formatter for visualizing JSON data.
+    """
     def render(self, data: dict) -> None:
         self._build_json(data)
         self._console.print(self._panel)
@@ -194,5 +231,5 @@ class JSONFormatter(Formatter):
         self._build_json(data)
         return self._panel
 
-    def _build_json(self, data: dict):
+    def _build_json(self, data: dict) -> None:
         self._panel = Panel(JSON(json.dumps(data)), title=self.name)
