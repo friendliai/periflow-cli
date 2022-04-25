@@ -166,6 +166,7 @@ def test_tree_formatter(tree_formatter: TreeFormatter, capsys: pytest.CaptureFix
         }
     ]
     tree = tree_formatter._build_tree(data)
+    assert isinstance(tree, Tree)
     assert "/" in tree.label
     assert len(tree.children) == 2
     assert "a" in tree.children[1].label
