@@ -16,7 +16,12 @@ import yaml
 import ruamel.yaml
 from click import Choice
 
-from pfcli.service import JobType, LogType, ServiceType
+from pfcli.service import (
+    JobType,
+    LogType,
+    ServiceType,
+    storage_type_map_inv,
+)
 from pfcli.service.client import (
     GroupDataClientService,
     GroupExperimentClientService,
@@ -43,9 +48,21 @@ from pfcli.utils import (
 
 tabulate.PRESERVE_WHITESPACE = True
 
-app = typer.Typer()
-template_app = typer.Typer()
-log_app = typer.Typer()
+app = typer.Typer(
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False
+)
+template_app = typer.Typer(
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False
+)
+log_app = typer.Typer(
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False
+)
 
 app.add_typer(template_app, name="template", help="Manager job templates.")
 app.add_typer(log_app, name="log", help="Manage job logs.")
@@ -181,7 +198,7 @@ def refine_config(config: dict,
         config["job_setting"]["model_code"] = job_template_config["model_code"]
 
 
-@app.command("run", help="Run a new job.")
+@app.command()
 def run(
     config_file: typer.FileText = typer.Option(
         ...,
@@ -223,6 +240,8 @@ def run(
              "If not provided, the value in the config file will be used."
     )
 ):
+    """Run a job.
+    """
     try:
         config: dict = yaml.safe_load(config_file)
     except yaml.YAMLError as e:
@@ -245,7 +264,7 @@ def run(
     )
 
 
-@app.command("list", help="List jobs.")
+@app.command()
 def list(
     tail: Optional[int] = typer.Option(
         None,
@@ -266,6 +285,8 @@ def list(
         help="Show all jobs in my group including jobs launched by other users"
     )
 ):
+    """List all jobs.
+    """
     if show_group_job:
         client: GroupJobClientService = build_client(ServiceType.GROUP_JOB)
     else:
@@ -303,15 +324,15 @@ def list(
     job_table.render(target_job_list)
 
 
-@app.command("stop", help="Stop running job.")
+@app.command()
 def stop(
-    job_id: int = typer.Option(
+    job_id: int = typer.Argument(
         ...,
-        "--job-id",
-        "-i",
         help="ID of job to stop"
     )
 ):
+    """Termiate/cancel a running/enqueued job.
+    """
     client: JobClientService = build_client(ServiceType.JOB)
     job_status = client.get_job(job_id)["status"]
 
@@ -323,15 +344,15 @@ def stop(
         secho_error_and_exit(f"No need to stop {job_status} job...")
 
 
-@app.command("view", help="See the job detail.")
+@app.command()
 def view(
-    job_id: int = typer.Option(
+    job_id: int = typer.Argument(
         ...,
-        "--job-id",
-        "-i",
         help="ID of job to view log"
     ),
 ):
+    """Show job detail.
+    """
     job_client: JobClientService = build_client(ServiceType.JOB)
     job_checkpoint_client: JobCheckpointClientService = build_client(ServiceType.JOB_CHECKPOINT, job_id=job_id)
     job_artifact_client: JobArtifactClientService = build_client(ServiceType.JOB_ARTIFACT, job_id=job_id)
@@ -362,6 +383,7 @@ def view(
     checkpoint_list = []
     for checkpoint in reversed(job_checkpoints):
         checkpoint['created_at'] = datetime_to_pretty_str(parse(checkpoint["created_at"]), long_list=True)
+        checkpoint['vendor'] = storage_type_map_inv[checkpoint['vendor']].value
         checkpoint_list.append(checkpoint)
 
     job_panel.render([job], show_detail=True)
@@ -378,6 +400,8 @@ def template_create(
         help="Path to save job YAML configruation file."
     )
 ):
+    """Create a job configuration YAML file
+    """
     job_type = typer.prompt(
         "What kind job do you want?\n",
         type=Choice([ e.value for e in JobType ]),
@@ -436,12 +460,10 @@ async def monitor_logs(job_id: int,
 
 
 # TODO: Implement since/until if necessary
-@log_app.command("view", help="Watch the job logs.")
+@log_app.command("view")
 def log_view(
-    job_id: int = typer.Option(
+    job_id: int = typer.Argument(
         ...,
-        "--job-id",
-        "-i",
         help="ID of job to view log"
     ),
     num_records: int = typer.Option(
@@ -458,8 +480,8 @@ def log_view(
     ),
     log_types: LogType = typer.Option(
         None,
-        "--log-type",
-        "-l",
+        "--source",
+        "-s",
         callback=_split_log_types,
         help="Filter logs by type. Comma-separated string of 'stdout', 'stderr' and 'vmlog'. "
              "By default, it will print logs for all types"
@@ -492,17 +514,18 @@ def log_view(
     ),
     show_time: bool = typer.Option(
         False,
-        "--show-time",
-        "-st",
+        "--timestamp",
+        "-t",
         help="Print logs with timestamp"
     ),
     show_machine_id: bool = typer.Option(
         False,
         "--show-machine-id",
-        "-sm",
         help="Print logs with machine index"
     )
 ):
+    """Show job logs.
+    """
     if num_records <= 0 or num_records > 10000:
         secho_error_and_exit("'num_records' should be a positive integer, equal or smaller than 10000")
 

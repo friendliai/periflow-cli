@@ -6,16 +6,24 @@ import json
 
 import typer
 
-from pfcli.service import ServiceType, CredType
+from pfcli.service import ServiceType, CredType, cred_type_map_inv
 from pfcli.service.client import CredentialClientService, GroupCredentialClientService, build_client
 from pfcli.service.config import CredentialConfigService
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import secho_error_and_exit
 
 
-app = typer.Typer()
-create_app = typer.Typer()
-update_app = typer.Typer()
+app = typer.Typer(
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False
+)
+create_app = typer.Typer(
+    help="Create credential",
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False
+)
 
 app.add_typer(create_app, name='create')
 
@@ -67,10 +75,11 @@ def main(
     else:
         client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
 
-    info = client.create_credential(cred_type, name, 1, value)
+    cred = client.create_credential(cred_type, name, 1, value)
+    cred['type'] = cred_type_map_inv[cred['type']].value
 
     typer.secho("Credential created successfully!", fg=typer.colors.BLUE)
-    panel_formatter.render([info])
+    panel_formatter.render([cred])
     exit(0)
 
 
@@ -97,6 +106,8 @@ def docker(
         help="Share the credential with my group members."
     )
 ):
+    """Create a credential for Docker.
+    """
     if group:
         client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
     else:
@@ -106,6 +117,7 @@ def docker(
         'password': password
     }
     cred = client.create_credential(CredType.DOCKER, name, 1, value)
+    cred['type'] = cred_type_map_inv[cred['type']].value
     panel_formatter.render([cred])
 
 
@@ -136,6 +148,8 @@ def s3(
         help="Share the credential with my group members."
     )
 ):
+    """Create a credential for AWS S3.
+    """
     if group:
         client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
     else:
@@ -146,6 +160,7 @@ def s3(
         'aws_default_region': aws_default_region
     }
     cred = client.create_credential(CredType.S3, name, 1, value)
+    cred['type'] = cred_type_map_inv[cred['type']].value
     panel_formatter.render([cred])
 
 
@@ -172,6 +187,8 @@ def azure_blob(
         help="Share the credential with my group members."
     )
 ):
+    """Create a credential for Azure Blob storage.
+    """
     if group:
         client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
     else:
@@ -181,6 +198,7 @@ def azure_blob(
         'storage_account_key': storage_account_key,
     }
     cred = client.create_credential(CredType.BLOB, name, 1, value)
+    cred['type'] = cred_type_map_inv[cred['type']].value
     panel_formatter.render([cred])
 
 
@@ -203,6 +221,8 @@ def gcs(
         help="Share the credential with my group members."
     )
 ):
+    """Create a credential for Google Cloud Storage.
+    """
     if group:
         client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
     else:
@@ -214,6 +234,7 @@ def gcs(
         secho_error_and_exit(f"Error occurred while parsing JSON file... {exc}")
     del value['type']
     cred = client.create_credential(CredType.GCS, name, 1, value)
+    cred['type'] = cred_type_map_inv[cred['type']].value
     panel_formatter.render([cred])
 
 
@@ -236,6 +257,8 @@ def slack(
         help="Share the credential with my group members."
     )
 ):
+    """Create a credential for Slack.
+    """
     if group:
         client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
     else:
@@ -244,6 +267,7 @@ def slack(
         'token': token
     }
     cred = client.create_credential(CredType.SLACK, name, 1, value)
+    cred['type'] = cred_type_map_inv[cred['type']].value
     panel_formatter.render([cred])
 
 
@@ -266,6 +290,8 @@ def wandb(
         help="Share the credential with my group members."
     )
 ):
+    """Create a credential for Weights & Biases.
+    """
     if group:
         client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
     else:
@@ -274,6 +300,7 @@ def wandb(
         'token': api_key
     }
     cred = client.create_credential(CredType.WANDB, name, 1, value)
+    cred['type'] = cred_type_map_inv[cred['type']].value
     panel_formatter.render([cred])
 
 
@@ -292,32 +319,37 @@ def list(
         help="List group-shared credentials"
     )
 ):
+    """List credentials.
+    """
     if group:
         client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
     else:
         client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     creds = client.list_credentials(cred_type)
+    for cred in creds:
+        cred['type'] = cred_type_map_inv[cred['type']].value
 
     table_formatter.render(creds)
 
 
 @app.command()
 def update(
-    cred_id: str = typer.Option(
+    credential_id: str = typer.Argument(
         ...,
-        '--cred-id',
-        '-i',
         help='UUID of credential to update.'
     )
 ):
+    """Update a credential data.
+    """
     configurator = CredentialConfigService()
 
-    configurator.start_interaction_for_update(cred_id)
+    configurator.start_interaction_for_update(credential_id)
     name, _, value = configurator.render()
 
     client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
 
-    cred = client.update_credential(cred_id, name=name, type_version=1, value=value)
+    cred = client.update_credential(credential_id, name=name, type_version=1, value=value)
+    cred['type'] = cred_type_map_inv[cred['type']].value
 
     typer.secho("Credential updated successfully!", fg=typer.colors.BLUE)
     panel_formatter.render([cred])
@@ -325,12 +357,9 @@ def update(
 
 @app.command()
 def delete(
-    cred_id: str = typer.Option(
+    credential_id: str = typer.Argument(
         ...,
-        '--cred-id',
-        '-i',
-        help='UUID of credential to delete.',
-        confirmation_prompt=True,
+        help='UUID of credential to delete.'
     ),
     force: bool = typer.Option(
         False,
@@ -339,12 +368,14 @@ def delete(
         help="Forcefully delete credential without confirmation prompt."
     )
 ):
+    """Delete a credential.
+    """
     if not force:
         do_delete = typer.confirm("Are you sure to delete credential?")
         if not do_delete:
             raise typer.Abort()
 
     client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
-    client.delete_credential(cred_id)
+    client.delete_credential(credential_id)
 
-    typer.secho(f"Credential ({cred_id}) is deleted successfully!", fg=typer.colors.BLUE)
+    typer.secho(f"Credential ({credential_id}) is deleted successfully!", fg=typer.colors.BLUE)

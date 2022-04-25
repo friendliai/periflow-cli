@@ -13,6 +13,7 @@ from pfcli.service import (
     StorageType,
     cred_type_map,
     cred_type_map_inv,
+    storage_type_map_inv,
 )
 from pfcli.service.client import (
     CheckpointClientService,
@@ -25,7 +26,11 @@ from pfcli.service.formatter import PanelFormatter, TableFormatter, TreeFormatte
 from pfcli.utils import download_file, secho_error_and_exit
 
 
-app = typer.Typer()
+app = typer.Typer(
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False
+)
 
 table_formatter = TableFormatter(
     name="Checkpoints",
@@ -47,8 +52,8 @@ def _validate_parallelism_order(value: str) -> List[str]:
     return parallelism_order
 
 
-@app.command("list")
-def checkpoint_list(
+@app.command()
+def list(
     category: Optional[CheckpointCategory] = typer.Option(
         None,
         "--category",
@@ -60,30 +65,31 @@ def checkpoint_list(
     """
     client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
     checkpoints = client.list_checkpoints(category)
+    for ckpt in checkpoints:
+        ckpt['vendor'] = storage_type_map_inv[ckpt['vendor']].value
 
     table_formatter.render(checkpoints)
 
 
-@app.command("view")
-def checkpoint_detail(
-    checkpoint_id: str = typer.Option(
+@app.command()
+def view(
+    checkpoint_id: str = typer.Argument(
         ...,
-        "--checkpoint-id",
-        "-i",
         help="UUID of checkpoint to inspect detail."
     )
 ):
-    """Show details of the given checkpoint_id
+    """Show details of a checkpoint.
     """
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
-    info = client.get_checkpoint(checkpoint_id)
+    ckpt = client.get_checkpoint(checkpoint_id)
+    ckpt['vendor'] = storage_type_map_inv[ckpt['vendor']].value
 
-    panel_formatter.render([info])
-    tree_formatter.render(info['files'])
+    panel_formatter.render([ckpt])
+    tree_formatter.render(ckpt['files'])
 
 
-@app.command("create")
-def checkpoint_create(
+@app.command()
+def link(
     cloud: StorageType = typer.Option(
         ...,
         "--cloud",
@@ -147,7 +153,7 @@ def checkpoint_create(
         help="Order of device allocation in distributed training."
     )
 ):
-    """Create the checkpoint.
+    """Link a checkpoint in user's cloud storage to PeriFlow.
     """
     dist_config = {
         "pp_degree": pp_degree,
@@ -166,9 +172,11 @@ def checkpoint_create(
 
     storage_helper = build_storage_helper(cloud, credential_json=credential["value"])
     files = storage_helper.list_storage_files(storage_name, storage_path)
+    if storage_path is not None:
+        storage_name = f"{storage_name}/{storage_path}"
 
     checkpoint_client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
-    info = checkpoint_client.create_checkpoint(
+    ckpt = checkpoint_client.create_checkpoint(
         vendor=cloud,
         region=region,
         credential_id=credential_id,
@@ -179,17 +187,16 @@ def checkpoint_create(
         data_config={},
         job_setting_config=None   # TODO: make configurable
     )
+    ckpt['vendor'] = storage_type_map_inv[ckpt['vendor']].value
 
-    panel_formatter.render([info])
-    tree_formatter.render(info['files'])
+    panel_formatter.render([ckpt])
+    tree_formatter.render(ckpt['files'])
 
 
-@app.command("delete")
-def checkpoint_delete(
-    checkpoint_id: str = typer.Option(
+@app.command()
+def delete(
+    checkpoint_id: str = typer.Argument(
         ...,
-        '--checkpoint-id',
-        '-i',
         help="UUID of checkpoint to delete."
     ),
     force: bool = typer.Option(
@@ -212,12 +219,10 @@ def checkpoint_delete(
     typer.secho("Checkpoint is deleted successfully!", fg=typer.colors.BLUE)
 
 
-@app.command("download")
-def checkpoint_download(
-    checkpoint_id: str = typer.Option(
+@app.command()
+def download(
+    checkpoint_id: str = typer.Argument(
         ...,
-        '--checkpoint-id',
-        '-i',
         help="UUID of checkpoint to download."
     ),
     save_directory: Optional[str] = typer.Option(

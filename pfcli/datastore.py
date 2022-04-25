@@ -15,6 +15,7 @@ from pfcli.service import (
     ServiceType,
     cred_type_map,
     cred_type_map_inv,
+    storage_type_map_inv,
 )
 from pfcli.service.client import (
     CredentialClientService,
@@ -36,7 +37,11 @@ from pfcli.utils import (
     get_file_info,
 )
 
-app = typer.Typer()
+app = typer.Typer(
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False
+)
 
 table_formatter = TableFormatter(
     name="Datastore",
@@ -87,38 +92,44 @@ def main(
 
         typer.secho("Datastore created successfully!", fg=typer.colors.BLUE)
 
+    datastore['vendor'] = storage_type_map_inv[datastore['vendor']].value
     panel_formatter.render([datastore], show_detail=True)
     exit(0)
 
 
 @app.command()
 def list():
+    """List datasets in datastore.
+    """
     client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
     datastores = client.list_datastores()
+    for datastore in datastores:
+        datastore['vendor'] = storage_type_map_inv[datastore['vendor']].value
     table_formatter.render(datastores)
 
 
 @app.command()
 def view(
-    name: str = typer.Option(
+    name: str = typer.Argument(
         ...,
-        '--name',
-        '-n',
         help="ID or name of datastore to see detail info."
     )
 ):
+    """View the detail of a dataset.
+    """
     group_client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
     client: DataClientService = build_client(ServiceType.DATA)
 
     datastore_id = group_client.get_id_by_name(name)
     datastore = client.get_datastore(datastore_id)
+    datastore['vendor'] = storage_type_map_inv[datastore['vendor']].value
     panel_formatter.render([datastore], show_detail=True)
     tree_formatter.render(datastore['files'])
     json_formatter.render(datastore['metadata'])
 
 
 @app.command()
-def create(
+def link(
     name: str = typer.Option(
         ...,
         '--name',
@@ -154,8 +165,11 @@ def create(
         '--metadata-file',
         '-f',
         help="Path to file containing the metadata describing your dataset."
-    ),
+             "The metadata should be written in YAML format."
+    )
 ):
+    """Link user's own cloud storage to PeriFlow datastore.
+    """
     credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     credential = credential_client.get_credential(credential_id)
     if credential["type"] != cred_type_map[cloud]:
@@ -175,6 +189,7 @@ def create(
 
     client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
     datastore = client.create_datastore(name, cloud, region, storage_name, credential_id, metadata, files, True)
+    datastore['vendor'] = storage_type_map_inv[datastore['vendor']].value
 
     typer.secho(f"Datastore ({name}) is created successfully!", fg=typer.colors.BLUE)
     panel_formatter.render([datastore], show_detail=True)
@@ -184,10 +199,8 @@ def create(
 
 @app.command()
 def upload(
-    name: str = typer.Option(
+    name: str = typer.Argument(
         ...,
-        '--name',
-        '-n',
         help="Name of your datastore to upload objects. If not exists, a new datastore will be created."
     ),
     source_path: Path = typer.Option(
@@ -201,8 +214,12 @@ def upload(
         '--metadata-file',
         '-f',
         help="Path to file containing the metadata describing your dataset."
-    ),
+             "The metadata should be written in YAML format."
+    )
 ):
+    """Create a dataset by uploading dataset files in my local file system.
+    The created dataset will have "fai" cloud type.
+    """
     client: DataClientService = build_client(ServiceType.DATA)
     group_client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
 
@@ -233,6 +250,8 @@ def upload(
         metadata=metadata,
         active=True
     )
+    datastore['vendor'] = storage_type_map_inv[datastore['vendor']].value
+
     typer.secho(f"Objects are uploaded to datastore ({name}) successfully!", fg=typer.colors.BLUE)
     panel_formatter.render([datastore], show_detail=True)
     tree_formatter.render(datastore['files'])
@@ -240,52 +259,29 @@ def upload(
 
 
 @app.command()
-def update(
-    target_name: str = typer.Option(
+def edit(
+    name: str = typer.Argument(
         ...,
-        '--taget-name',
-        '-n',
         help='The name of datastore to update.'
     ),
     new_name: Optional[str] = typer.Option(
         None,
-        '--new-name',
-        '-nn',
+        '--name',
+        '-n',
         help='The new name of datastore.'
-    ),
-    cloud: Optional[StorageType] = typer.Option(
-        None,
-        '--cloud',
-        '-c',
-        help="Name of cloud storage vendor where your dataset is uploaded."
-    ),
-    region: Optional[str] = typer.Option(
-        None,
-        '--region',
-        '-r',
-        help="Cloud storage region where your dataset is uploaded."
-    ),
-    storage_name: Optional[str] = typer.Option(
-        None,
-        '--storage-name',
-        '-s',
-        help="The name of cloud storage where your dataset is uploaded."
-    ),
-    credential_id: Optional[str] = typer.Option(
-        None,
-        '--credential-id',
-        '-i',
-        help="Credential UUID to access the cloud storage."
     ),
     metadata_file: Optional[typer.FileText] = typer.Option(
         None,
         '--metadata-file',
         '-f',
-        help="Path to file containing the metadata describing your dataset."
-    ),
+        help="Path to file containing the metadata describing your dataset. "
+             "The metadata should be written in YAML format."
+    )
 ):
+    """Edit metadata of dataset.
+    """
     group_client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
-    datastore_id = group_client.get_id_by_name(target_name)
+    datastore_id = group_client.get_id_by_name(name)
 
     metadata = None
     if metadata_file is not None:
@@ -299,13 +295,10 @@ def update(
     datastore = client.update_datastore(
         datastore_id,
         name=new_name,
-        vendor=cloud,
-        region=region,
-        storage_name=storage_name,
-        credential_id=credential_id,
         metadata=metadata,
         active=True
     )
+    datastore['vendor'] = storage_type_map_inv[datastore['vendor']].value
 
     typer.secho("Datastore is updated successfully!", fg=typer.colors.BLUE)
     panel_formatter.render([datastore], show_detail=True)
@@ -315,10 +308,8 @@ def update(
 
 @app.command()
 def delete(
-    name: str = typer.Option(
+    name: str = typer.Argument(
         ...,
-        '--name',
-        '-n',
         help="Name of datastore to delete.",
     ),
     force: bool = typer.Option(
@@ -328,6 +319,11 @@ def delete(
         help="Forcefully delete datastore without confirmation prompt."
     )
 ):
+    """Delete dataset from datastore.
+    If the dataset was linked from user's cloud storage by `pf datastore link` command, then the storage will not be
+    deleted and only the DB record is deleted. If the dataset was uploaded by `pf datastore upload` command, the storage
+    will be deleted along with the DB record.
+    """
     if not force:
         do_delete = typer.confirm("Are your sure to delete datastore?")
         if not do_delete:
