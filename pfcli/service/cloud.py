@@ -54,6 +54,9 @@ class AWSCloudStorageHelper(CloudStorageHelper):
         object_contents = self.client.list_objects(Bucket=storage_name, **prefix_option)['Contents']
         for object_content in object_contents:
             object_key = object_content['Key']
+            name = object_key.split('/')[-1]
+            if not name:
+                continue
             file_list.append({
                 'name': object_key.split('/')[-1],
                 'path': object_key,

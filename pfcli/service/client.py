@@ -841,10 +841,10 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
     def list_checkpoints(self, category: Optional[CheckpointCategory]) -> dict:
         request_data = {}
         if category is not None:
-            request_data['category'] = category
+            request_data['category'] = category.value
 
         try:
-            response = self.list(json=request_data)
+            response = self.list(params=request_data)
             response.raise_for_status()
         except HTTPError as exc:
             secho_error_and_exit(f"Cannot list checkpoints in your group. {decode_http_err(exc)}")
@@ -859,11 +859,11 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
                           files: List[dict],
                           dist_config: dict,
                           data_config: dict,
-                          job_setting_config: dict) -> dict:
+                          job_setting_config: Optional[dict]) -> dict:
         validate_storage_region(vendor, region)
 
         request_data = {
-            "vendor": vendor,
+            "vendor": storage_type_map[vendor],
             "region": region,
             "credential_id": credential_id,
             "iteration": iteration,

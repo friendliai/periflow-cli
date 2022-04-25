@@ -3,7 +3,6 @@
 """CLI for Checkpoint"""
 
 import os
-from pathlib import Path
 from typing import Optional, List
 
 import typer
@@ -88,7 +87,7 @@ def checkpoint_create(
     cloud: StorageType = typer.Option(
         ...,
         "--cloud",
-        "-v",
+        "-c",
         help="The cloud storage vendor type where the checkpoint is uploaded."
     ),
     region: str = typer.Option(
@@ -109,7 +108,7 @@ def checkpoint_create(
         "-c",
         help="UUID of crendential to access cloud storage."
     ),
-    storage_path: Optional[Path] = typer.Option(
+    storage_path: Optional[str] = typer.Option(
         None,
         "--storage-path",
         "-p",
@@ -165,7 +164,7 @@ def checkpoint_create(
             f"Credential type and cloud vendor mismatch: {cred_type_map_inv[credential['type']]} and {cloud}."
         )
 
-    storage_helper = build_storage_helper(cloud, credential_json=["value"])
+    storage_helper = build_storage_helper(cloud, credential_json=credential["value"])
     files = storage_helper.list_storage_files(storage_name, storage_path)
 
     checkpoint_client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
@@ -178,7 +177,7 @@ def checkpoint_create(
         files=files,
         dist_config=dist_config,
         data_config={},
-        job_setting_config={}   # TODO: make configurable
+        job_setting_config=None   # TODO: make configurable
     )
 
     panel_formatter.render([info])
