@@ -3,6 +3,7 @@
 """CLI for Checkpoint"""
 
 import os
+from dateutil.parser import parse
 from typing import Optional, List
 
 import typer
@@ -23,7 +24,7 @@ from pfcli.service.client import (
 )
 from pfcli.service.cloud import build_storage_helper
 from pfcli.service.formatter import PanelFormatter, TableFormatter, TreeFormatter
-from pfcli.utils import download_file, secho_error_and_exit
+from pfcli.utils import datetime_to_pretty_str, download_file, secho_error_and_exit
 
 
 app = typer.Typer(
@@ -35,12 +36,12 @@ app = typer.Typer(
 table_formatter = TableFormatter(
     name="Checkpoints",
     fields=['id', 'category', 'vendor', 'storage_name', 'iteration', 'created_at'],
-    headers=['ID', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Created at']
+    headers=['ID', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Created At']
 )
 panel_formatter = PanelFormatter(
     name="Overview",
     fields=['id', 'category', 'vendor', 'storage_name', 'iteration', 'created_at'],
-    headers=['ID', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Created at']
+    headers=['ID', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Created At']
 )
 tree_formatter = TreeFormatter(name="Files")
 
@@ -67,6 +68,7 @@ def list(
     checkpoints = client.list_checkpoints(category)
     for ckpt in checkpoints:
         ckpt['vendor'] = storage_type_map_inv[ckpt['vendor']].value
+        ckpt['created_at'] = datetime_to_pretty_str(parse(ckpt['created_at']))
 
     table_formatter.render(checkpoints)
 
@@ -83,13 +85,14 @@ def view(
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
     ckpt = client.get_checkpoint(checkpoint_id)
     ckpt['vendor'] = storage_type_map_inv[ckpt['vendor']].value
+    ckpt['created_at'] = datetime_to_pretty_str(parse(ckpt['created_at']))
 
     panel_formatter.render([ckpt])
     tree_formatter.render(ckpt['files'])
 
 
 @app.command()
-def link(
+def create(
     cloud: StorageType = typer.Option(
         ...,
         "--cloud",
@@ -118,7 +121,7 @@ def link(
         None,
         "--storage-path",
         "-p",
-        help="File or direcotry path of cloud storage."
+        help="File or direcotry path of cloud storage. The root of the storage will be used by default."
     ),
     iteration: int = typer.Option(
         ...,
@@ -130,30 +133,26 @@ def link(
     pp_degree: int = typer.Option(
         1,
         "--pp-degree",
-        "-pp",
         help="Pipelined model parallelism degree of the model checkpoint."
     ),
     dp_degree: int = typer.Option(
         1,
         "--dp-degree",
-        "-dp",
         help="Data parallelism degree of the model checkpoint."
     ),
     mp_degree: int = typer.Option(
         1,
         "--mp-degree",
-        "-mp",
         help="Tensor parallelism degree of the model checkpoint."
     ),
     parallelism_order: str = typer.Option(
         'pp,dp,mp',
         '--parallelism-order',
-        '-po',
         callback=_validate_parallelism_order,
         help="Order of device allocation in distributed training."
     )
 ):
-    """Link a checkpoint in user's cloud storage to PeriFlow.
+    """Create a checkpoint object by registering user's cloud storage to PeriFlow.
     """
     dist_config = {
         "pp_degree": pp_degree,
@@ -171,6 +170,7 @@ def link(
         )
 
     storage_helper = build_storage_helper(cloud, credential_json=credential["value"])
+    storage_path = storage_path.strip('/')
     files = storage_helper.list_storage_files(storage_name, storage_path)
     if storage_path is not None:
         storage_name = f"{storage_name}/{storage_path}"
@@ -188,6 +188,7 @@ def link(
         job_setting_config=None   # TODO: make configurable
     )
     ckpt['vendor'] = storage_type_map_inv[ckpt['vendor']].value
+    ckpt['created_at'] = datetime_to_pretty_str(parse(ckpt['created_at']))
 
     panel_formatter.render([ckpt])
     tree_formatter.render(ckpt['files'])
@@ -227,9 +228,9 @@ def download(
     ),
     save_directory: Optional[str] = typer.Option(
         None,
-        '--save-directory',
+        '--destination',
         '-d',
-        help="Path to directory to save checkpoint files."
+        help="Destination path to directory to save checkpoint files."
     )
 ):
     """Download checkpoint files to local storage.

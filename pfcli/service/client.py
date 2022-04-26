@@ -543,9 +543,13 @@ class DataClientService(ClientService):
             json=request_data
         )
 
-    def get_upload_urls(self, datastore_id: T, src_path: Path) -> List[Dict[str, str]]:
-        paths = list(map(str, src_path.rglob('*')))
-        paths = [f for f in paths if os.path.isfile(f)]
+    def get_upload_urls(self, datastore_id: T, src_path: Path, expand: bool) -> List[Dict[str, str]]:
+        if src_path.is_file():
+            paths = [str(src_path.name)]
+        else:
+            paths = list(src_path.rglob('*'))
+            rel_path = src_path if expand else src_path.parent
+            paths = [str(f.relative_to(rel_path)) for f in paths if f.is_file()]
         if len(paths) == 0:
             secho_error_and_exit(f"No file exists in this path ({src_path})")
         try:

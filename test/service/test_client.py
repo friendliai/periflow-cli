@@ -942,21 +942,21 @@ def test_data_client_get_upload_urls(requests_mock: requests_mock.Mocker, data_c
     )
     with TemporaryDirectory() as dir:
         (Path(dir) / 'file').touch()
-        assert data_client.get_upload_urls(0, Path(dir)) == [
+        assert data_client.get_upload_urls(0, Path(dir), True) == [
             {'path': '/path/to/local/file', 'upload_url': 'https://s3.bucket.com'}
         ]
 
     # Failed when uploading empty directory.
     with TemporaryDirectory() as dir:
         with pytest.raises(typer.Exit):
-            data_client.get_upload_urls(0, Path(dir))
+            data_client.get_upload_urls(0, Path(dir), True)
 
     # Failed due to HTTP error
     requests_mock.post(url_template.render(datastore_id=0), status_code=500)
     with TemporaryDirectory() as dir:
         (Path(dir) / 'file').touch()
         with pytest.raises(typer.Exit):
-            data_client.get_upload_urls(0, Path(dir))
+            data_client.get_upload_urls(0, Path(dir), True)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')

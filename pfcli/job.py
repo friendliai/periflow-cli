@@ -58,14 +58,8 @@ template_app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False
 )
-log_app = typer.Typer(
-    no_args_is_help=True,
-    context_settings={"help_option_names": ["-h", "--help"]},
-    add_completion=False
-)
 
 app.add_typer(template_app, name="template", help="Manager job templates.")
-app.add_typer(log_app, name="log", help="Manage job logs.")
 
 job_table = TableFormatter(
     name="Jobs",
@@ -121,7 +115,7 @@ job_panel.add_substitution_rule("cancelling", "[bold magenta]cancelling")
 ckpt_table = TableFormatter(
     name="Checkpoints",
     fields=['id', 'vendor', 'region', 'iteration', 'created_at'],
-    headers=['ID', 'Cloud', 'Region', 'Iteration', 'Created at']
+    headers=['ID', 'Cloud', 'Region', 'Iteration', 'Created At']
 )
 artifact_table = TableFormatter(
     name="Artifacts",
@@ -269,18 +263,16 @@ def list(
     tail: Optional[int] = typer.Option(
         None,
         "--tail",
-        "-t",
         help="The number of job list to view at the tail"
     ),
     head: Optional[int] = typer.Option(
         None,
         "--head",
-        "-h",
         help="The number of job list to view at the head"
     ),
     show_group_job: bool = typer.Option(
         False,
-        "--show-group-job",
+        "--group",
         "-g",
         help="Show all jobs in my group including jobs launched by other users"
     )
@@ -422,12 +414,6 @@ def template_create(
         open_editor(save_path.name)
 
 
-def _split_log_types(value: Optional[str]) -> Optional[List[LogType]]:
-    if value is None:
-        return value
-    return [ x.lower() for x in value.split(",") ]
-
-
 def _split_machine_ids(value: Optional[str]) -> Optional[List[int]]:
     if value is None:
         return value
@@ -460,8 +446,8 @@ async def monitor_logs(job_id: int,
 
 
 # TODO: Implement since/until if necessary
-@log_app.command("view")
-def log_view(
+@app.command()
+def log(
     job_id: int = typer.Argument(
         ...,
         help="ID of job to view log"
@@ -478,14 +464,6 @@ def log_view(
         "-c",
         help="Filter logs by content"
     ),
-    log_types: LogType = typer.Option(
-        None,
-        "--source",
-        "-s",
-        callback=_split_log_types,
-        help="Filter logs by type. Comma-separated string of 'stdout', 'stderr' and 'vmlog'. "
-             "By default, it will print logs for all types"
-    ),
     machines: str = typer.Option(
         None,
         "--machine",
@@ -497,7 +475,6 @@ def log_view(
     head: bool = typer.Option(
         False,
         "--head",
-        "-h",
         help="View logs from the oldest one"
     ),
     export_path: Optional[Path] = typer.Option(
@@ -536,7 +513,7 @@ def log_view(
         secho_error_and_exit("'follow' cannot be set when 'export_path' is given")
 
     client: JobClientService = build_client(ServiceType.JOB)
-    logs = client.get_text_logs(job_id, num_records, head, log_types, machines, content)
+    logs = client.get_text_logs(job_id, num_records, head, None, machines, content)
 
     if export_path is not None:
         with export_path.open("w") as export_file:
@@ -570,7 +547,7 @@ def log_view(
         try:
             # Subscribe job log
             asyncio.run(
-                monitor_logs(job_id, log_types, machines, show_time, show_machine_id)
+                monitor_logs(job_id, None, machines, show_time, show_machine_id)
             )
         except KeyboardInterrupt:
             secho_error_and_exit(f"Keyboard Interrupt...", color=typer.colors.MAGENTA)

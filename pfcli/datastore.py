@@ -8,6 +8,7 @@ from click import Choice
 
 import typer
 import yaml
+from rich.text import Text
 
 from pfcli.service import (
     StorageType,
@@ -48,15 +49,18 @@ table_formatter = TableFormatter(
     fields=['name', 'vendor', 'region', 'storage_name', 'active'],
     headers=['Name', 'Cloud', 'Region', 'Storage Name', 'Active'],
 )
-table_formatter.add_substitution_rule("True", "✓")
-table_formatter.add_substitution_rule("False", "x")
-table_formatter.apply_styling("Active", style="cyan")
+table_formatter.add_substitution_rule("True", Text("Y", style="green"))
+table_formatter.add_substitution_rule("False", Text("N", style="red"))
+table_formatter.add_substitution_rule("", "-")
 
 panel_formatter = PanelFormatter(
     name="Overview",
     fields=['name', 'vendor', 'region', 'storage_name', 'active'],
     headers=['Name', 'Cloud', 'Region', 'Storage Name', 'Active'],
 )
+panel_formatter.add_substitution_rule("True", Text("Y", style="green"))
+panel_formatter.add_substitution_rule("False", Text("N", style="red"))
+panel_formatter.add_substitution_rule("", "-")
 
 json_formatter = JSONFormatter(name="Metadata")
 tree_formatter = TreeFormatter(name="Files")
@@ -129,7 +133,7 @@ def view(
 
 
 @app.command()
-def link(
+def create(
     name: str = typer.Option(
         ...,
         '--name',
@@ -169,6 +173,7 @@ def link(
     )
 ):
     """Link user's own cloud storage to PeriFlow datastore.
+    Use `pf datastore --interactive create` command to create a dataset with interactive prompt.
     """
     credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     credential = credential_client.get_credential(credential_id)
@@ -199,11 +204,13 @@ def link(
 
 @app.command()
 def upload(
-    name: str = typer.Argument(
+    name: str = typer.Option(
         ...,
-        help="Name of your datastore to upload objects. If not exists, a new datastore will be created."
+        '--name',
+        '-n',
+        help="Name of your datastore to upload objects."
     ),
-    source_path: Path = typer.Option(
+    source_path: str = typer.Option(
         ...,
         '--source-path',
         '-p',
@@ -222,30 +229,37 @@ def upload(
     """
     client: DataClientService = build_client(ServiceType.DATA)
     group_client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
+    expand = source_path.endswith('/')
+    source_path = Path(source_path)
 
     datastore_id = group_client.get_id_by_name(name)
-    metadata = None
-    if datastore_id is None:
-        typer.echo(f"Creating datastore ({name})...")
-        metadata = {}
-        if metadata_file is not None:
-            try:
-                metadata = yaml.safe_load(metadata_file)
-            except yaml.YAMLError as exc:
-                secho_error_and_exit(f"Error occurred while parsing metadata file... {exc}")
+    if datastore_id is not None:
+        secho_error_and_exit(f"The datastore with the same name ({name}) already exists.")
 
-        datastore = group_client.create_datastore(name, StorageType.FAI, '', '', None, metadata, [], False)
-        typer.secho(f"Datastore ({name}) is created successfully.", fg=typer.colors.BLUE)
-        datastore_id = datastore['id']
+    typer.echo(f"Creating datastore ({name})...")
+    metadata = {}
+    if metadata_file is not None:
+        try:
+            metadata = yaml.safe_load(metadata_file)
+        except yaml.YAMLError as exc:
+            secho_error_and_exit(f"Error occurred while parsing metadata file... {exc}")
+
+    datastore = group_client.create_datastore(name, StorageType.FAI, '', '', None, metadata, [], False)
+    typer.secho(f"Datastore ({name}) is created successfully.", fg=typer.colors.BLUE)
+    datastore_id = datastore['id']
 
     typer.echo(f"Start uploading objects to datastore ({name})...")
-    url_dicts = client.get_upload_urls(datastore_id, source_path)
-    upload_files(url_dicts)
+    url_dicts = client.get_upload_urls(
+        datastore_id=datastore_id,
+        src_path=source_path,
+        expand=expand
+    )
+    upload_files(url_dicts, source_path, expand)
 
     datastore = client.update_datastore(
         datastore_id,
         files=[
-            get_file_info(url_info['path']) for url_info in url_dicts
+            get_file_info(url_info['path'], source_path, expand) for url_info in url_dicts
         ],
         metadata=metadata,
         active=True

@@ -41,14 +41,14 @@ user_panel_formatter = PanelFormatter(
     headers=["Name", "Email"]
 )
 org_table_formatter = TableFormatter(
-    name="My Organizations",
+    name="Organization",
     fields=['name'],
     headers=["Name"]
 )
 
 
 @app.command(help="Show who am I")
-def self():
+def whoami():
     client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
     info = client.get_user_info()
     user_panel_formatter.render([info])

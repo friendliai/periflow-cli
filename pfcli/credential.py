@@ -30,13 +30,13 @@ app.add_typer(create_app, name='create')
 table_formatter = TableFormatter(
     name="Credentials",
     fields=['id', 'name', 'type', 'created_at', 'owner_type'],
-    headers=['ID', 'Name', 'Type', 'Created at', 'Scope']
+    headers=['ID', 'Name', 'Type', 'Created At', 'Scope']
 )
 
 panel_formatter = PanelFormatter(
     name="Overview",
     fields=['id', 'name', 'type', 'created_at', 'owner_type'],
-    headers=['ID', 'Name', 'Type', 'Created at', 'Scope']
+    headers=['ID', 'Name', 'Type', 'Created At', 'Scope']
 )
 
 
