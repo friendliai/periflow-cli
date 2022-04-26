@@ -16,12 +16,7 @@ import yaml
 import ruamel.yaml
 from click import Choice
 
-from pfcli.service import (
-    JobType,
-    LogType,
-    ServiceType,
-    storage_type_map_inv,
-)
+from pfcli.service import JobType, ServiceType, storage_type_map_inv
 from pfcli.service.client import (
     GroupDataClientService,
     GroupExperimentClientService,

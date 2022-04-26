@@ -111,17 +111,17 @@ def create(
         "-s",
         help="The name cloud storage where the checkpoint is uploaded."
     ),
-    credential_id: str = typer.Option(
-        ...,
-        "--credential-id",
-        "-c",
-        help="UUID of crendential to access cloud storage."
-    ),
     storage_path: Optional[str] = typer.Option(
         None,
         "--storage-path",
         "-p",
         help="File or direcotry path of cloud storage. The root of the storage will be used by default."
+    ),
+    credential_id: str = typer.Option(
+        ...,
+        "--credential-id",
+        "-c",
+        help="UUID of crendential to access cloud storage."
     ),
     iteration: int = typer.Option(
         ...,
@@ -170,7 +170,8 @@ def create(
         )
 
     storage_helper = build_storage_helper(cloud, credential_json=credential["value"])
-    storage_path = storage_path.strip('/')
+    if storage_path is not None:
+        storage_path = storage_path.strip('/')
     files = storage_helper.list_storage_files(storage_name, storage_path)
     if storage_path is not None:
         storage_name = f"{storage_name}/{storage_path}"
