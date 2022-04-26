@@ -56,9 +56,9 @@ class AWSCloudStorageHelper(CloudStorageHelper):
             object_key = object_content['Key']
             name = object_key.split('/')[-1]
             if not name:
-                continue
+                continue    # skip directory
             file_list.append({
-                'name': object_key.split('/')[-1],
+                'name': name,
                 'path': object_key,
                 'mtime': object_content['LastModified'].isoformat(),
                 'size': object_content['Size']
@@ -82,8 +82,11 @@ class AzureCloudStorageHelper(CloudStorageHelper):
         object_contents = container_client.list_blobs(**prefix_option)
         for object_content in object_contents:
             object_name = object_content['name']
+            name = object_name.split('/')[-1]
+            if not name:
+                continue    # skip directory
             file_list.append({
-                'name': object_name.split('/')[-1],
+                'name': name,
                 'path': object_name,
                 'mtime': object_content['last_modified'].isoformat(),
                 'size': object_content['size'],

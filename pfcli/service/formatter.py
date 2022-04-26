@@ -167,21 +167,23 @@ def find_and_insert(parent: Tree, edges: List[Edge]) -> None:
         return
 
     is_dir = len(edges) > 1
+    folder_style_prefix = "[bold magenta]:open_file_folder: "
 
-    match = [tree for tree in parent.children if edges[0].name in tree.label]
+    match = [
+        tree for tree in parent.children \
+            if edges[0].name == str(tree.label).replace(folder_style_prefix, "").split(' ')[0]
+    ]
 
     if match:
         tree = match[0]
     else:
         if is_dir:
-            tree = parent.add(f"[bold magenta]:open_file_folder: {edges[0].name}")
+            tree = parent.add(f"{folder_style_prefix}{edges[0].name}")
         else:
             text_filename = Text(edges[0].name, "green")
-            text_filename.highlight_regex(r"\..*$", "bold red")
             file_size = edges[0].size
             text_filename.append(f" ({decimal(file_size)})", "blue")
-            icon = "🐍 " if edges[0].name.endswith == ".py" else "📄 "
-            tree = parent.add(Text(icon) + text_filename)
+            tree = parent.add(text_filename)
 
     find_and_insert(tree, edges[1:])
 

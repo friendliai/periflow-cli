@@ -21,7 +21,12 @@ from pfcli.service.client import UserGroupClientService, build_client
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import get_uri, secho_error_and_exit
 
-app = typer.Typer(help="Welcome to PeriFlow 🤗")
+app = typer.Typer(
+    help="Welcome to PeriFlow 🤗",
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False
+)
 app.add_typer(credential.app, name="credential", help="Manage credentials")
 app.add_typer(job.app, name="job", help="Manage jobs")
 app.add_typer(checkpoint.app, name="checkpoint", help="Manage checkpoints")
@@ -36,14 +41,14 @@ user_panel_formatter = PanelFormatter(
     headers=["Name", "Email"]
 )
 org_table_formatter = TableFormatter(
-    name="My Organizations",
+    name="Organization",
     fields=['name'],
     headers=["Name"]
 )
 
 
 @app.command(help="Show who am I")
-def self():
+def whoami():
     client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
     info = client.get_user_info()
     user_panel_formatter.render([info])

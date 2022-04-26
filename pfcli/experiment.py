@@ -14,7 +14,11 @@ from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.job import job_table
 from pfcli.utils import datetime_to_pretty_str, timedelta_to_pretty_str
 
-app = typer.Typer()
+app = typer.Typer(
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False
+)
 table_formatter = TableFormatter(name="Experiments", fields=['name'], headers=['Name'])
 panel_formatter = PanelFormatter(name="Overview", fields=['name'], headers=['Name'])
 
@@ -28,6 +32,8 @@ def create(
         help="The name of experiment to create."
     )
 ):
+    """Create a new experiment.
+    """
     client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
     experiment = client.create_experiment(name)
     panel_formatter.render([experiment])
@@ -35,6 +41,8 @@ def create(
 
 @app.command()
 def list():
+    """List all experiments.
+    """
     client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
     experiments = client.list_experiments()
     table_formatter.render(experiments)
@@ -42,10 +50,8 @@ def list():
 
 @app.command()
 def view(
-    name: str = typer.Option(
+    name: str = typer.Argument(
         ...,
-        '--name',
-        '-n',
         help="The name of experiment to view details."
     ),
     tail: Optional[int] = typer.Option(
@@ -61,6 +67,8 @@ def view(
         help="The number of job list to view at the head"
     ),
 ):
+    """Show a list of jobs in the experiment.
+    """
     client: ExperimentClientService = build_client(ServiceType.EXPERIMENT)
     group_client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
     experiment_id = group_client.get_id_by_name(name)
@@ -98,20 +106,20 @@ def view(
 
 
 @app.command()
-def update(
-    name: str = typer.Option(
+def edit(
+    name: str = typer.Argument(
         ...,
-        '--name',
-        '-n',
         help="The name of experiment to update."
     ),
     new_name: str = typer.Option(
         ...,
-        '--new-name',
-        '-nn',
+        '--name',
+        '-n',
         help="The new new of experiment"
     )
 ):
+    """Edit experiment info.
+    """
     client: ExperimentClientService = build_client(ServiceType.EXPERIMENT)
     group_client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
 
@@ -122,9 +130,8 @@ def update(
 
 @app.command()
 def delete(
-    name: str = typer.Option(
+    name: str = typer.Argument(
         ...,
-        '-n',
         help="The name of experiment to delete."
     ),
     force: bool = typer.Option(
@@ -134,6 +141,8 @@ def delete(
         help="Forcefully delete experiments and all jobs inside the experiment without confirmation prompt."
     )
 ):
+    """Delete a experiment.
+    """
     if not force:
         do_delete = typer.confirm(
             "!!! This action is VERY DESTRUCTIVE !!!\n"

@@ -12,7 +12,11 @@ from pfcli.service.formatter import TableFormatter
 from pfcli.utils import validate_cloud_region
 
 
-app = typer.Typer()
+app = typer.Typer(
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False
+)
 
 formatter = TableFormatter(
     name="VM Instances",

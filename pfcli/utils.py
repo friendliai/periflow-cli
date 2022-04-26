@@ -154,25 +154,38 @@ def _get_total_file_size(file_paths: List[str]) -> int:
     return sum([os.stat(file_path).st_size for file_path in file_paths])
 
 
-def upload_files(url_dicts: List[Dict[str, str]]) -> None:
-    total_size = _get_total_file_size([url_info['path'] for url_info in url_dicts])
+def storage_path_to_local_path(storage_path: str, source_path: Path, expand: bool) -> str:
+    if source_path.is_file():
+        return str(source_path)
+
+    if expand:
+        return str(source_path / Path(storage_path))
+
+    return str(source_path / Path(storage_path.split('/', 1)[1]))
+
+
+def upload_files(url_dicts: List[Dict[str, str]], source_path: Path, expand: bool) -> None:
+    local_paths = [ storage_path_to_local_path(url_info['path'], source_path, expand) for url_info in url_dicts ]
+    total_size = _get_total_file_size(local_paths)
+    upload_urls = [ url_info['upload_url'] for url_info in url_dicts ] 
 
     with tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024) as t:
         with ThreadPoolExecutor() as executor:
             futs = [
                 executor.submit(
-                    _upload_file, url_info['path'], url_info['upload_url'], t
-                ) for url_info in url_dicts
+                    _upload_file, local_path, upload_url, t
+                ) for (local_path, upload_url) in zip(local_paths, upload_urls)
             ]
             wait(futs, return_when=FIRST_EXCEPTION)
 
 
-def get_file_info(path: str) -> dict:
+def get_file_info(storage_path: str, source_path: Path, expand: bool) -> dict:
+    loacl_path = storage_path_to_local_path(storage_path, source_path, expand)
     return {
-        'name': os.path.basename(path),
-        'path': path,
-        'mtime': datetime.fromtimestamp(os.stat(path).st_mtime, tz=tzlocal()).isoformat(),
-        'size': os.stat(path).st_size,
+        'name': os.path.basename(storage_path),
+        'path': storage_path,
+        'mtime': datetime.fromtimestamp(os.stat(loacl_path).st_mtime, tz=tzlocal()).isoformat(),
+        'size': os.stat(loacl_path).st_size,
     }
 
 

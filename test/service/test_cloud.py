@@ -71,7 +71,17 @@ def test_aws_list_storage_files(aws_storage_helper: AWSCloudStorageHelper, s3_cl
     # Success
     file_data = [
         {
-            'Key': 'path/to/file_1.txt',
+            'Key': 'dir/',
+            'LastModified': datetime.utcnow(),
+            'ETAG': 'e32a59b7-3cc2-4666-bf99-27e238b7cf9c',
+            'Size': 0,
+            'StorageClass': 'STANDARD',
+            'Owner': {
+                'ID': 'e32a59b7-3cc2-4666-bf99-27e238b7cf9c'
+            }
+        },
+        {
+            'Key': 'dir/file_1.txt',
             'LastModified': datetime.utcnow(),
             'ETAG': 'e32a59b7-3cc2-4666-bf99-27e238b7cf9c',
             'Size': 2048,
@@ -93,14 +103,16 @@ def test_aws_list_storage_files(aws_storage_helper: AWSCloudStorageHelper, s3_cl
     ]
     s3_client_mock.list_objects.return_value = {'Contents': file_data}
 
-    aws_storage_helper.list_storage_files('my-bucket', 'dir') == [
+    actual = aws_storage_helper.list_storage_files('my-bucket', 'dir')
+    expected = [
         {
             'name': d['Key'].split('/')[-1],
             'path': d['Key'],
             'mtime': d['LastModified'].isoformat(),
             'size': d['Size']
-        } for d in file_data
+        } for d in file_data[1:]
     ]
+    assert actual == expected
     s3_client_mock.head_bucket.assert_called_once_with(Bucket='my-bucket')
     s3_client_mock.list_objects.assert_called_once_with(Bucket='my-bucket', Prefix='dir')
 
@@ -132,7 +144,13 @@ def test_aws_list_storage_files_bucket_contains_no_file(aws_storage_helper: AWSC
 def test_azure_list_storage_files(azure_storage_helper: AzureCloudStorageHelper, blob_client_mock, container_client):
     file_data = [
         {
-            'name': 'path/to/file_1.txt',
+            'name': 'dir/',
+            'container': 'my-container',
+            'last_modified': datetime.utcnow(),
+            'size': 0
+        },
+        {
+            'name': 'dir/file_1.txt',
             'container': 'my-container',
             'last_modified': datetime.utcnow(),
             'size': 2048
@@ -155,7 +173,7 @@ def test_azure_list_storage_files(azure_storage_helper: AzureCloudStorageHelper,
             'path': d['name'],
             'mtime': d['last_modified'].isoformat(),
             'size': d['size']
-        } for d in file_data
+        } for d in file_data[1:]
     ]
     blob_client_mock.get_container_client.assert_called_once_with('my-container')
     container_client.exists.assert_called_once()
