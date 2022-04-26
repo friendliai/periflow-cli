@@ -82,6 +82,7 @@ job_table.add_substitution_rule("failed", "[bold red]failed")
 job_table.add_substitution_rule("terminated", "[bold yellow]terminated")
 job_table.add_substitution_rule("terminating", "[bold magenta]terminating")
 job_table.add_substitution_rule("cancelling", "[bold magenta]cancelling")
+job_table.add_substitution_rule("None", "-")
 job_panel = PanelFormatter(
     name="Overview",
     fields=[
@@ -107,6 +108,7 @@ job_panel.add_substitution_rule("failed", "[bold red]failed")
 job_panel.add_substitution_rule("terminated", "[bold yellow]terminated")
 job_panel.add_substitution_rule("terminating", "[bold magenta]terminating")
 job_panel.add_substitution_rule("cancelling", "[bold magenta]cancelling")
+job_panel.add_substitution_rule("None", "-")
 ckpt_table = TableFormatter(
     name="Checkpoints",
     fields=['id', 'vendor', 'region', 'iteration', 'created_at'],
