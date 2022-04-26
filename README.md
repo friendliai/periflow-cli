@@ -47,7 +47,7 @@ pf login
 
 ### Step 2. Manage Datastore
 
-Once you create a dataset in PeriFlow Datastore, the dataset can be easily used in any job you want. You can create datasets in Datastore by two different ways:
+PeriFlow Datastore contains multiple datasets for your jobs. Once you create a dataset in PeriFlow Datastore, the dataset can be easily used in any job you want. You can create datasets in Datastore in two different ways:
 
 1. Upload the dataset files from your local file system.
 2. Link(register) the dataset files from your cloud storage (e.g., AWS S3, Azure Blob Storage, Google Cloud Storage).
@@ -60,11 +60,11 @@ pf datastore create [OPTIONS]
 pf datastore upload [OPTIONS]
 ```
 
-For the second option, you need to create a credential to access your cloud storage with `pf credential create [OPTIONS]` command in advance. You can list, view, edit and delete the datasets in Datastore using CLI. Please use `pf datastore --help` for more details.
+For the second option, you need to create a credential to access your cloud storage with `pf credential create [OPTIONS]` command in advance. You can also list, view, edit and delete the datasets in Datastore using the CLI. Please use `pf datastore --help` for more details.
 
 ### Step 3. Manage Job
 
-You can easily configure jobs using a YAML file or CLI options and run them in cloud virtual machines with any number of GPUs that you want. These are the options that you can configure for a job:
+You can easily configure jobs using a YAML file or CLI options and run them in cloud virtual machines with as many as GPUs you want. These are the options that you can configure for a job:
 
 - Cloud virtual machine type
 - The number of GPUs
@@ -82,11 +82,11 @@ There are two types of jobs in PeriFlow: "custom" and "predefined".
 
 ##### Custom Job
 
-Training jobs running with your own source codes are categorized as a custom job. You can run the custom jobs with your own source codes and own docker images.
+Jobs running with your own source codes are categorized as a custom job. You can freely customize a job with your own source code and own docker image.
 
 ##### Predefined Job
 
-PeriFlow provides a predefined job training service for some popular AI models like GPT-3. You can easily configure the predefined jobs without your effort to find hyper-parameters and distributed training configuration. Instead, you can use our pre-configured hyper-parameters and run the trainining with our highly optimized training engine.
+PeriFlow provides a predefined job training service for some popular AI models like GPT-3. You can easily configure the predefined jobs without your effort to find hyper-parameters and distributed training configuration. Instead, you can use pre-configured hyper-parameters and train the models in our highly optimized training engine.
 
 #### Job Configuraion File
 
@@ -185,11 +185,11 @@ plugin:
     channel:
 ```
 
-When you finshed to fill in the configuration file, you can use it to run jobs with `pf job run -f /path/to/config.yaml`.
+When you finshed to fill in the fields in the configuration file, you can use it to run jobs with `pf job run -f /path/to/config.yaml`.
 
 #### Run & Monitor Jobs
 
-You can run jobs and monitor the status using CLI.
+You can run jobs and monitor the status using the CLI.
 
 - `pf job run [OPTIONS]`: Run a job.
 - `pf job list [OPTIONS]`: List up jobs.
@@ -200,7 +200,7 @@ For more detail, please use `-h` or `--help` option.
 
 ### Step 4. Manage Model Checkpoints
 
-You can manage model checkpoint files generated from your jobs using CLI.
+You can manage model checkpoint files generated from your jobs using the CLI.
 
 > 📝 NOTE: `pf job view JOB_ID` will show a list of checkpoints generated from the job.
 
