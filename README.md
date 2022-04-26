@@ -4,6 +4,10 @@
   <img src="./doc/assets/logo.svg" width="30%" alt="system">
 </p>
 
+Welcome to PeriFlow ☁︎
+
+PeriFlow is a reliable, speedy, and efficient service for training and serving your own large-scale AI model on any data of your choice. PeriFlow makes use of the cloud infrastructure without your need to invest in on-premise supercomputers. With one click, PeriFlow loads your data and runs optimized massive-scale AI training, handling any headaches that may arise plus visualizing your training progress.
+
 ## Installation
 
 You can simply install the package using `pip`.
