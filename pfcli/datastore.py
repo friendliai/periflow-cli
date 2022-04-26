@@ -158,6 +158,12 @@ def create(
         '-s',
         help="The name of cloud storage where your dataset is uploaded."
     ),
+    storage_path: Optional[str] = typer.Option(
+        None,
+        "--storage-path",
+        "-p",
+        help="File or direcotry path of cloud storage. The root of the storage will be used by default."
+    ),
     credential_id: Optional[str] = typer.Option(
         ...,
         '--credential-id',
@@ -183,7 +189,11 @@ def create(
         )
 
     storage_helper = build_storage_helper(cloud, credential['value'])
-    files = storage_helper.list_storage_files(storage_name)
+    if storage_path is not None:
+        storage_path = storage_path.strip("/")
+    files = storage_helper.list_storage_files(storage_name, storage_path)
+    if storage_path is not None:
+        storage_name = f"{storage_name}/{storage_path}"
 
     metadata = {}
     if metadata_file is not None:
