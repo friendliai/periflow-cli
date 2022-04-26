@@ -428,6 +428,9 @@ async def monitor_logs(job_id: int,
             lines = re.split(r'\n|\r', response['content'])
 
             for line in lines:
+                if not line:
+                    continue
+
                 if show_time:
                     typer.secho(timestamp_str, nl=False, fg=typer.colors.BLUE)
                 if show_machine_id:
@@ -524,6 +527,9 @@ def log_view(
                 lines = re.split(r'\n|\r', record['content'])
 
                 for line in lines:
+                    if not line:
+                        continue
+
                     if show_time:
                         export_file.write(timestamp_str)
                     if show_machine_id:
@@ -537,6 +543,9 @@ def log_view(
             lines = re.split(r'\n|\r', record['content'])
 
             for line in lines:
+                if not line:
+                    continue
+
                 if show_time:
                     typer.secho(timestamp_str, nl=False, fg=typer.colors.BLUE)
                 if show_machine_id:
