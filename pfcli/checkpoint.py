@@ -10,6 +10,7 @@ import typer
 
 from pfcli.service import (
     CheckpointCategory,
+    ModelFormCategory,
     ServiceType,
     StorageType,
     cred_type_map,
@@ -35,13 +36,13 @@ app = typer.Typer(
 
 table_formatter = TableFormatter(
     name="Checkpoints",
-    fields=['id', 'category', 'vendor', 'storage_name', 'iteration', 'created_at'],
-    headers=['ID', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Created At']
+    fields=['id', 'name', 'model_category', 'forms[0].vendor', 'forms[0].storage_name', 'iteration', 'forms[0].model_form_category', 'created_at'],
+    headers=['ID', 'Name', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Format', 'Created At']
 )
 panel_formatter = PanelFormatter(
     name="Overview",
-    fields=['id', 'category', 'vendor', 'storage_name', 'iteration', 'created_at'],
-    headers=['ID', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Created At']
+    fields=['id', 'name', 'model_category', 'forms[0].vendor', 'forms[0].storage_name', 'iteration', 'forms[0].model_form_category', 'created_at'],
+    headers=['ID', 'Name', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Format', 'Created At']
 )
 tree_formatter = TreeFormatter(name="Files")
 
@@ -93,6 +94,18 @@ def view(
 
 @app.command()
 def create(
+    name: str = typer.Option(
+        ...,
+        '--name',
+        '-n',
+        help="Name of your checkpoint to create."
+    ),
+    format: ModelFormCategory = typer.Option(
+        ModelFormCategory.ETC,
+        '-m',
+        '--format',
+        help="The format of your checkpoint",
+    ),
     cloud: StorageType = typer.Option(
         ...,
         "--cloud",
@@ -178,6 +191,8 @@ def create(
 
     checkpoint_client: GroupCheckpointClientService = build_client(ServiceType.GROUP_CHECKPOINT)
     ckpt = checkpoint_client.create_checkpoint(
+        name=name,
+        model_form_category=format,
         vendor=cloud,
         region=region,
         credential_id=credential_id,

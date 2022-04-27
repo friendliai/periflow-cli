@@ -48,6 +48,12 @@ class StorageType(str, Enum):
     GCS = "gcs"
     FAI = "fai"
 
+class ModelFormCategory(str, Enum):
+    MEGATRON = "MEGATRON"
+    ORCA = "ORCA"
+    HF = "HF"
+    ETC = "ETC"
+
 
 storage_type_map: Dict[StorageType, str] = {
     StorageType.S3: "aws",
@@ -66,8 +72,8 @@ storage_type_map_inv: Dict[StorageType, str] = {
 
 
 class CheckpointCategory(str, Enum):
-    USER_PROVIDED = "user_provided"
-    JOB_GENERATED = "job_generated"
+    USER_PROVIDED = "USER"
+    JOB_GENERATED = "JOB"
 
 
 class CredType(str, Enum):

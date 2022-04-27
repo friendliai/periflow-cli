@@ -111,8 +111,8 @@ job_panel.add_substitution_rule("cancelling", "[bold magenta]cancelling")
 job_panel.add_substitution_rule("None", "-")
 ckpt_table = TableFormatter(
     name="Checkpoints",
-    fields=['id', 'vendor', 'region', 'iteration', 'created_at'],
-    headers=['ID', 'Cloud', 'Region', 'Iteration', 'Created At']
+    fields=['id', 'vendor', 'region', 'iteration', 'model_form_category', 'created_at'],
+    headers=['ID', 'Cloud', 'Region', 'Iteration', 'Format', 'Created At']
 )
 artifact_table = TableFormatter(
     name="Artifacts",

@@ -8,6 +8,7 @@ from string import Template
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import AsyncMock, patch
+from uuid import UUID
 
 import pytest
 import typer
@@ -19,6 +20,7 @@ from pfcli.service import (
     CloudType,
     CredType,
     LogType,
+    ModelFormCategory,
     ServiceType,
     StorageType,
 )
@@ -1702,8 +1704,7 @@ def test_checkpoint_client_get_checkpoint_download_urls(requests_mock: requests_
                                                         checkpoint_client: CheckpointClientService):
     assert isinstance(checkpoint_client, CheckpointClientService)
 
-    url_template = deepcopy(checkpoint_client.url_template)
-    url_template.attach_pattern('$checkpoint_id/download/')
+    base_url = checkpoint_client.url_template.get_base_url()
 
     data = {
         "files": [
@@ -1719,15 +1720,23 @@ def test_checkpoint_client_get_checkpoint_download_urls(requests_mock: requests_
 
     # Success
     requests_mock.get(
-        url_template.render(checkpoint_id=0),
+        f"{base_url}/models/ffffffff-ffff-ffff-ffff-ffffffffffff/",
+        # Subset of response
+        json={
+            "id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
+            "forms": [{"id": "cccccccc-cccc-cccc-cccc-cccccccccccc"}, {"id": "dddddddd-dddd-dddd-dddd-dddddddddddd"}],
+        }
+    )
+    requests_mock.get(
+        f"{base_url}/model_forms/cccccccc-cccc-cccc-cccc-cccccccccccc/download/",
         json=data
     )
-    assert checkpoint_client.get_checkpoint_download_urls(0) == data['files']
+    assert checkpoint_client.get_checkpoint_download_urls(UUID("ffffffff-ffff-ffff-ffff-ffffffffffff")) == data['files']
 
     # Failed due to HTTP error
-    requests_mock.get(url_template.render(checkpoint_id=0), status_code=404)
+    requests_mock.get(f"{base_url}/models/ffffffff-ffff-ffff-ffff-ffffffffffff/", status_code=404)
     with pytest.raises(typer.Exit):
-        assert checkpoint_client.get_checkpoint_download_urls(0)
+        assert checkpoint_client.get_checkpoint_download_urls(UUID("ffffffff-ffff-ffff-ffff-ffffffffffff"))
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
@@ -1735,58 +1744,71 @@ def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
                                            group_checkpoint_client: GroupCheckpointClientService):
     assert isinstance(group_checkpoint_client, GroupCheckpointClientService)
 
+    def build_response_item(category: str, vendor: str, region: str) -> dict:
+        return {
+            "id": "22222222-2222-2222-2222-222222222222",
+            "user_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "ownerships": [
+                {
+                "organization_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "project_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                }
+            ],
+            "model_category": category,
+            "job_id": 2147483647,
+            "name": "string",
+            "attributes": {
+                "job_setting_json": {},
+                "data_json": {},
+            },
+            "forms": [
+                {
+                    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "form_category": "MEGATRON",
+                    "credential_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "vendor": vendor,
+                    "region": region,
+                    "storage_name": "STORAGE_NAME",
+                    "dist_json": {
+                    },
+                    "files": [
+                        {
+                            "name": "NAME",
+                            "path": "PATH",
+                            "mtime": "2022-04-19T09:03:47.352Z",
+                            "size": 9
+                        }
+                    ]
+                }
+            ],
+            "iteration": 922,
+            "created_at": "2022-04-19T09:03:47.352Z",
+        }
+
     data = {
         "results": [
-            {
-                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "category": "user_provided",
-                "vendor": "aws",
-                "region": "us-east-1",
-                "credential_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "storage_name": "my-ckpt",
-                "iteration": 1000,
-                "files": [
-                    {
-                        "name": "new_ckpt_1000.pth",
-                        "path": "ckpt/new_ckpt_1000.pth",
-                        "mtime": "2022-04-20T06:27:37.907Z",
-                        "size": 2048,
-                    }
-                ]
-            },
-            {
-                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "category": "job_generated",
-                "vendor": "aws",
-                "region": "us-west-2",
-                "credential_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                "storage_name": "periflow-ckpt-1-1",
-                "iteration": 1000,
-                "files": [
-                    {
-                        "name": "new_ckpt_2000.pth",
-                        "path": "ckpt/new_ckpt_2000.pth",
-                        "mtime": "2022-04-20T06:27:37.907Z",
-                        "size": 2048,
-                    }
-                ]
-            }
-        ]
+            build_response_item("USER", "aws", "us-east-1"),
+            build_response_item("JOB", "aws", "us-east-2"),
+        ],
+        "next_cursor": "NEXT_CURSOR",
     }
 
     # Success
-    requests_mock.get(group_checkpoint_client.url_template.render(group_id=0), json=data)
-    group_checkpoint_client.list_checkpoints(CheckpointCategory.USER_PROVIDED) == data['results'][1]
-    group_checkpoint_client.list_checkpoints(CheckpointCategory.JOB_GENERATED) == data['results'][1]
+    url = group_checkpoint_client.url_template.render(group_id="00000000-0000-0000-0000-000000000000", project_id="11111111-1111-1111-1111-111111111111")
+    requests_mock.get(url, json=data)
+    assert group_checkpoint_client.list_checkpoints(CheckpointCategory.USER_PROVIDED) == data['results']
+    assert requests_mock.request_history[-1].query == 'category=USER'
+    assert group_checkpoint_client.list_checkpoints(CheckpointCategory.JOB_GENERATED) == data['results']
+    assert requests_mock.request_history[-1].query == 'category=JOB'
 
     # Failed due to HTTP error
-    requests_mock.get(group_checkpoint_client.url_template.render(group_id=0), status_code=400)
+    requests_mock.get(url, status_code=400)
     with pytest.raises(typer.Exit):
         group_checkpoint_client.list_checkpoints(CheckpointCategory.USER_PROVIDED)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
-def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
+def test_group_checkpoint_create_checkpoints(requests_mock: requests_mock.Mocker,
                                            group_checkpoint_client: GroupCheckpointClientService):
     assert isinstance(group_checkpoint_client, GroupCheckpointClientService)
 
@@ -1809,8 +1831,15 @@ def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
     }
 
     # Success
-    requests_mock.post(group_checkpoint_client.url_template.render(group_id=0), json=data)
+    # TODO: change after PFA integration
+    url = group_checkpoint_client.url_template.render(
+        group_id="00000000-0000-0000-0000-000000000000",
+        project_id="11111111-1111-1111-1111-111111111111"
+    )
+    requests_mock.post(url, json=data)
     assert group_checkpoint_client.create_checkpoint(
+        name="my-ckpt",
+        model_form_category=ModelFormCategory.MEGATRON,
         vendor=StorageType.S3,
         region='us-east-1',
         credential_id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -1828,10 +1857,38 @@ def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
         data_config={"k": "v"},
         job_setting_config={"k": "v"}
     ) == data
+    assert requests_mock.request_history[-1].json() == {
+        "job_id": None,
+        "vendor": "s3",
+        "region": "us-east-1",
+        "storage_name": "my-ckpt",
+        "model_category": "USER",
+        "form_category": "MEGATRON",
+        "name": "my-ckpt",
+        "dist_json": {"k": "v"},
+        "attributes": {
+            "job_setting_json": {"k": "v"},
+            "data_json": {"k": "v"},
+        },
+        "credential_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "iteration": 1000,
+        "user_id": "22222222-2222-2222-2222-222222222222",  # TODO: change after PFA integration
+        "files": [
+            {
+                "name": "new_ckpt_1000.pth",
+                "path": "ckpt/new_ckpt_1000.pth",
+                "mtime": "2022-04-20T06:27:37.907Z",
+                "size": 2048,
+            }
+        ]
+    }
+
 
     # Failed due to invalid region
     with pytest.raises(typer.Exit):
         group_checkpoint_client.create_checkpoint(
+            name="my-ckpt",
+            model_form_category=ModelFormCategory.MEGATRON,
             vendor=StorageType.S3,
             region='busan',
             credential_id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -1851,9 +1908,11 @@ def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
         )
 
     # Failed due to HTTP error
-    requests_mock.post(group_checkpoint_client.url_template.render(group_id=0), status_code=400)
+    requests_mock.post(url, status_code=400)
     with pytest.raises(typer.Exit):
         group_checkpoint_client.create_checkpoint(
+            name="my-ckpt",
+            model_form_category=ModelFormCategory.MEGATRON,
             vendor=StorageType.S3,
             region='us-east-1',
             credential_id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
