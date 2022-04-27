@@ -59,13 +59,16 @@ def test_get_value():
             },
             'k5': 'v3'
         },
-        'k6': 'v4'
+        'k6': 'v4',
+        'k7': [{'k8': 'v5'}]
     }
 
     assert get_value(data, 'k1.k2.k3') == 'v1'
     assert get_value(data, 'k1.k2.k4') == 'v2'
     assert get_value(data, 'k1.k5') == 'v3'
     assert get_value(data, 'k6') == 'v4'
+    assert get_value(data, 'k7[0].k8') == 'v5'
+    assert get_value(data, 'k7[-1].k8') == 'v5'
 
 
 def test_table_formatter(table_formatter: TableFormatter, capsys: pytest.CaptureFixture):

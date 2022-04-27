@@ -41,7 +41,7 @@ def get_value(data: dict, key: str) -> T:
     keys = key.split('.')
     for key in keys:
         # e.g. `data.results[2].a`
-        getitem_match = re.match(r"(.+)\[-?(\d+)\]$", key)
+        getitem_match = re.match(r"(.+)\[(-?\d+)\]$", key)
         if getitem_match:
             value = value.get(getitem_match.group(1))[int(getitem_match.group(2))]
         else:
