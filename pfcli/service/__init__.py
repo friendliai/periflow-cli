@@ -23,6 +23,7 @@ class ServiceType(str, Enum):
     CHECKPOINT = "CHECKPOINT"
     GROUP_CHECKPOINT = "GROUP_CHECKPOINT"
     JOB_WS = "JOB_WS"
+    SERVE = "SERVE"
 
 
 class JobType(str, Enum):
@@ -53,6 +54,10 @@ class ModelFormCategory(str, Enum):
     ORCA = "ORCA"
     HF = "HF"
     ETC = "ETC"
+
+class GpuType(str, Enum):
+    T4 = "t4"
+    V100 = "v100"
 
 
 storage_type_map: Dict[StorageType, str] = {

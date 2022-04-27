@@ -42,6 +42,7 @@ from pfcli.utils import (
     get_uri,
     get_wss_uri,
     get_mr_uri,
+    get_pfs_uri,
     secho_error_and_exit,
     validate_storage_region,
     zip_dir,
@@ -899,6 +900,36 @@ class GroupCheckpointClientService(ClientService, ProjectRequestMixin):
         return response.json() 
 
 
+class ServeClientService(ClientService):
+    def get_serve(self, serve_id: T) -> dict:
+        try:
+            response = self.retrieve(serve_id)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Serve ({serve_id}) is not found. You may enter wrong ID. {decode_http_err(exc)}")
+        return response.json()
+    
+    def create_serve(self, config = dict) -> dict:
+        request_data = {
+            "name": "asdf",
+            "model_id": "checkpoint_id",
+            "system_config": {
+                "gpu_type": "gpu_type",
+                "num_devices": 1,
+                "num_workers": 1,
+                "max_token_count": 8912,
+                "max_batch_size": 1024,
+                "kv_cache_size": 16384
+            }
+        }
+
+        try:
+            response = self.create(json=request_data)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to create new serve. {decode_http_err(exc)}")
+        return response.json()
+
 client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.USER_GROUP: (UserGroupClientService, Template(get_uri('user/'))),
     ServiceType.EXPERIMENT: (ExperimentClientService, Template(get_uri('experiment/'))),
@@ -918,6 +949,7 @@ client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_mr_uri('models/'))),
     ServiceType.GROUP_CHECKPOINT: (GroupCheckpointClientService, Template(get_mr_uri('orgs/$group_id/prjs/$project_id/models/'))),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri('job/'))),
+    ServiceType.SERVE: (ServeClientService, Template(get_pfs_uri('deployment/')))
 }
 
 
