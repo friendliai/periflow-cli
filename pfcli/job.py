@@ -457,10 +457,6 @@ async def monitor_logs(job_id: int,
 
     async with ws_client.open_connection(job_id, log_types, machines):
         async for response in ws_client:
-            timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(response['timestamp'])))} "
-            node_rank = response['node_rank']
-            node_rank_str = "📈 PF " if node_rank == -1 else f"💻 #{node_rank} "
-
             for line in _format_log_string(response, show_time, show_machine_id):
                 typer.echo(line, nl=False)
 
@@ -538,18 +534,10 @@ def log(
     if export_path is not None:
         with export_path.open("w") as export_file:
             for record in logs:
-                timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))} "
-                node_rank = record['node_rank']
-                node_rank_str = "📈 PF " if node_rank == -1 else f"💻 #{node_rank} "
-
                 for line in _format_log_string(record, show_time, show_machine_id, use_style=False):
                     export_file.write(line)
     else:
         for record in logs:
-            timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))} "
-            node_rank = record['node_rank']
-            node_rank_str = "📈 PF " if node_rank == -1 else f"💻 #{node_rank} "
-
             for line in _format_log_string(record, show_time, show_machine_id):
                 typer.echo(line, nl=False)
 
