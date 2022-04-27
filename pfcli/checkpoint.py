@@ -230,7 +230,13 @@ def download(
     save_directory: Optional[str] = typer.Option(
         None,
         '--destination',
-        '-d',staging
+        '-d',
+         help="Destination path to directory to save checkpoint files."
+    )
+):
+    """Download checkpoint files to local storage.
+    """
+    if save_directory is not None and not os.path.isdir(save_directory):
         secho_error_and_exit(f"Directory {save_directory} is not found.")
 
     save_directory = save_directory or os.getcwd()
