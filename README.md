@@ -105,21 +105,21 @@ What kind of job do you want?
 >> custom
 Will you use your private docker image? (You should provide credential). [y/N]
 >> y
-Do you want to run job with the scripts in your local directory? [y/N]
+Do you want to run the job with the scripts in your local directory? [y/N]
 >> y
-Will you use dataset for the job? [y/N]
+Will you use a dataset for the job? [y/N]
 >> y
-Will you use input checkpoint for the job? [y/N]
+Will you use an input checkpoint for the job? [y/N]
 >> y
-Does your job generate model checkpoint file? [y/N]
+Does your job generate model checkpoint files? [y/N]
 >> y
 Will you run distributed training job? [y/N]
 >>
 Will you use W&B monitoring for the job? [y/N]
 >>
-Do you want to get slack notifaction for the job? [y/N]
+Do you want to get a Slack notification for the job? [y/N]
 >> y
-Do you want to open editor to configure the job YAML file? (default editor: nvim) [y/N]
+Do you want to open an editor to configure the job YAML file? (default editor: nvim) [y/N]
 >>
 ```
 
