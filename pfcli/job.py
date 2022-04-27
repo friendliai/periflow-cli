@@ -392,7 +392,7 @@ def template_create(
     """Create a job configuration YAML file
     """
     job_type = typer.prompt(
-        "What kind job do you want?\n",
+        "What kind of job do you want?\n",
         type=Choice([ e.value for e in JobType ]),
         prompt_suffix="\n>> "
     )
@@ -404,7 +404,7 @@ def template_create(
     yaml.dump(code, save_path)
 
     continue_edit = typer.confirm(
-        f"Do you want to open editor to configure the job YAML file? (default editor: {get_default_editor()})",
+        f"Do you want to open an editor to configure the job YAML file? (default editor: {get_default_editor()})",
         prompt_suffix="\n>> "
     )
     if continue_edit:

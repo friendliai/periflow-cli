@@ -84,28 +84,23 @@ You can easily configure jobs using a YAML file or CLI options and run them in c
 
 There are two types of jobs in PeriFlow: "custom" and "predefined".
 
-##### Custom Job
-
-Jobs running with your own source codes are categorized as a custom job. You can freely customize a job with your own source code and own docker image.
-
-##### Predefined Job
-
-PeriFlow provides a predefined job training service for some popular AI models like GPT-3. You can easily configure the predefined jobs without your effort to find hyper-parameters and distributed training configuration. Instead, you can use pre-configured hyper-parameters and train the models in our highly optimized training engine.
+- **Custom Job**: Jobs running with your own source codes are categorized as "custom" jobs. You can freely customize a job with your own source code and own docker image.
+- **Predefined Job**: PeriFlow provides a predefined job training service for some popular AI models like GPT-3. You can easily configure the predefined jobs without your effort to find hyper-parameters and distributed training configurations. Instead, you can use pre-configured hyper-parameters and train the models in our highly optimized training engine.
 
 #### Job Configuraion File
 
-You can describe the job setting in configuration YAML files. Using `pf job template create [OPTIONS]` command, you can get a job configuration template file generated with the required fields that you need to fill in. For example, suppose that you want to run a custom job with the following requirements:
+You can describe the job setting in configuration YAML files. By using `pf job template create [OPTIONS]` command, you can get a job configuration template file generated with the required fields that you need to fill in. For example, suppose that you want to run a custom job with the following requirements:
 
 - Use private docker image.
 - Use a dataset in Datastore.
 - The training will be resumed from a specific model checkpoint file.
-- Get Slack notification to get notified for the job status.
+- Get Slack notification to get notified of the job status.
 
 To make the configuration file for this kind of job, you may select the following options in the interactive prompt from `pf job template create [OPTIONS]` command.
 
 ```txt
 $ pf job template create -s /path/to/config.yaml    # Interactive prompt will be started.
-What kind job do you want?
+What kind of job do you want?
  (predefined, custom)
 >> custom
 Will you use your private docker image? (You should provide credential). [y/N]
@@ -189,7 +184,7 @@ plugin:
     channel:
 ```
 
-When you finshed to fill in the fields in the configuration file, you can use it to run jobs with `pf job run -f /path/to/config.yaml`.
+When you finished filling in the fields in the configuration file, you can use it to run jobs with `pf job run -f /path/to/config.yaml`.
 
 #### Run & Monitor Jobs
 
@@ -215,4 +210,4 @@ You can manage model checkpoint files generated from your jobs using the CLI.
 ## Getting Help
 
 - Contact us via contact@friendli.ai to get trial access to PeriFlow.
-- If you have any issue or question, please visit [PeriFlow Discussion Forum](https://discuss-staging.friendli.ai/) get supports.
+- If you have any issues or questions, please visit [PeriFlow Discussion Forum](https://discuss-staging.friendli.ai/) and get support.
