@@ -19,7 +19,7 @@ from pfcli.service import (
 from pfcli.service.client import (
     CheckpointClientService,
     CredentialClientService,
-    GroupCheckpointClinetService,
+    GroupCheckpointClientService,
     build_client,
 )
 from pfcli.service.cloud import build_storage_helper
@@ -64,7 +64,7 @@ def list(
 ):
     """List all checkpoints that belong to the user's organization.
     """
-    client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
+    client: GroupCheckpointClientService = build_client(ServiceType.GROUP_CHECKPOINT)
     checkpoints = client.list_checkpoints(category)
     for ckpt in checkpoints:
         ckpt['vendor'] = storage_type_map_inv[ckpt['vendor']].value
@@ -176,7 +176,7 @@ def create(
     if storage_path is not None:
         storage_name = f"{storage_name}/{storage_path}"
 
-    checkpoint_client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
+    checkpoint_client: GroupCheckpointClientService = build_client(ServiceType.GROUP_CHECKPOINT)
     ckpt = checkpoint_client.create_checkpoint(
         vendor=cloud,
         region=region,
@@ -230,13 +230,7 @@ def download(
     save_directory: Optional[str] = typer.Option(
         None,
         '--destination',
-        '-d',
-        help="Destination path to directory to save checkpoint files."
-    )
-):
-    """Download checkpoint files to local storage.
-    """
-    if save_directory is not None and not os.path.isdir(save_directory):
+        '-d',staging
         secho_error_and_exit(f"Directory {save_directory} is not found.")
 
     save_directory = save_directory or os.getcwd()

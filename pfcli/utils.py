@@ -26,9 +26,10 @@ from pfcli.service import (
 )
 
 # Variables
-periflow_api_server = "https://api-staging.friendli.ai/api/"
-periflow_ws_server = "wss://api-ws-staging.friendli.ai/ws/"
+periflow_api_server = "https://api-dev.friendli.ai/api/"
+periflow_ws_server = "wss://api-ws-dev.friendli.ai/ws/"
 periflow_discuss_url = "https://discuss-staging.friendli.ai/"
+periflow_mr_server = "https://pfmodelregistry-dev.friendli.ai/"
 
 
 def datetime_to_pretty_str(past: Optional[datetime], long_list: bool = False):
@@ -82,6 +83,10 @@ def get_uri(path: str):
 
 def get_wss_uri(path: str):
     return periflow_ws_server + path
+
+
+def get_mr_uri(path: str) -> str:
+    return periflow_mr_server + path
 
 
 def secho_error_and_exit(text: str, color: str = typer.colors.RED):

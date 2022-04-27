@@ -3,6 +3,7 @@
 """PeriFlow CLI Output Formatter"""
 
 import json
+import re
 from dataclasses import dataclass, field
 from typing import (
     Any,
@@ -36,10 +37,15 @@ def get_value(data: dict, key: str) -> T:
     Returns:
         T: The retrieved data.
     """
-    value = data
+    value: Any = data
     keys = key.split('.')
     for key in keys:
-        value = value.get(key)
+        # e.g. `data.results[2].a`
+        getitem_match = re.match(r"(.+)\[-?(\d+)\]$", key)
+        if getitem_match:
+            value = value.get(getitem_match.group(1))[int(getitem_match.group(2))]
+        else:
+            value = value.get(key)
 
     return str(value)
 

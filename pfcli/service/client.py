@@ -21,6 +21,7 @@ from typing import (
 from dataclasses import dataclass
 from contextlib import asynccontextmanager
 from pathlib import Path
+import uuid
 
 import requests
 import websockets
@@ -39,6 +40,7 @@ from pfcli.utils import (
     decode_http_err,
     get_uri,
     get_wss_uri,
+    get_mr_uri,
     secho_error_and_exit,
     validate_storage_region,
     zip_dir,
@@ -129,6 +131,15 @@ class GroupRequestMixin:
     def initialize_group(self):
         self.user_group_service = build_client(ServiceType.USER_GROUP)
         self.group_id = self.user_group_service.get_group_id()
+
+
+class ProjectRequestMixin:
+    user_group_service: UserGroupClientService
+    group_id: uuid.UUID
+    project_id: uuid.UUID
+
+    def initialize_project(self):
+        ...
 
 
 class UserGroupClientService(ClientService):
@@ -773,45 +784,6 @@ class CheckpointClientService(ClientService):
             secho_error_and_exit(f"Failed to get info of checkpoint ({checkpoint_id}).\n{decode_http_err(exc)}")
         return response.json()
 
-    def update_checkpoint(self,
-                          checkpoint_id: T,
-                          *,
-                          vendor: Optional[StorageType] = None,
-                          region: Optional[str] = None,
-                          credential_id: Optional[str] = None,
-                          iteration: Optional[int] = None,
-                          storage_name: Optional[str] = None,
-                          files: Optional[List[dict]] = None,
-                          dist_config: Optional[dict] = None,
-                          data_config: Optional[dict] = None,
-                          job_setting_config: Optional[dict] = None) -> dict:
-        request_data = {}
-        if vendor is not None:
-            request_data['vendor'] = vendor
-        if region is not None:
-            request_data['region'] = region
-        if credential_id is not None:
-            request_data['credential_id'] = credential_id
-        if iteration is not None:
-            request_data['iteration'] = iteration
-        if storage_name is not None:
-            request_data['storage_name'] = storage_name
-        if files is not None:
-            request_data['files'] = files
-        if dist_config is not None:
-            request_data['dist_json'] = dist_config
-        if data_config is not None:
-            request_data['data_json'] = data_config
-        if job_setting_config is not None:
-            request_data['job_setting_json'] = job_setting_config
-
-        try:
-            response = self.partial_update(checkpoint_id, json=request_data)
-            response.raise_for_status()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Cannot update checkpoint.\n{decode_http_err(exc)}")
-        return response.json()
-
     def delete_checkpoint(self, checkpoint_id: T) -> None:
         try:
             response = self.delete(checkpoint_id)
@@ -837,7 +809,7 @@ class CheckpointClientService(ClientService):
         return response.json()['files']
 
 
-class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
+class GroupCheckpointClientService(ClientService, GroupRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_group()
         super().__init__(template, group_id=self.group_id, **kwargs)
@@ -902,7 +874,7 @@ client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.GROUP_VM: (GroupVMClientService, Template(get_uri('group/$group_id/vm_config/'))),
     ServiceType.GROUP_VM_QUOTA: (GroupVMQuotaClientService, Template(get_uri('group/$group_id/vm_quota/'))),
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_uri('checkpoint/'))),
-    ServiceType.GROUP_CHECKPOINT: (GroupCheckpointClinetService, Template(get_uri('group/$group_id/checkpoint/'))),
+    ServiceType.GROUP_CHECKPOINT: (GroupCheckpointClientService, Template(get_uri('group/$group_id/checkpoint/'))),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri('job/'))),
 }
 

@@ -30,7 +30,7 @@ from pfcli.service.client import (
     CredentialTypeClientService,
     DataClientService,
     ExperimentClientService,
-    GroupCheckpointClinetService,
+    GroupCheckpointClientService,
     GroupCredentialClientService,
     GroupDataClientService,
     GroupExperimentClientService,
@@ -134,7 +134,7 @@ def checkpoint_client() -> CheckpointClientService:
 
 
 @pytest.fixture
-def group_checkpoint_client() -> GroupCheckpointClinetService:
+def group_checkpoint_client() -> GroupCheckpointClientService:
     return build_client(ServiceType.GROUP_CHECKPOINT)
 
 
@@ -1675,75 +1675,6 @@ def test_checkpoint_client_get_checkpoint(requests_mock: requests_mock.Mocker,
         assert checkpoint_client.get_checkpoint(0)
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_checkpoint_client_update_checkpoint(requests_mock: requests_mock.Mocker,
-                                             checkpoint_client: CheckpointClientService):
-    assert isinstance(checkpoint_client, CheckpointClientService)
-
-    url_template = deepcopy(checkpoint_client.url_template)
-    url_template.attach_pattern('$checkpoint_id/')
-
-    data = {
-        "vendor": "azure.blob",
-        "region": "eastus",
-        "credential_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-        "iteration": 1000,
-        "storage_name": "my-container",
-        "files": [
-            {
-                "name": "new_ckpt_1000.pth",
-                "path": "ckpt/new_ckpt_1000.pth",
-                "mtime": "2022-04-20T06:27:37.907Z",
-                "size": 2048
-            }
-        ]
-    }
-
-    # Success
-    requests_mock.patch(url_template.render(checkpoint_id=0), json=data)
-    assert checkpoint_client.update_checkpoint(
-        0,
-        vendor=StorageType.BLOB,
-        region='eastus',
-        credential_id='3fa85f64-5717-4562-b3fc-2c963f66afa6',
-        iteration=1000,
-        storage_name='my-container',
-        files=[
-            {
-                "name": "new_ckpt_1000.pth",
-                "path": "ckpt/new_ckpt_1000.pth",
-                "mtime": "2022-04-20T06:27:37.907Z",
-                "size": 2048
-            }
-        ],
-        dist_config={'k': 'v'},
-        data_config={'k': 'v'},
-        job_setting_config={'k': 'v'},
-    ) == data
-
-    # Failed due to HTTP error
-    requests_mock.patch(url_template.render(checkpoint_id=0), status_code=404)
-    with pytest.raises(typer.Exit):
-        checkpoint_client.update_checkpoint(
-            0,
-            vendor=StorageType.BLOB,
-            region='eastus',
-            credential_id='3fa85f64-5717-4562-b3fc-2c963f66afa6',
-            iteration=1000,
-            storage_name='my-container',
-            files=[
-                {
-                    "name": "new_ckpt_1000.pth",
-                    "path": "ckpt/new_ckpt_1000.pth",
-                    "mtime": "2022-04-20T06:27:37.907Z",
-                    "size": 2048
-                }
-            ],
-            dist_config={'k': 'v'},
-            data_config={'k': 'v'},
-            job_setting_config={'k': 'v'},
-        )
-
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
 def test_checkpoint_client_delete_checkpoint(requests_mock: requests_mock.Mocker,
@@ -1801,8 +1732,8 @@ def test_checkpoint_client_get_checkpoint_download_urls(requests_mock: requests_
 
 @pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
 def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
-                                           group_checkpoint_client: GroupCheckpointClinetService):
-    assert isinstance(group_checkpoint_client, GroupCheckpointClinetService)
+                                           group_checkpoint_client: GroupCheckpointClientService):
+    assert isinstance(group_checkpoint_client, GroupCheckpointClientService)
 
     data = {
         "results": [
@@ -1856,8 +1787,8 @@ def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
 
 @pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
 def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
-                                           group_checkpoint_client: GroupCheckpointClinetService):
-    assert isinstance(group_checkpoint_client, GroupCheckpointClinetService)
+                                           group_checkpoint_client: GroupCheckpointClientService):
+    assert isinstance(group_checkpoint_client, GroupCheckpointClientService)
 
     data = {
         "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
