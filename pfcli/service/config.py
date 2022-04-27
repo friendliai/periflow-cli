@@ -195,19 +195,19 @@ class CustomJobConfigService(JobConfigService):
 
     def start_interaction(self):
         self.use_private_image = typer.confirm(
-            "Will you use your private docker image? (You should provide credential).", prompt_suffix="\n>> "
+            "Will you use your private docker image? (You should provide a credential).", prompt_suffix="\n>> "
         )
         self.use_workspace = typer.confirm(
-            "Do you want to run job with the scripts in your local directory?", prompt_suffix="\n>> "
+            "Do you want to run the job with the scripts in your local directory?", prompt_suffix="\n>> "
         )
         self.use_data = typer.confirm(
-            "Will you use dataset for the job?", prompt_suffix="\n>> "
+            "Will you use a dataset for the job?", prompt_suffix="\n>> "
         )
         self.use_input_checkpoint = typer.confirm(
-            "Will you use input checkpoint for the job?", prompt_suffix="\n>> "
+            "Will you use an input checkpoint for the job?", prompt_suffix="\n>> "
         )
         self.use_output_checkpoint = typer.confirm(
-            "Does your job generate model checkpoint file?", prompt_suffix="\n>> "
+            "Does your job generate model checkpoint files?", prompt_suffix="\n>> "
         )
         self.use_dist = typer.confirm(
             "Will you run distributed training job?", prompt_suffix="\n>> "
@@ -216,7 +216,7 @@ class CustomJobConfigService(JobConfigService):
             "Will you use W&B monitoring for the job?", prompt_suffix="\n>> "
         )
         self.use_slack = typer.confirm(
-            "Do you want to get slack notifaction for the job?", prompt_suffix="\n>> "
+            "Do you want to get a Slack notification for the job?", prompt_suffix="\n>> "
         )
         self.ready = True
 
