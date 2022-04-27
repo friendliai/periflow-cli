@@ -250,7 +250,7 @@ def run(
     job_data = client.run_job(config, workspace_dir)
 
     typer.secho(
-        f"Job ({job_data['id']}) started successfully. Use 'pf job log view' to see the job logs.",
+        f"Job ({job_data['id']}) started successfully. Use 'pf job log {job_data['id']}' to see the job logs.",
         fg=typer.colors.BLUE
     )
 
@@ -337,7 +337,7 @@ def stop(
 def view(
     job_id: int = typer.Argument(
         ...,
-        help="ID of job to view log"
+        help="ID of job to view detail"
     ),
 ):
     """Show job detail.
@@ -420,6 +420,29 @@ def _split_machine_ids(value: Optional[str]) -> Optional[List[int]]:
         secho_error_and_exit("Machine index should be integer. (e.g., --machine 0,1,2)")
 
 
+def _format_log_string(timestamp_str: str,
+                       node_rank_str: str,
+                       content: str,
+                       show_time: bool,
+                       show_machine_id: bool,
+                       use_style: bool = True):
+    if use_style:
+        timestamp_str = typer.style(timestamp_str, fg=typer.colors.BLUE)
+        node_rank_str = typer.style(node_rank_str, fg=typer.colors.GREEN)
+
+    lines = [x for x in re.split(r'(\n|\r)', content) if x]
+
+    for line in lines:
+        if line in ('\n', '\r'):
+            yield line
+        else:
+            if show_machine_id:
+                line = node_rank_str + line
+            if show_time:
+                line = timestamp_str + line
+            yield line
+
+
 async def monitor_logs(job_id: int,
                        log_types: Optional[List[str]],
                        machines: Optional[List[int]],
@@ -432,17 +455,13 @@ async def monitor_logs(job_id: int,
             timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(response['timestamp'])))} "
             node_rank = response['node_rank']
             node_rank_str = "📈 PF " if node_rank == -1 else f"💻 #{node_rank} "
-            lines = re.split(r'\n|\r', response['content'])
 
-            for line in lines:
-                if not line:
-                    continue
-
-                if show_time:
-                    typer.secho(timestamp_str, nl=False, fg=typer.colors.BLUE)
-                if show_machine_id:
-                    typer.secho(node_rank_str, nl=False, fg=typer.colors.GREEN)
-                typer.echo(line)
+            for line in _format_log_string(timestamp_str,
+                                           node_rank_str,
+                                           response['content'],
+                                           show_time,
+                                           show_machine_id):
+                typer.echo(line, nl=False)
 
 
 # TODO: Implement since/until if necessary
@@ -521,33 +540,22 @@ def log(
                 timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))} "
                 node_rank = record['node_rank']
                 node_rank_str = "📈 PF " if node_rank == -1 else f"💻 #{node_rank} "
-                lines = re.split(r'\n|\r', record['content'])
 
-                for line in lines:
-                    if not line:
-                        continue
-
-                    if show_time:
-                        export_file.write(timestamp_str)
-                    if show_machine_id:
-                        export_file.write(node_rank_str)
-                    export_file.write(line + "\n")
+                for line in _format_log_string(timestamp_str,
+                                               node_rank_str,
+                                               record['content'],
+                                               show_time,
+                                               show_machine_id,
+                                               use_style=False):
+                    export_file.write(line)
     else:
         for record in logs:
             timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(record['timestamp'])))} "
             node_rank = record['node_rank']
             node_rank_str = "📈 PF " if node_rank == -1 else f"💻 #{node_rank} "
-            lines = re.split(r'\n|\r', record['content'])
 
-            for line in lines:
-                if not line:
-                    continue
-
-                if show_time:
-                    typer.secho(timestamp_str, nl=False, fg=typer.colors.BLUE)
-                if show_machine_id:
-                    typer.secho(node_rank_str, nl=False, fg=typer.colors.GREEN)
-                typer.echo(line)
+            for line in _format_log_string(timestamp_str, node_rank_str, record['content'], show_time, show_machine_id):
+                typer.echo(line, nl=False)
 
     if follow:
         try:

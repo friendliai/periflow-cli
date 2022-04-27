@@ -343,7 +343,7 @@ def test_user_group_client_get_user_info(requests_mock: requests_mock.Mocker,
         user_group_client.get_user_info()
 
 
-@pytest.mark.usefixture('patch_auto_token_refresh')
+@pytest.mark.usefixtures('patch_auto_token_refresh')
 def test_experiment_client_list_jobs_in_experiment(requests_mock: requests_mock.Mocker,
                                                    experiment_client: ExperimentClientService):
     assert isinstance(experiment_client, ExperimentClientService)
@@ -363,7 +363,7 @@ def test_experiment_client_list_jobs_in_experiment(requests_mock: requests_mock.
         experiment_client.list_jobs_in_experiment(1)
 
 
-@pytest.mark.usefixture('patch_auto_token_refresh')
+@pytest.mark.usefixtures('patch_auto_token_refresh')
 def test_experiment_client_delete_experiment(requests_mock: requests_mock.Mocker,
                                              experiment_client: ExperimentClientService):
     assert isinstance(experiment_client, ExperimentClientService)
@@ -383,7 +383,7 @@ def test_experiment_client_delete_experiment(requests_mock: requests_mock.Mocker
         experiment_client.delete_experiment(1)
 
 
-@pytest.mark.usefixture('patch_auto_token_refresh')
+@pytest.mark.usefixtures('patch_auto_token_refresh')
 def test_experiment_client_update_experiment(requests_mock: requests_mock.Mocker,
                                              experiment_client: ExperimentClientService):
     assert isinstance(experiment_client, ExperimentClientService)
