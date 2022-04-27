@@ -442,6 +442,9 @@ def _format_log_string(log_record: dict,
                 line = node_rank_str + line
             if show_time:
                 line = timestamp_str + line
+
+            if node_rank == -1:
+                line = line + "\n"
             yield line
 
 
