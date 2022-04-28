@@ -24,15 +24,9 @@ app = typer.Typer(
     add_completion=False
 )
 
-# table_formatter = TableFormatter(
-#     name="Checkpoints",
-#     fields=['id', 'category', 'vendor', 'storage_name', 'iteration', 'created_at'],
-#     headers=['ID', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Created At']
-# )
-
 serve_panel = PanelFormatter(
     name="Overview",
-    fields=['deployment_id', 'name', 'status', 'vm', 'gpu_type', 'num_gpu', 'start', 'endpoint'],
+    fields=['id', 'name', 'status', 'vm', 'gpu_type', 'num_gpus', 'start', 'endpoint'],
     headers=['ID', 'Name', 'Status', 'VM', 'Device', 'Device Cnt', 'Start', 'Endpoint'],
     extra_fields=['error'],
     extra_headers=['error']
@@ -90,11 +84,11 @@ def create(
         "-g",
         help="The GPU type where the serve is deployed."
     ),
-    num_gpu: int = typer.Option(
+    num_sessions: int = typer.Option(
         ...,
-        "--num-gpu",
-        "-ng",
-        help="The number of gpu of serve deployment."
+        "--num-sessions",
+        "-s",
+        help="The number of sessions of serve deployment."
     ),
 ):
     """Create a serve object by using model checkpoint.
@@ -102,20 +96,14 @@ def create(
     request_data = {
         "name": name,
         "model_id": checkpoint_id,
-        "system_config": {
-            "gpu_type": gpu_type,
-            "num_devices": num_gpu,
-            "num_workers": 1,
-            "max_token_count": 8912,
-            "max_batch_size": 1024,
-            "kv_cache_size": 16384
-        }
+        "gpu_type": gpu_type,
+        "num_sessions": num_sessions
     }
     client: ServeClientService = build_client(ServiceType.SERVE)
     serve = client.create_serve(request_data)
 
     typer.secho(
-        f"Serve ({serve['deployment_id']}) started successfully. Use 'pf serivce view <id>' to see the serve details.\n" \
+        f"Serve ({serve['id']}) started successfully. Use 'pf serivce view <id>' to see the serve details.\n" \
         f"Run 'curl {serve['endpoint']}' for inference request",
         fg=typer.colors.BLUE
     )

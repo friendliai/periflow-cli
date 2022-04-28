@@ -1948,23 +1948,23 @@ def test_serve_client_get_serve(requests_mock: requests_mock.Mocker,
     requests_mock.get(
         url_template.render(serve_id=0),
         json={
-            "deployment_id": 0,
+            "id": 0,
             "name": "name",
             "status": "running",
             "vm": "aws-g4dn.12xlarge",
             "gpu_type": "t4",
-            "num_gpu": 1,
+            "num_gpus": 1,
             "start": '2022-04-18T05:55:14.365021Z',
             "endpoint": "http:0.0.0.0:8000/0/v1/completions"
         }
     )
     assert serve_client.get_serve(0) == {
-        "deployment_id": 0,
+        "id": 0,
         "name": "name",
         "status": "running",
         "vm": "aws-g4dn.12xlarge",
         "gpu_type": "t4",
-        "num_gpu": 1,
+        "num_gpus": 1,
         "start": '2022-04-18T05:55:14.365021Z',
         "endpoint": "http:0.0.0.0:8000/0/v1/completions"
     }
@@ -1982,24 +1982,24 @@ def test_serve_client_create_serve(requests_mock: requests_mock.Mocker,
     requests_mock.post(
         serve_client.url_template.render(),
         json={
-            "deployment_id": 0,
+            "id": 0,
             "name": "name",
             "status": "running",
             "vm": "aws-g4dn.12xlarge",
             "gpu_type": "t4",
-            "num_gpu": 1,
+            "num_gpus": 1,
             "start": '2022-04-18T05:55:14.365021Z',
             "endpoint": "http:0.0.0.0:8000/0/v1/completions"
         }
     )
 
     assert serve_client.create_serve({}) == {
-        "deployment_id": 0,
+        "id": 0,
         "name": "name",
         "status": "running",
         "vm": "aws-g4dn.12xlarge",
         "gpu_type": "t4",
-        "num_gpu": 1,
+        "num_gpus": 1,
         "start": '2022-04-18T05:55:14.365021Z',
         "endpoint": "http:0.0.0.0:8000/0/v1/completions"
     }

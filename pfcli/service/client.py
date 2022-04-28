@@ -906,7 +906,7 @@ class ServeClientService(ClientService):
             response = self.retrieve(serve_id)
             response.raise_for_status()
         except HTTPError as exc:
-            secho_error_and_exit(f"Serve ({serve_id}) is not found. You may enter wrong ID. {decode_http_err(exc)}")
+            secho_error_and_exit(f"Serve ({serve_id}) is not found. You may enter wrong ID.\n{decode_http_err(exc)}")
         return response.json()
     
     def create_serve(self, config = dict) -> dict:
@@ -914,7 +914,7 @@ class ServeClientService(ClientService):
             response = self.create(json=config)
             response.raise_for_status()
         except HTTPError as exc:
-            secho_error_and_exit(f"Failed to create new serve. {decode_http_err(exc)}")
+            secho_error_and_exit(f"Failed to create new serve.\n{decode_http_err(exc)}")
         return response.json()
 
 client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
