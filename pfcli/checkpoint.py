@@ -36,12 +36,12 @@ app = typer.Typer(
 
 table_formatter = TableFormatter(
     name="Checkpoints",
-    fields=['id', 'name', 'model_category', 'forms[0].vendor', 'forms[0].storage_name', 'iteration', 'forms[0].model_form_category', 'created_at'],
+    fields=['id', 'name', 'model_category', 'forms[0].vendor', 'forms[0].storage_name', 'iteration', 'forms[0].form_category', 'created_at'],
     headers=['ID', 'Name', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Format', 'Created At']
 )
 panel_formatter = PanelFormatter(
     name="Overview",
-    fields=['id', 'name', 'model_category', 'forms[0].vendor', 'forms[0].storage_name', 'iteration', 'forms[0].model_form_category', 'created_at'],
+    fields=['id', 'name', 'model_category', 'forms[0].vendor', 'forms[0].storage_name', 'iteration', 'forms[0].form_category', 'created_at'],
     headers=['ID', 'Name', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Format', 'Created At']
 )
 tree_formatter = TreeFormatter(name="Files")
@@ -68,7 +68,8 @@ def list(
     client: GroupCheckpointClientService = build_client(ServiceType.GROUP_CHECKPOINT)
     checkpoints = client.list_checkpoints(category)
     for ckpt in checkpoints:
-        ckpt['vendor'] = storage_type_map_inv[ckpt['vendor']].value
+        for form in ckpt['forms']:
+            form['vendor'] = storage_type_map_inv[form['vendor']].value
         ckpt['created_at'] = datetime_to_pretty_str(parse(ckpt['created_at']))
 
     table_formatter.render(checkpoints)
@@ -85,11 +86,12 @@ def view(
     """
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
     ckpt = client.get_checkpoint(checkpoint_id)
-    ckpt['vendor'] = storage_type_map_inv[ckpt['vendor']].value
+    for form in ckpt['forms']:
+        form['vendor'] = storage_type_map_inv[form['vendor']].value
     ckpt['created_at'] = datetime_to_pretty_str(parse(ckpt['created_at']))
 
     panel_formatter.render([ckpt])
-    tree_formatter.render(ckpt['files'])
+    tree_formatter.render(ckpt['forms'][0]['files'])
 
 
 @app.command()
@@ -203,7 +205,8 @@ def create(
         data_config={},
         job_setting_config=None   # TODO: make configurable
     )
-    ckpt['vendor'] = storage_type_map_inv[ckpt['vendor']].value
+    for form in ckpt['forms']:
+        form['vendor'] = storage_type_map_inv[form['vendor']].value
     ckpt['created_at'] = datetime_to_pretty_str(parse(ckpt['created_at']))
 
     panel_formatter.render([ckpt])
