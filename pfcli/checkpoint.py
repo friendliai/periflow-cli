@@ -249,7 +249,7 @@ def download(
         None,
         '--destination',
         '-d',
-         help="Destination path to directory to save checkpoint files."
+        help="Destination path to directory to save checkpoint files."
     )
 ):
     """Download checkpoint files to local storage.
