@@ -910,21 +910,8 @@ class ServeClientService(ClientService):
         return response.json()
     
     def create_serve(self, config = dict) -> dict:
-        request_data = {
-            "name": "asdf",
-            "model_id": "checkpoint_id",
-            "system_config": {
-                "gpu_type": "gpu_type",
-                "num_devices": 1,
-                "num_workers": 1,
-                "max_token_count": 8912,
-                "max_batch_size": 1024,
-                "kv_cache_size": 16384
-            }
-        }
-
         try:
-            response = self.create(json=request_data)
+            response = self.create(json=config)
             response.raise_for_status()
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to create new serve. {decode_http_err(exc)}")

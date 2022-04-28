@@ -46,6 +46,7 @@ from pfcli.service.client import (
     JobWebSocketClientService,
     URLTemplate,
     UserGroupClientService,
+    ServeClientService,
     build_client,
 )
 
@@ -143,6 +144,10 @@ def group_checkpoint_client() -> GroupCheckpointClientService:
 @pytest.fixture
 def job_ws_client() -> JobWebSocketClientService:
     return build_client(ServiceType.JOB_WS)
+
+@pytest.fixture
+def serve_client() -> ServeClientService:
+    return build_client(ServiceType.SERVE)
 
 
 @pytest.fixture
@@ -1930,3 +1935,75 @@ def test_group_checkpoint_create_checkpoints(requests_mock: requests_mock.Mocker
             data_config={"k": "v"},
             job_setting_config={"k": "v"}
         )
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_serve_client_get_serve(requests_mock: requests_mock.Mocker,
+                                serve_client: ServeClientService):
+    assert isinstance(serve_client, ServeClientService)
+
+    url_template = deepcopy(serve_client.url_template)
+    url_template.attach_pattern('$serve_id/')
+
+    # Success
+    requests_mock.get(
+        url_template.render(serve_id=0),
+        json={
+            "deployment_id": 0,
+            "name": "name",
+            "status": "running",
+            "vm": "aws-g4dn.12xlarge",
+            "gpu_type": "t4",
+            "num_gpu": 1,
+            "start": '2022-04-18T05:55:14.365021Z',
+            "endpoint": "http:0.0.0.0:8000/0/v1/completions"
+        }
+    )
+    assert serve_client.get_serve(0) == {
+        "deployment_id": 0,
+        "name": "name",
+        "status": "running",
+        "vm": "aws-g4dn.12xlarge",
+        "gpu_type": "t4",
+        "num_gpu": 1,
+        "start": '2022-04-18T05:55:14.365021Z',
+        "endpoint": "http:0.0.0.0:8000/0/v1/completions"
+    }
+
+    requests_mock.get(url_template.render(serve_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        serve_client.get_serve(0)
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_serve_client_create_serve(requests_mock: requests_mock.Mocker,
+                                   serve_client: ServeClientService):
+    assert isinstance(serve_client, ServeClientService)
+
+    # Success
+    requests_mock.post(
+        serve_client.url_template.render(),
+        json={
+            "deployment_id": 0,
+            "name": "name",
+            "status": "running",
+            "vm": "aws-g4dn.12xlarge",
+            "gpu_type": "t4",
+            "num_gpu": 1,
+            "start": '2022-04-18T05:55:14.365021Z',
+            "endpoint": "http:0.0.0.0:8000/0/v1/completions"
+        }
+    )
+
+    assert serve_client.create_serve({}) == {
+        "deployment_id": 0,
+        "name": "name",
+        "status": "running",
+        "vm": "aws-g4dn.12xlarge",
+        "gpu_type": "t4",
+        "num_gpu": 1,
+        "start": '2022-04-18T05:55:14.365021Z',
+        "endpoint": "http:0.0.0.0:8000/0/v1/completions"
+    }
+
+    requests_mock.post(serve_client.url_template.render(), status_code=404)
+    with pytest.raises(typer.Exit):
+        serve_client.create_serve({})    

@@ -32,7 +32,7 @@ app = typer.Typer(
 
 serve_panel = PanelFormatter(
     name="Overview",
-    fields=['service_id', 'name', 'status', 'vm', 'gpu_type', 'num_gpu', 'start', 'endpoint'],
+    fields=['deployment_id', 'name', 'status', 'vm', 'gpu_type', 'num_gpu', 'start', 'endpoint'],
     headers=['ID', 'Name', 'Status', 'VM', 'Device', 'Device Cnt', 'Start', 'Endpoint'],
     extra_fields=['error'],
     extra_headers=['error']
@@ -55,7 +55,7 @@ def view(
         help="serve id to inspect detail."
     )
 ):
-    """Show details of a service.
+    """Show details of a serve.
     """
     client: ServeClientService = build_client(ServiceType.SERVE)
     serve = client.get_serve(serve_id)
@@ -115,7 +115,7 @@ def create(
     serve = client.create_serve(request_data)
 
     typer.secho(
-        f"Serve ({serve['service_id']}) started successfully. Use 'pf serivce view <id>' to see the serve details.\n" \
+        f"Serve ({serve['deployment_id']}) started successfully. Use 'pf serivce view <id>' to see the serve details.\n" \
         f"Run 'curl {serve['endpoint']}' for inference request",
         fg=typer.colors.BLUE
     )
