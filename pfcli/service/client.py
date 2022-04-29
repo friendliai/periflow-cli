@@ -21,6 +21,8 @@ from typing import (
 from dataclasses import dataclass
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlparse
+import uuid
 
 import requests
 import websockets
@@ -39,6 +41,8 @@ from pfcli.utils import (
     decode_http_err,
     get_uri,
     get_wss_uri,
+    get_mr_uri,
+    get_pfs_uri,
     secho_error_and_exit,
     validate_storage_region,
     zip_dir,
@@ -46,6 +50,7 @@ from pfcli.utils import (
 from pfcli.service import (
     CheckpointCategory,
     CloudType,
+    ModelFormCategory,
     StorageType,
     CredType,
     ServiceType,
@@ -72,8 +77,20 @@ class URLTemplate:
 
         return self.pattern.substitute(**kwargs)
 
+    def get_base_url(self) -> str:
+        result = urlparse(self.pattern.template)
+        return f"{result.scheme}://{result.hostname}"
+
     def attach_pattern(self, pattern: str) -> None:
         self.pattern.template += pattern
+
+    def replace_path(self, path: str):
+        result = urlparse(self.pattern.template)
+        result = result._replace(path=path)
+        self.pattern.template = result.geturl()
+
+    def copy(self) -> "URLTemplate":
+        return URLTemplate(pattern=Template(self.pattern.template))
 
 
 class ClientService:
@@ -129,6 +146,19 @@ class GroupRequestMixin:
     def initialize_group(self):
         self.user_group_service = build_client(ServiceType.USER_GROUP)
         self.group_id = self.user_group_service.get_group_id()
+
+
+class ProjectRequestMixin:
+    user_group_service: UserGroupClientService
+    group_id: uuid.UUID
+    project_id: uuid.UUID
+
+    def initialize_project(self):
+        # TODO: modify after CLI-PFA integration
+        self.user_group_service = build_client(ServiceType.USER_GROUP)
+        self.user_group_service.get_group_id()
+        self.group_id = uuid.UUID("00000000-0000-0000-0000-000000000000")
+        self.project_id = uuid.UUID("11111111-1111-1111-1111-111111111111")
 
 
 class UserGroupClientService(ClientService):
@@ -821,10 +851,17 @@ class CheckpointClientService(ClientService):
 
     @auto_token_refresh
     def download(self, checkpoint_id: T) -> Response:
-        url_template = copy.deepcopy(self.url_template)
-        url_template.attach_pattern('$checkpoint_id/download/')
+        try:
+            response = self.retrieve(checkpoint_id)
+            response.raise_for_status()
+            model_form_id = response.json()['forms'][0]['id']
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get info of checkpoint ({checkpoint_id}).\n{decode_http_err(exc)}")
+
+        url_template = self.url_template.copy()
+        url_template.replace_path('model_forms/$model_form_id/download/')
         return requests.get(
-            url_template.render(checkpoint_id=checkpoint_id, **self.url_kwargs),
+            url_template.render(model_form_id=model_form_id, **self.url_kwargs),
             headers=get_auth_header(),
         )
 
@@ -837,16 +874,22 @@ class CheckpointClientService(ClientService):
         return response.json()['files']
 
 
-class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
+class GroupCheckpointClientService(ClientService, ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
-        self.initialize_group()
-        super().__init__(template, group_id=self.group_id, **kwargs)
+        self.initialize_project()
+        super().__init__(
+            template,
+            group_id=self.group_id,
+            project_id=self.project_id,
+            **kwargs,
+        )
 
     def list_checkpoints(self, category: Optional[CheckpointCategory]) -> dict:
         request_data = {}
         if category is not None:
             request_data['category'] = category.value
 
+        # TODO (AC): Add pagination
         try:
             response = self.list(params=request_data)
             response.raise_for_status()
@@ -855,6 +898,8 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
         return response.json()['results']
 
     def create_checkpoint(self,
+                          name: str,
+                          model_form_category: ModelFormCategory,
                           vendor: StorageType,
                           region: str,
                           credential_id: str,
@@ -865,18 +910,27 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
                           data_config: dict,
                           job_setting_config: Optional[dict]) -> dict:
         validate_storage_region(vendor, region)
+        FAKE_USER_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
 
         request_data = {
-            "vendor": storage_type_map[vendor],
-            "region": region,
-            "credential_id": credential_id,
-            "iteration": iteration,
-            "storage_name": storage_name,
-            "files": files,
+            "job_id": None,
+            "name": name,
+            "attributes": {
+                "data_json": data_config,
+                "job_setting_json": job_setting_config,
+            },
+            "user_id": str(FAKE_USER_ID), # TODO: change after PFA integration
+            "credential_id": credential_id if credential_id else None,
+            "model_category": "USER",
+            "form_category": model_form_category.value,
             "dist_json": dist_config,
-            "data_config": data_config,
-            "job_setting_json": job_setting_config,
+            "vendor": vendor,
+            "region": region,
+            "storage_name": storage_name,
+            "iteration": iteration,
+            "files": files
         }
+
         try:
             response = self.create(json=request_data)
             response.raise_for_status()
@@ -884,6 +938,23 @@ class GroupCheckpointClinetService(ClientService, GroupRequestMixin):
             secho_error_and_exit(f"Failed to create checkpoint.\n{decode_http_err(exc)}")
         return response.json() 
 
+
+class ServeClientService(ClientService):
+    def get_serve(self, serve_id: T) -> dict:
+        try:
+            response = self.retrieve(serve_id)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Serve ({serve_id}) is not found. You may enter wrong ID.\n{decode_http_err(exc)}")
+        return response.json()
+    
+    def create_serve(self, config = dict) -> dict:
+        try:
+            response = self.create(json=config)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to create new serve.\n{decode_http_err(exc)}")
+        return response.json()
 
 client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.USER_GROUP: (UserGroupClientService, Template(get_uri('user/'))),
@@ -901,9 +972,10 @@ client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.GROUP_DATA: (GroupDataClientService, Template(get_uri('group/$group_id/datastore/'))),
     ServiceType.GROUP_VM: (GroupVMClientService, Template(get_uri('group/$group_id/vm_config/'))),
     ServiceType.GROUP_VM_QUOTA: (GroupVMQuotaClientService, Template(get_uri('group/$group_id/vm_quota/'))),
-    ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_uri('checkpoint/'))),
-    ServiceType.GROUP_CHECKPOINT: (GroupCheckpointClinetService, Template(get_uri('group/$group_id/checkpoint/'))),
+    ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_mr_uri('models/'))),
+    ServiceType.GROUP_CHECKPOINT: (GroupCheckpointClientService, Template(get_mr_uri('orgs/$group_id/prjs/$project_id/models/'))),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri('job/'))),
+    ServiceType.SERVE: (ServeClientService, Template(get_pfs_uri('deployment/')))
 }
 
 

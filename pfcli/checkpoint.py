@@ -10,6 +10,7 @@ import typer
 
 from pfcli.service import (
     CheckpointCategory,
+    ModelFormCategory,
     ServiceType,
     StorageType,
     cred_type_map,
@@ -19,7 +20,7 @@ from pfcli.service import (
 from pfcli.service.client import (
     CheckpointClientService,
     CredentialClientService,
-    GroupCheckpointClinetService,
+    GroupCheckpointClientService,
     build_client,
 )
 from pfcli.service.cloud import build_storage_helper
@@ -35,13 +36,13 @@ app = typer.Typer(
 
 table_formatter = TableFormatter(
     name="Checkpoints",
-    fields=['id', 'category', 'vendor', 'storage_name', 'iteration', 'created_at'],
-    headers=['ID', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Created At']
+    fields=['id', 'name', 'model_category', 'forms[0].vendor', 'forms[0].storage_name', 'iteration', 'forms[0].form_category', 'created_at'],
+    headers=['ID', 'Name', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Format', 'Created At']
 )
 panel_formatter = PanelFormatter(
     name="Overview",
-    fields=['id', 'category', 'vendor', 'storage_name', 'iteration', 'created_at'],
-    headers=['ID', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Created At']
+    fields=['id', 'name', 'model_category', 'forms[0].vendor', 'forms[0].storage_name', 'iteration', 'forms[0].form_category', 'created_at'],
+    headers=['ID', 'Name', 'Category', 'Cloud', 'Storage Name', 'Iteration', 'Format', 'Created At']
 )
 tree_formatter = TreeFormatter(name="Files")
 
@@ -64,10 +65,11 @@ def list(
 ):
     """List all checkpoints that belong to the user's organization.
     """
-    client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
+    client: GroupCheckpointClientService = build_client(ServiceType.GROUP_CHECKPOINT)
     checkpoints = client.list_checkpoints(category)
     for ckpt in checkpoints:
-        ckpt['vendor'] = storage_type_map_inv[ckpt['vendor']].value
+        for form in ckpt['forms']:
+            form['vendor'] = storage_type_map_inv[form['vendor']].value
         ckpt['created_at'] = datetime_to_pretty_str(parse(ckpt['created_at']))
 
     table_formatter.render(checkpoints)
@@ -84,15 +86,28 @@ def view(
     """
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
     ckpt = client.get_checkpoint(checkpoint_id)
-    ckpt['vendor'] = storage_type_map_inv[ckpt['vendor']].value
+    for form in ckpt['forms']:
+        form['vendor'] = storage_type_map_inv[form['vendor']].value
     ckpt['created_at'] = datetime_to_pretty_str(parse(ckpt['created_at']))
 
     panel_formatter.render([ckpt])
-    tree_formatter.render(ckpt['files'])
+    tree_formatter.render(ckpt['forms'][0]['files'])
 
 
 @app.command()
 def create(
+    name: str = typer.Option(
+        ...,
+        '--name',
+        '-n',
+        help="Name of your checkpoint to create."
+    ),
+    format: ModelFormCategory = typer.Option(
+        ModelFormCategory.ETC,
+        '-m',
+        '--format',
+        help="The format of your checkpoint",
+    ),
     cloud: StorageType = typer.Option(
         ...,
         "--cloud",
@@ -176,8 +191,10 @@ def create(
     if storage_path is not None:
         storage_name = f"{storage_name}/{storage_path}"
 
-    checkpoint_client: GroupCheckpointClinetService = build_client(ServiceType.GROUP_CHECKPOINT)
+    checkpoint_client: GroupCheckpointClientService = build_client(ServiceType.GROUP_CHECKPOINT)
     ckpt = checkpoint_client.create_checkpoint(
+        name=name,
+        model_form_category=format,
         vendor=cloud,
         region=region,
         credential_id=credential_id,
@@ -188,7 +205,8 @@ def create(
         data_config={},
         job_setting_config=None   # TODO: make configurable
     )
-    ckpt['vendor'] = storage_type_map_inv[ckpt['vendor']].value
+    for form in ckpt['forms']:
+        form['vendor'] = storage_type_map_inv[form['vendor']].value
     ckpt['created_at'] = datetime_to_pretty_str(parse(ckpt['created_at']))
 
     panel_formatter.render([ckpt])
