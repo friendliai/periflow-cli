@@ -26,8 +26,11 @@ from pfcli.service import (
 )
 
 # Variables
-periflow_api_server = "https://api-staging.friendli.ai/api/"
-periflow_ws_server = "wss://api-ws-staging.friendli.ai/ws/"
+periflow_api_server = "https://api-dev.friendli.ai/api/"
+periflow_ws_server = "wss://api-ws-dev.friendli.ai/ws/"
+periflow_discuss_url = "https://discuss-staging.friendli.ai/"
+periflow_mr_server = "https://pfmodelregistry-dev.friendli.ai/"
+periflow_serve_server = "http://0.0.0.0:8000/"
 
 
 def datetime_to_pretty_str(past: Optional[datetime], long_list: bool = False):
@@ -81,6 +84,13 @@ def get_uri(path: str):
 
 def get_wss_uri(path: str):
     return periflow_ws_server + path
+
+def get_pfs_uri(path: str):
+    return periflow_serve_server + path
+
+
+def get_mr_uri(path: str) -> str:
+    return periflow_mr_server + path
 
 
 def secho_error_and_exit(text: str, color: str = typer.colors.RED):
@@ -256,4 +266,16 @@ def download_file(url: str, out: str) -> None:
 
 
 def decode_http_err(exc: HTTPError) -> str:
-    return exc.response.content.decode()
+    try:
+        if exc.response.status_code == 500:
+            error_str = f"Internal Server Error: Please contact to system admin via {periflow_discuss_url}"
+        elif exc.response.status_code == 404:
+            error_str = "Not Found: The requested resource is not found. Please check it again. " \
+                        f"If you cannot find out why this error occurs, please visit {periflow_discuss_url}."
+        else:
+            raw_error = exc.response.json()
+            error_str = f"Error Code: {raw_error['code']}\nDetail: {raw_error['detail']}"
+    except ValueError:
+        error_str = exc.response.content
+
+    return error_str

@@ -25,6 +25,10 @@ def read_version() -> str:
     return read("VERSION").strip()
 
 
+def read_readme() -> str:
+    return read("README.md")
+
+
 COMMON_DEPS = [
     "requests>=2.26.0",
     "tabulate>=0.8.0",
@@ -54,10 +58,12 @@ TEST_DEPS = [
 setup(
     name='periflow-cli',
     version=read_version(),
+    long_description=read_readme(),
+    long_description_content_type='text/markdown',
+    description='PeriFlow CLI',
     author='FriendliAI',
     license="Apache License 2.0",
     url="https://github.com/friendliai/periflow-cli",
-    description="PeriFlow Cli",
     packages=find_packages(include=['pfcli', 'pfcli.*']),
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -68,6 +74,10 @@ setup(
             "pf = pfcli:app",
         ]
     },
+    python_requires='>=3.6',
     include_package_data=True,
-    install_requires=COMMON_DEPS + TEST_DEPS
+    install_requires=COMMON_DEPS,
+    extras_require={
+        "test": TEST_DEPS
+    }
 )

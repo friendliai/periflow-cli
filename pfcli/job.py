@@ -16,12 +16,7 @@ import yaml
 import ruamel.yaml
 from click import Choice
 
-from pfcli.service import (
-    JobType,
-    LogType,
-    ServiceType,
-    storage_type_map_inv,
-)
+from pfcli.service import JobType, ServiceType, storage_type_map_inv
 from pfcli.service.client import (
     GroupDataClientService,
     GroupExperimentClientService,
@@ -87,6 +82,7 @@ job_table.add_substitution_rule("failed", "[bold red]failed")
 job_table.add_substitution_rule("terminated", "[bold yellow]terminated")
 job_table.add_substitution_rule("terminating", "[bold magenta]terminating")
 job_table.add_substitution_rule("cancelling", "[bold magenta]cancelling")
+job_table.add_substitution_rule("None", "-")
 job_panel = PanelFormatter(
     name="Overview",
     fields=[
@@ -112,10 +108,11 @@ job_panel.add_substitution_rule("failed", "[bold red]failed")
 job_panel.add_substitution_rule("terminated", "[bold yellow]terminated")
 job_panel.add_substitution_rule("terminating", "[bold magenta]terminating")
 job_panel.add_substitution_rule("cancelling", "[bold magenta]cancelling")
+job_panel.add_substitution_rule("None", "-")
 ckpt_table = TableFormatter(
     name="Checkpoints",
-    fields=['id', 'vendor', 'region', 'iteration', 'created_at'],
-    headers=['ID', 'Cloud', 'Region', 'Iteration', 'Created At']
+    fields=['id', 'vendor', 'region', 'iteration', 'model_form_category', 'created_at'],
+    headers=['ID', 'Cloud', 'Region', 'Iteration', 'Format', 'Created At']
 )
 artifact_table = TableFormatter(
     name="Artifacts",
@@ -395,7 +392,7 @@ def template_create(
     """Create a job configuration YAML file
     """
     job_type = typer.prompt(
-        "What kind job do you want?\n",
+        "What kind of job do you want?\n",
         type=Choice([ e.value for e in JobType ]),
         prompt_suffix="\n>> "
     )
@@ -407,7 +404,7 @@ def template_create(
     yaml.dump(code, save_path)
 
     continue_edit = typer.confirm(
-        f"Do you want to open editor to configure the job YAML file? (default editor: {get_default_editor()})",
+        f"Do you want to open an editor to configure the job YAML file? (default editor: {get_default_editor()})",
         prompt_suffix="\n>> "
     )
     if continue_edit:

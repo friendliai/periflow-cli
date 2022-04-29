@@ -13,7 +13,8 @@ from pfcli import (
     credential,
     job,
     datastore,
-    vm
+    vm,
+    serve
 )
 from pfcli.service import ServiceType
 from pfcli.service.auth import TokenType, update_token
@@ -33,6 +34,7 @@ app.add_typer(checkpoint.app, name="checkpoint", help="Manage checkpoints")
 app.add_typer(datastore.app, name="datastore", help="Manage datasets")
 app.add_typer(vm.app, name="vm", help="Manage VMs")
 app.add_typer(experiment.app, name="experiment", help="Manage experiments")
+app.add_typer(serve.app, name="serve", help="Manage serves")
 
 
 user_panel_formatter = PanelFormatter(
