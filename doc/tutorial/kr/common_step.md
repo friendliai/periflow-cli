@@ -1,6 +1,6 @@
 # PeriFlow 튜토리얼
 
-PeriFlow를 사용하시는 여러분들을 환영합니다. 본 튜토리얼에서는 PeriFlow 사용을 위한 방법을 단계별로 설명합니다. 튜토리얼의 내용과 관련하여 궁금한 점이 있으시다면 언제든지 [PeriFlow Discussion Forum]에 질문을 남겨주시기 바랍니다.
+PeriFlow를 사용하시는 여러분들을 환영합니다. 본 튜토리얼에서는 PeriFlow 사용을 위한 방법을 단계별로 설명합니다. 튜토리얼의 내용과 관련하여 궁금한 점이 있으시다면 언제든지 [PeriFlow Discussion Forum](https://discuss-staging.friendli.ai/)에 질문을 남겨주시기 바랍니다.
 
 본 문서는 PeriFlow를 사용하는 유저가 공통적으로 거치게 되는 과정을 담고 있습니다. 여러 가지 학습 케이스에 대한 튜토리얼은 본 문서에 설명된 과정을 마친 후 다음 링크의 문서를 참고 바랍니다.
 
@@ -23,7 +23,13 @@ PeriFlow를 사용하시는 여러분들을 환영합니다. 본 튜토리얼에
 
 ## 사용 방법 설명
 
-### 로그인
+1. [로그인](#login)
+2. [Credential 생성](#crdential-생성)
+3. [Dataset 생성](#dataset-생성)
+4. [Job 실행](#job-실행)
+5. [Checkpoint 다운로드](#checkpoint-다운로드)
+
+### Login
 
 PeriFlow를 사용하기 위해서 우선 로그인을 해야합니다. `pf login` 커맨드를 사용하여 유저 이름과 패스워드를 쳐서 로그인을 합니다.
 
@@ -35,18 +41,18 @@ pf login
 
 PeriFlow를 본격적으로 사용하기에 앞서 필요한 credential들을 미리 등록해두면 좋습니다. 현재 등록 가능한 Credential의 종류는 다음과 같습니다.
 
-- Docker
-- AWS S3
-- Azure Blob Storage
-- Google Cloud Storage
-- Weights & Biases
+- [Docker](#docker)
+- [AWS S3](#aws-s3)
+- [Azure Blob Storage](#azure-blob-storage)
+- [Google Cloud Storage](#google-cloud-storage)
+- [Weights & Biases](#weights--biases)
 - Slack
 
 본인에게 필요한 Credential이 있다면 아래의 설명을 참고하여 생성을 합니다.
 
 #### Docker
 
-개인 Docker Hub 계정에 있는 도커 이미지에 접근하기 위해 필요합니다. Private으로 설정된 개인 Docker Hub 레포지토리에 있는 이미지를 Job에서 사용하기 원한다면 등록해야 합니다.
+개인 Docker Hub 계정에 있는 도커 이미지에 접근하기 위해 필요합니다. Private으로 설정된 Docker Hub 레포지토리에 있는 이미지를 Job에서 사용하기 원한다면 등록해야 합니다.
 
 ```sh
 pf credential create -n [CREDENTIAL_NAME] --username [USERNAME] --password [PASSWORD]
@@ -157,3 +163,119 @@ Weights & Biases API key 값을 얻으려면 다음 과정을 따릅니다.
 4. 복사한 키를 위의 커맨드에서 `API_KEY` 부분에 입력합니다.
 
 > 만약 Organization 내의 다른 멤버들과 Credential을 공유하고 싶다면 `-g` 또는 `--group` 옵션을 붙여주세요.
+
+### Dataset 생성
+
+PeriFlow Datastore에 Dataset을 생성하는 방법은 2가지가 있습니다.
+
+1. [컴퓨터 로컬 파일 시스템에 있는 데이터셋 파일들은 업로드](#from-local-file-system).
+2. [클라우드 스토리지에 업로드 된 데이터셋을 연결](#from-cloud-storage)
+
+#### From Local File System
+
+로컬 파일 시스템에 있는 파일을 업로드 하는 방법은 간단합니다. 예를 들어, 내 컴퓨터에 다음과 같이 업로드할 데이터셋이 존재한다고 해봅시다.
+
+```sh
+$ tree 
+.
+└── cifar100
+    └── cifar-100-python
+        ├── meta
+        ├── test
+        └── train
+
+```
+
+우리는 이 중에 `cifar100` 디렉토리 안에 있는 `cifar-100-python` 디렉토리를 Datastore에 업로드하여 사용하고 싶습니다. 이를 위해서 우리는 단 한 줄의 커맨드만 입력하면 됩니다.
+
+```sh
+$ pf datastore upload -n my-cifar-100 -p ./cifar100/cifar-100-python
+
+# 또는
+
+$ pf datastore upload -n my-cifar-100 -p ./cifar100/
+```
+
+- `-n` 옵션에는 데이터셋의 이름을 입력합니다. 데이터셋의 이름은 Organization 내에서 유일해야 합니다 (Organization 내에서 중복 이름 사용 불가).
+- `-p` 옵션에는 업로드할 로컬에 있는 데이터셋 경로를 입력합니다. 이 때 경로가 `/`로 끝나게 되면 해당 디렉토리 내부에 있는 파일/디렉토리들만 업로드 됩니다. 예를 들어 위의 예시에서 `-p ./cifar100/cifar-100-python`로 옵션을 준 경우, `cifar-100-python` 디렉토리를 포함하여 그 내부의 파일들이 업로드 되고, `-p ./cifar100/cifar-100-python/`로 옵션을 준 경우엔 `cifar-100-python` 디렉토리는 제외하고 그 내부의 파일들(`meta`, `test`, `train`)만 업로드 됩니다.
+
+업로드 커맨드를 입력하면 상태 바가 나타나면서 업로드가 진행됩니다. 만약 업로드할 파일 사이즈가 크다면 `tmux`, `screen` 세션 등을 사용하여 업로드하는 것을 권장합니다.
+
+업로드가 완료되었다면 `pf datastore view my-cifar-100` 커맨드를 통해 업로드한 데이터셋의 세부 사항을 확인할 수 있습니다.
+
+```sh
+$ pf datastore view my-cifar-100  
+╭─────────────────────────── Overview ───────────────────────────╮
+│  Name          my-cifar-100                                    │
+│  Cloud         fai                                             │
+│  Region        -                                               │
+│  Storage Name  -                                               │
+│  Active        Y                                               │
+╰────────────────────────────────────────────────────────────────╯
+╭──────────────────────────── Files ─────────────────────────────╮
+│ /                                                              │
+│ └── 📂 cifar-100-python                                        │
+│     ├── test (31.0 MB)                                         │
+│     ├── meta (1.5 kB)                                          │
+│     └── train (155.2 MB)                                       │
+╰────────────────────────────────────────────────────────────────╯
+╭─────────────────────────── Metadata ───────────────────────────╮
+│ {}                                                             │
+╰────────────────────────────────────────────────────────────────╯
+```
+
+#### From Cloud Storage
+
+PeriFlow에서 사용하고 싶은 데이터셋이 이미 클라우드 스토리지(e.g., AWS S3, Azure Blob Storage, Google Cloud Storage)에 업로드 된 상태라면 해당 스토리지를 링크할 수 있습니다. 이를 위해서는 데이터셋이 업로드 된 스토리지에 접근 권한이 필요하기 때문에 [Credential 생성](#crdential-생성) 설명을 참고하여 Credential이 생성된 상태여야 합니다.
+
+예를 들어, AWS `us-east-1` 리전에 `cifar-100`이라는 이름의 S3 버켓이 있고, 우리는 이 버켓에 있는 데이터셋을 Datastore에 등록하고 싶은 상황이라고 해보겠습니다. 위의 [매뉴얼](#aws-s3)을 따라 AWS S3 Credential을 생성하고 다음과 같이 커맨드를 실행합니다.
+
+```sh
+$ pf datastore create \
+    -n aws-cifar-100 \
+    -c s3 \
+    -r us-east-1 \
+    -s cifar-100 \
+    -i f2a357dc-2029-454d-aa37-73ebdbc5ea43
+```
+
+- `-n` 옵션에는 데이터셋의 이름을 입력합니다. 데이터셋의 이름은 Organization 내에서 유일해야 합니다 (Organization 내에서 중복 이름 사용 불가).
+- `-s` 옵션에는 링크할 클라우드 스토리지 타입을 입력합니다. 본 예시에서는 S3 버켓을 연결하므로 `s3`를 입력합니다.
+- `-r` 옵션에는 클라우드 스토리지의 리전을 입력합니다. 본 예시에서 사용하는 S3 버켓은 `us-east-1` 리전에 있으므로 `us-east-1`을 입력합니다.
+- `-s` 옵션에는 클라우드 스토리지의 이름을 입력합니다. 본 예시에서 사용하는 S3 버켓의 이름은 `cifar-100`이므로 `cifar-100`을 입력합니다.
+- `-i` 옵션에는 S3 타입의 Credential ID(UUID 형식)를 입력합니다.
+
+업로드가 완료되었다면 `pf datastore view aws-cifar-100` 커맨드를 통해 업로드한 데이터셋의 세부 사항을 확인할 수 있습니다.
+
+```sh
+$ pf datastore view my-cifar-100  
+╭─────────────────────────── Overview ───────────────────────────╮
+│  Name          aws-cifar-100                                   │
+│  Cloud         s3                                              │
+│  Region        us-east-1                                       │
+│  Storage Name  cifar-100                                       │
+│  Active        Y                                               │
+╰────────────────────────────────────────────────────────────────╯
+╭──────────────────────────── Files ─────────────────────────────╮
+│ /                                                              │
+│ └── 📂 cifar-100-python                                        │
+│     ├── test (31.0 MB)                                         │
+│     ├── meta (1.5 kB)                                          │
+│     └── train (155.2 MB)                                       │
+╰────────────────────────────────────────────────────────────────╯
+╭─────────────────────────── Metadata ───────────────────────────╮
+│ {}                                                             │
+╰────────────────────────────────────────────────────────────────╯
+```
+
+### Job 실행
+
+실행하려는 Job의 종류에 따라 아래 링크된 매뉴얼을 참고 바랍니다.
+
+1. CIFAR-100 데이터셋을 사용하여 단일 노드에서 이미지 분류 모델 학습하기
+2. PyTorch Lightning 코드로 모델 학습하기
+3. Huggingface 텍스트 분류 모델을 여러 노드에서 분산 학습하기
+
+### Checkpoint 다운로드
+
+PeriFlow SDK를 학습 스크립트에 적용하고 Job을 성공적으로 실행하였다면, 학습이 진행되면서 생성되는 모델 체크포인트를 실시간으로 확인하고 로컬 파일 시스템으로 다운로드 할 수 있습니다.
