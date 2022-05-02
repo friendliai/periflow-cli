@@ -44,13 +44,13 @@ PeriFlow를 initialize 하는 부분입니다. 이 함수는 다른 PeriFlow SDK
 
 ### `pf.train_step`
 
-`pf.start_step()`과 `pf.end_step()`을 포함하는 컨텍스트 매니저입니다. `pf.train_step()`을 사용하는 대신 `pf.start_step()`과 `pf.end_step()`을 사용해도 무방합니다. `pf.start_step()`은 하나의 training iteration이 시작되기 전에 호출 되어야 하며, `pf.end_step()`은 training iteration이 끝날 때 호출 되어야 합니다.
+`pf.start_step()`과 `pf.end_step()`을 포함하는 컨텍스트 매니저입니다. `pf.train_step()`을 사용하는 대신 `pf.start_step()`과 `pf.end_step()`을 사용해도 무방합니다. `pf.start_step()`은 매 학습 iteration이 시작될 때 호출 되어야 하며, `pf.end_step()`은 매 학습 iteration이 끝날 때 호출 되어야 합니다.
 
 ### `pf.upload_checkpoint`
 
 `torch.save()`로 저장된 체크포인트를 업로드 합니다. `pf.upload_checkpoint()`로 업로드 된 체크포인트는 PeriFlow CLI에서 `pf checkpoint view` 또는 `pf checkpoint list`로 확인이 가능합니다.
 
-위의 3가지 함수들을 모두 적용하면 아래와 같습니다. 코멘트가 달린 부분이 기존 PyTorch 코드에 추가된 PeriFlow SDK에 해당합니다.
+위의 3가지 함수들을 모두 적용하면 아래와 같은 학습 스크립트가 완성 됩니다. 코멘트가 달린 부분이 기존 PyTorch 코드에 추가된 PeriFlow SDK에 해당합니다.
 
 ```python
 # @main.py
@@ -128,9 +128,8 @@ job_setting:
     # NOTE: PeriFlow automatically sets the following environment variables for PyTorch DDP.
     #   - MASTER_ADDR: Address of rank 0 node.
     #   - WORLD_SIZE: The total number of GPUs participating in the task.
-    #   - RANK: Rank of the current process.
-    #   - LOCAL_RANK: Local rank of the current process in the node.
     #   - NODE_RANK: Index of the current node.
+    #   - NPROC_PER_NODE: The number of processes in the current node.
     command: >
       cd /workspace/cifar && torchrun --nnodes $NUM_NODES --node_rank $NODE_RANK --master_addr $MASTER_ADDR --master_port 6000 --nproc_per_node 4 main.py \
         --model resnet50 \
@@ -223,6 +222,39 @@ pf job run -f pf-template.yml -d ./cifar
 
 - `-f`: Configuration YAML 파일의 경로입니다. 앞에서 작성한 `pf-template.yml`을 입력합니다.
 - `-d`: 로컬에 있는 Workspace 디렉토리 경로입니다. 현재 로컬에 SDK가 적용된 `main.py`는 `.cifar/main.py`에 있습니다. `-d` 옵션에 `./cifar`를 입력하면 `./cifar` 디렉토리 전체가 `pf-template.yml` 파일의 `job_setting:workspace:mount_path` 필드에 지정된 경로로 마운트 됩니다. 현재 `pf-template.yml`에는 해당 경로가 `/workspace`로 되어 있기 때문에 `/workspace/cifar/main.py`와 같은 파일 구조에서 Job이 실행 됩니다.
+
+결론적으로 Job이 실행되는 환경의 파일 시스템 구조는 다음과 같습니다.
+
+```sh
+/
+└── 📂 workspace
+    ├─── 📂 cifar
+    │    └── main.py
+    ├─── 📂 data
+    │    └── 📂 cifar-100-python
+    │        ├── test
+    │        ├── meta
+    │        └── train
+    └─── 📂 ckpt
+```
+
+`pf-template.yml`의 `job_setting:docker:command` 필드에 입력된 shell 명령어는 이러한 파일 시스템 구조를 고려하여 작성되어 있습니다.
+
+```sh
+    command: >
+      cd /workspace/cifar && torchrun --nnodes $NUM_NODES --node_rank $NODE_RANK --master_addr $MASTER_ADDR --master_port 6000 --nproc_per_node $NPROC_PER_NODE main.py \
+        --model resnet50 \
+        --dataset cifar100 \
+        --batch-size 256 \
+        --log-interval 100 \
+        --total-epochs 50 \
+        --save-interval 100 \
+        --test-interval 100 \
+        --num-dataloader-workers 4 \
+        --data-path /workspace/data \
+        --save /workspace/ckpt \
+        --load /workspace/ckpt
+```
 
 ## Job 모니터링
 
