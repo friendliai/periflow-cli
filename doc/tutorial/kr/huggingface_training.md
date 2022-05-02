@@ -134,4 +134,4 @@ pf job run -f pf-template.yml -d ./huggingface
 
 ## Checkpoint 다운로드
 
-[공통 매뉴얼](./common_step.md#checkpoint-다운로드)
+[공통 매뉴얼](./common_step.md#checkpoint-다운로드)을 참고 바랍니다.
