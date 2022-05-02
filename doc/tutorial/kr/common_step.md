@@ -269,9 +269,9 @@ $ pf datastore view aws-cifar-100
 
 실행하려는 Job의 종류에 따라 아래 링크된 매뉴얼을 참고 바랍니다.
 
-1. [이미지 분류 모델 학습하기](./single_machine_training.md)
-2. PyTorch Lightning 코드로 모델 학습하기
-3. Huggingface Trainer를 사용한 학습 예제
+1. [이미지 분류 모델 학습하기](./pytorch_training.md)
+2. [PyTorch Lightning을 활용한 AutoEncoder 모델 학습하기](./pth_lightning_training.md)
+3. [HuggingFace를 활용한 Text-Classification 모델 학습하기](./huggingface_training.md)
 
 ### Job 모니터링
 

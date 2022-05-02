@@ -5,14 +5,14 @@
 - `pip install periflow-cli`로 CLI 패키지를 설치합니다.
 - `pip install periflow_sdk`로 SDK 패키지를 설치합니다.
 - [공통 가이드](./common_step.md)에 설명된 과정들이 완료되어야 합니다.
-- 본 튜토리얼에서는 [MNLI](https://cims.nyu.edu/~sbowman/multinli/) dataset을 사용합니다.
-다음과 같은 스크립트를 통해서 간단하게 로컬에 dataset을 받을 수 있습니다.
+- 본 튜토리얼에서는 [MNLI](https://cims.nyu.edu/~sbowman/multinli/) dataset을 사용합니다. 다음과 같은 스크립트를 통해서 간단하게 로컬에 dataset을 받을 수 있습니다.
+
   ```sh
   $ pip install datasets
   $ python -c "from datasets import load_dataset; load_dataset('glue', 'mnli', cache_dir='./mnli')"
   ```
-  이후 `pf datastore upload`를 통해서 local의 dataset을 업로드할 수 있습니다.
 
+  다운로드가 완료되면 [Dataset 생성](./common_step.md#dataset-생성) 매뉴얼을 따라 Datastore에 데이터셋을 생성 합니다.
 
 ## SDK 적용
 
@@ -30,7 +30,7 @@ class PeriFlowCallback(TrainerCallback):
         pf.upload_checkpoint()
 ```
 
-해당 callback을 통해서 HuggingFace의 Trainer를 만들고, 학습을 진행할 수 있습니다.
+`PeriFlowCallback`을 사용하여 HuggingFace의 Trainer를 만들고, 학습을 진행할 수 있습니다.
 
 ```python
     pf.init(total_train_steps=training_args.max_steps)
@@ -79,8 +79,7 @@ job_setting:
     #   - MASTER_ADDR: Address of rank 0 node.
     #   - WORLD_SIZE: The total number of GPUs participating in the task.
     #   - NODE_RANK: Index of the current node.
-    #   - NUM_NODES: number of total nodes.
-    #   - NPROC_PER_NODE: number of devices per node.
+    #   - NPROC_PER_NODE: The number of processes in the current node.
     command: >
       cd /workspace/huggingface && pip install -r requirements.txt && torchrun --nnodes $NUM_NODES --node_rank $NODE_RANK --master_addr $MASTER_ADDR --master_port 6000 --nproc_per_node $NPROC_PER_NODE run_glue.py \
         --model_name_or_path bert-base-cased \
@@ -108,7 +107,7 @@ data:
   mount_path: /workspace/data
 ```
 
-각 필드에 대한 설명은 [single machine training 예시](https://github.com/friendliai/periflow-cli/blob/tutorial-md/doc/tutorial/kr/single_machine_training.md)에서 확인할 수 있습니다.
+각 필드에 대한 설명은 [이미지 분류 모델 학습하기](./pytorch_training.md#configuration-yaml-파일)에서 확인할 수 있습니다.
 
 ## Job 실행
 
@@ -130,6 +129,8 @@ pf job run -f pf-template.yml -d ./huggingface
 ```
 
 ## Job 모니터링
+
+[공통 매뉴얼](./common_step.md#job-모니터링)을 참고 바랍니다.
 
 ## Checkpoint 다운로드
 

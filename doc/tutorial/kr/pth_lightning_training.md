@@ -5,13 +5,14 @@
 - `pip install periflow-cli`로 CLI 패키지를 설치합니다.
 - `pip install periflow_sdk`로 SDK 패키지를 설치합니다.
 - [공통 가이드](./common_step.md)에 설명된 과정들이 완료되어야 합니다.
-- 본 튜토리얼에서는 [MNIST](https://cims.nyu.edu/~sbowman/multinli/) dataset을 사용합니다.
-다음과 같은 스크립트를 통해서 간단하게 로컬에 dataset을 받을 수 있습니다.
+- 본 튜토리얼에서는 [MNIST](https://cims.nyu.edu/~sbowman/multinli/) dataset을 사용합니다. 다음과 같은 스크립트를 통해서 간단하게 로컬에 dataset을 받을 수 있습니다.
+
   ```sh
   $ pip install torchvision
   $ python -c "from torchvision import datasets; datasets.MNIST('./', download=True)"
   ```
-  이후 `pf datastore upload`를 통해서 local의 dataset을 업로드할 수 있습니다.
+
+  다운로드가 완료되면 [Dataset 생성](./common_step.md#dataset-생성) 매뉴얼을 따라 Datastore에 데이터셋을 생성 합니다.
 
 ## SDK 적용
 
@@ -54,7 +55,7 @@ class PeriFlowTrainer(Trainer):
         pf.upload_checkpoint()
 ```
 
-PeriFlowCallback과 PeriFlowTrainer를 통해서 다음과 같이 학습을 진행할 수 있습니다.
+`PeriFlowCallback`과 `PeriFlowTrainer`를 사용하여 다음과 같이 학습을 진행할 수 있습니다.
 
 ```python
     model = LitAutoEncoder()
@@ -99,8 +100,7 @@ job_setting:
     #   - MASTER_ADDR: Address of rank 0 node.
     #   - WORLD_SIZE: The total number of GPUs participating in the task.
     #   - NODE_RANK: Index of the current node.
-    #   - NUM_NODES: number of total nodes.
-    #   - NPROC_PER_NODE: number of devices per node.
+    #   - NPROC_PER_NODE: The number of processes in the current node.
     command: >
       cd /workspace/pth-lightning && pip install pytorch-lightning && python main.py \
         --checkpoint-dir /workspace/ckpt \
@@ -115,11 +115,11 @@ checkpoint:
   output_checkpoint_dir: /workspace/ckpt
 ```
 
-각 필드에 대한 설명은 [single machine training 예시](https://github.com/friendliai/periflow-cli/blob/tutorial-md/doc/tutorial/kr/single_machine_training.md)에서 확인할 수 있습니다.
+각 필드에 대한 설명은 [이미지 분류 모델 학습하기](./pytorch_training.md#configuration-yaml-파일)에서 확인할 수 있습니다.
 
 ## Job 실행
 
-이제 모든 준비가 완료되었습니다. 우리는 앞에서 `mnli` dataset을 생성하였고, 로컬에는 PeriFlow SDK가 적용된 `run_glue.py`와 configuration YAML 파일 `pf-template.yml`이 준비 되었습니다.
+이제 모든 준비가 완료되었습니다. 우리는 앞에서 `mnist` dataset을 생성하였고, 로컬에는 PeriFlow SDK가 적용된 `main.py`와 configuration YAML 파일 `pf-template.yml`이 준비 되었습니다.
 
 ```sh
 # 현재 로컬의 디렉토리 구조
@@ -141,6 +141,8 @@ pf job run -f pf-template.yml -d ./pth-lightning
 
 ## Job 모니터링
 
+[공통 매뉴얼](./common_step.md#job-모니터링)을 참고 바랍니다.
+
 ## Checkpoint 다운로드
 
-[공통 매뉴얼](./common_step.md#checkpoint-다운로드)
+[공통 매뉴얼](./common_step.md#checkpoint-다운로드)을 참고 바랍니다.
