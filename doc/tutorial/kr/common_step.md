@@ -2,17 +2,13 @@
 
 PeriFlow를 사용하시는 여러분들을 환영합니다. 본 튜토리얼에서는 PeriFlow 사용을 위한 방법을 단계별로 설명합니다. 튜토리얼의 내용과 관련하여 궁금한 점이 있으시다면 언제든지 [PeriFlow Discussion Forum](https://discuss-staging.friendli.ai/)에 질문을 남겨주시기 바랍니다.
 
-본 문서는 PeriFlow를 사용하는 유저가 공통적으로 거치게 되는 과정을 담고 있습니다. 여러 가지 학습 케이스에 대한 튜토리얼은 본 문서에 설명된 과정을 마친 후 다음 링크의 문서를 참고 바랍니다.
-
-1. [단일 머신을 사용하는 간단한 학습 예시](./single_machine_training.md)
-
 ## Basics
 
 본격적인 튜토리얼에 앞서 다음과 같은 PeriFlow의 용어/개념들을 알고 계시면 좋습니다.
 
 - Organization: 여러 유저들이 속한 그룹을 의미합니다. 그룹 내의 유저들은 Dataset, Checkpoint 같은 자원들을 공유할 수도 있습니다.
-- Job: 학습의 스케줄링 단위 입니다. 로컬에서 `python main.py ...`와 같이 학습 프로세스를 실행하는 것이 PeriFlow에선 Job 하나에 해당한다고 생각하시면 됩니다.
-- Experiment: 여러 Job들의 묶음으로, 동질적인 Job에 붙는 태그와 같습니다.
+- Job: 학습의 스케줄링 단위 입니다. 로컬에서 `python main.py ...`와 같이 학습 프로세스를 실행하는 것이 PeriFlow에선 Job 하나에 해당 합니다.
+- Experiment: 여러 Job들의 묶음으로, Job에 붙이는 태그의 개념에 해당합니다. 같은 종류의 Job은 같은 Experiment에 묶어서 보다 편하게 Job을 관리할 수 있습니다.
 - Datastore/Dataset: Datastore는 Job에 사용될 여러 Dataset들의 집합입니다.
 - Checkpoint: 모델 학습의 결과물로 생긴 모델 가중치 체크포인트입니다. 학습 과정의 특정 스텝에서 Checkpoint 하나가 생성될 수 있습니다.
 - Credential: 유저의 개인 클라우드 저장소, Slack 등에 접근하기 위해 필요한 secret 입니다..
@@ -272,10 +268,16 @@ $ pf datastore view my-cifar-100
 
 실행하려는 Job의 종류에 따라 아래 링크된 매뉴얼을 참고 바랍니다.
 
-1. CIFAR-100 데이터셋을 사용하여 단일 노드에서 이미지 분류 모델 학습하기
+1. [이미지 분류 모델 학습하기](./single_machine_training.md)
 2. PyTorch Lightning 코드로 모델 학습하기
-3. Huggingface 텍스트 분류 모델을 여러 노드에서 분산 학습하기
+3. Huggingface Trainer를 사용한 학습 예제
+
+### Job 모니터링
+
+`pf job run` 명령어로 Job을 실행하였다면 `pf job log JOB_ID` 커맨드를 통해 Job에서 출력되는 stdout, stderr를 모니터링 할 수 있습니다.
 
 ### Checkpoint 다운로드
 
 PeriFlow SDK를 학습 스크립트에 적용하고 Job을 성공적으로 실행하였다면, 학습이 진행되면서 생성되는 모델 체크포인트를 실시간으로 확인하고 로컬 파일 시스템으로 다운로드 할 수 있습니다.
+
+`pf job view JOB_ID`를 하면 학습에서 생성된 체크포인트들의 목록을 확인할 수 있습니다. 다운로드 하고 싶은 체크포인트가 있다면 `pf checkpoint download CHECKPOINT_ID` 명령어를 사용합니다.
