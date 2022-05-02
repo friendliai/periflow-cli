@@ -220,7 +220,7 @@ pf job run -f pf-template.yml -d ./cifar
 ```
 
 - `-f`: Configuration YAML 파일의 경로입니다. 앞에서 작성한 `pf-template.yml`을 입력합니다.
-- `-d`: 로컬에 있는 Workspace 디렉토리 경로입니다. 현재 로컬에 SDK가 적용된 `main.py`는 `.cifar/main.py`에 있습니다. `-d` 옵션에 `./cifar`를 입력하면 `./cifar` 디렉토리 전체가 `pf-template.yml` 파일의 `job_setting:workspace:mount_path` 필드에 지정된 경로로 마운트 됩니다. 현재 `pf-template.yml`에는 해당 경로가 `/workspace`로 되어 있기 때문에 `/workspace/cifar/main.py`와 같은 파일 구조에서 Job이 실행 됩니다.
+- `-d`: 로컬에 있는 Workspace 디렉토리 경로입니다. 현재 로컬에 SDK가 적용된 `main.py`는 `./cifar/main.py`에 있습니다. `-d` 옵션에 `./cifar`를 입력하면 `./cifar` 디렉토리 전체가 `pf-template.yml` 파일의 `job_setting:workspace:mount_path` 필드에 지정된 경로로 마운트 됩니다. 현재 `pf-template.yml`에는 해당 경로가 `/workspace`로 되어 있기 때문에 `/workspace/cifar/main.py`와 같은 파일 구조에서 Job이 실행 됩니다.
 
 결론적으로 Job이 실행되는 환경의 파일 시스템 구조는 다음과 같습니다.
 
