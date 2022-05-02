@@ -193,7 +193,7 @@ data:
       - NODE_RANK
       - NPROC_PER_NODE
   - `workspace`
-    - `mount_path`:  현재 나의 로컬에 있는 `main.py` 파일을 볼륨 마운트 할 곳을 지정합니다. 뒤의 [Job 실행](#job-실행) 섹션에서 자세한 내용이 설명되겠지만 `pf job run`의 `-d` 옵션에 입력한 로컬 디렉토리가 `mount_path` 필드로 마운트 됩니다. 로컬에서 `main.py`의 위치가 `./cifar/main.py`이고 `pf job run ... -d ./cifar` 명령어로 Job을 실행했다면 Job의 실행 환경에서 `main.py`의 위치는 `/workspace/cifar/main.py`가 됩니다.
+    - `mount_path`:  현재 나의 로컬에 있는 `main.py` 파일을 마운트 할 경로를 지정합니다. 뒤의 [Job 실행](#job-실행) 섹션에서 자세한 내용이 설명되겠지만 `pf job run`의 `-d` 옵션에 입력한 로컬 디렉토리가 `mount_path` 경로로 마운트 됩니다. 로컬에서 `main.py`의 위치가 `./cifar/main.py`이고 `pf job run ... -d ./cifar` 명령어로 Job을 실행했다면 Job의 실행 환경에서 `main.py`의 위치는 `/workspace/cifar/main.py`가 됩니다.
 - `checkpoint`
   - `output_checkpoint_dir`: SDK에서 `pf.upload_checkpoint()`를 호출하였을 때 이 필드에 입력한 경로에 있는 모든 파일들이 업로드 됩니다.
 - `data`
