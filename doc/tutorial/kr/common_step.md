@@ -23,7 +23,8 @@ PeriFlow를 사용하시는 여러분들을 환영합니다. 본 튜토리얼에
 2. [Credential 생성](#crdential-생성)
 3. [Dataset 생성](#dataset-생성)
 4. [Job 실행](#job-실행)
-5. [Checkpoint 다운로드](#checkpoint-다운로드)
+5. [Job 모니터링](#job-모니터링)
+6. [Checkpoint 다운로드](#checkpoint-다운로드)
 
 ### Login
 
@@ -164,7 +165,7 @@ Weights & Biases API key 값을 얻으려면 다음 과정을 따릅니다.
 
 PeriFlow Datastore에 Dataset을 생성하는 방법은 2가지가 있습니다.
 
-1. [컴퓨터 로컬 파일 시스템에 있는 데이터셋 파일들은 업로드](#from-local-file-system).
+1. [컴퓨터 로컬 파일 시스템에 있는 데이터셋 파일을 업로드](#from-local-file-system)
 2. [클라우드 스토리지에 업로드 된 데이터셋을 연결](#from-cloud-storage)
 
 #### From Local File System
@@ -222,7 +223,7 @@ $ pf datastore view my-cifar-100
 
 #### From Cloud Storage
 
-PeriFlow에서 사용하고 싶은 데이터셋이 이미 클라우드 스토리지(e.g., AWS S3, Azure Blob Storage, Google Cloud Storage)에 업로드 된 상태라면 해당 스토리지를 링크할 수 있습니다. 이를 위해서는 데이터셋이 업로드 된 스토리지에 접근 권한이 필요하기 때문에 [Credential 생성](#crdential-생성) 설명을 참고하여 Credential이 생성된 상태여야 합니다.
+PeriFlow에서 사용하고 싶은 데이터셋이 이미 클라우드 스토리지(e.g., AWS S3, Azure Blob Storage, Google Cloud Storage)에 업로드 된 상태라면 별도의 업로드 과정 없이 해당 스토리지를 링크하여 사용이 가능합니다. 이를 위해서는 데이터셋이 업로드 된 클라우드 스토리지에 접근 권한이 필요하기 때문에 [Credential 생성](#crdential-생성) 설명을 참고하여 Credential이 생성된 상태여야 합니다.
 
 예를 들어, AWS `us-east-1` 리전에 `cifar-100`이라는 이름의 S3 버켓이 있고, 우리는 이 버켓에 있는 데이터셋을 Datastore에 등록하고 싶은 상황이라고 해보겠습니다. 위의 [매뉴얼](#aws-s3)을 따라 AWS S3 Credential을 생성하고 다음과 같이 커맨드를 실행합니다.
 
@@ -244,7 +245,7 @@ $ pf datastore create \
 업로드가 완료되었다면 `pf datastore view aws-cifar-100` 커맨드를 통해 업로드한 데이터셋의 세부 사항을 확인할 수 있습니다.
 
 ```sh
-$ pf datastore view my-cifar-100  
+$ pf datastore view aws-cifar-100  
 ╭─────────────────────────── Overview ───────────────────────────╮
 │  Name          aws-cifar-100                                   │
 │  Cloud         s3                                              │
