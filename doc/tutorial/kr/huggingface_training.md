@@ -51,7 +51,7 @@ class PeriFlowCallback(TrainerCallback):
 
 ## Configuration YAML 파일
 
-Datastore에 MNLI dataset을 업로드 했고, 로컬에 SDK가 적용된 코드가 준비되었다면, 마지막으로 YAML 파일로 Job의 세부사항을 명시하는 과정만이 남았습니다. [`pf-template.yml`](https://github.com/friendliai/periflow-python-sdk/blob/main/examples/huggingface/pf-template.yml)에는 `run_glu.py`를 수행하기 위한 configuration 예시가 나와 있습니다.
+Datastore에 MNLI dataset을 업로드 했고, 로컬에 SDK가 적용된 코드가 준비되었다면, 마지막으로 YAML 파일로 Job의 세부사항을 명시하는 과정만이 남았습니다. [`pf-template.yml`](https://github.com/friendliai/periflow-python-sdk/blob/main/examples/huggingface/pf-template.yml)에는 `run_glue.py`를 수행하기 위한 configuration 예시가 나와 있습니다.
 
 ```yaml
 # The name of experiment
