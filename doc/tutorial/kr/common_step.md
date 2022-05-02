@@ -47,6 +47,8 @@ PeriFlow를 본격적으로 사용하기에 앞서 필요한 credential들을 �
 
 본인에게 필요한 Credential이 있다면 아래의 설명을 참고하여 생성을 합니다.
 
+> **Credential 생성을 하지 않더라도 튜토리얼의 내용을 따라하는데 문제가 없습니다.**
+
 #### Docker
 
 개인 Docker Hub 계정에 있는 도커 이미지에 접근하기 위해 필요합니다. Private으로 설정된 Docker Hub 레포지토리에 있는 이미지를 Job에서 사용하기 원한다면 등록해야 합니다.
