@@ -210,7 +210,7 @@ data:
 # 현재 로컬의 디렉토리 구조
 $ tree
 .
-├── pf-template.yaml
+├── pf-template.yml
 └── cifar
     └── main.py
 ```
