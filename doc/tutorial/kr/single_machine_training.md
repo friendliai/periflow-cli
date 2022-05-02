@@ -185,22 +185,22 @@ data:
 
 - `num_devices`: Job에서 사용할 VM의 개수를 나타냅니다. `vm` 필드에 입력한 머신 유형이 가지고 있는 GPU 개수를 고려하여 입력하는 것을 권장합니다. 위의 YAML 파일에서는 V100 GPU 4개가 장착된 `azure-16gb-v100-4g-eastus-spot` VM을 사용하고 있고 `num_devices`는 8로 설정 하였습니다. 이 경우 `azure-16gb-v100-4g-eastus-spot` 타입의 머신 2개(4x2=8)가 할당 되어 Job이 수행됩니다.
 - `job_setting`
-    - `type`: "custom"을 입력합니다.
-    - `docker`
-        - `image`: Job에서 사용할 도커 이미지 이름을 입력합니다. 직접 빌드한 도커 이미지를 사용한다면 도커 이미지에 `periflow_sdk`를 설치해두는 것을 권장합니다. 직접 이미지를 빌드하여 사용하는 대신 위의 예시에 입력된 `friendliai/periflow:sdk` 이미지를 사용할 수도 있습니다. `friendliai/periflow:sdk`에는 PyTorch와 PeriFlow SDK가 설치되어 있습니다.
-        - `command`: 학습 프로세스를 실행하기 위한 커맨드를 입력합니다. PyTorch DDP를 사용하는 등의 분산학습 상황을 지원하기 위해 PeriFlow에서는 다음과 같은 분산학습 관련 환경 변수를 자동으로 설정합니다.
-            - MASTER_ADDR
-            - WORLD_SIZE
-            - RANK
-            - LOCAL_RANK
-            - NODE_RANK
-    - `workspace`
-        - `mount_path`:  현재 나의 로컬에 있는 `main.py` 파일을 볼륨 마운트 할 곳을 지정합니다.
+  - `type`: "custom"을 입력합니다.
+  - `docker`
+    - `image`: Job에서 사용할 도커 이미지 이름을 입력합니다. 직접 빌드한 도커 이미지를 사용한다면 도커 이미지에 `periflow_sdk`를 설치해두는 것을 권장합니다. 직접 이미지를 빌드하여 사용하는 대신 위의 예시에 입력된 `friendliai/periflow:sdk` 이미지를 사용할 수도 있습니다. `friendliai/periflow:sdk`에는 PyTorch와 PeriFlow SDK가 설치되어 있습니다.
+    - `command`: 학습 프로세스를 실행하기 위한 커맨드를 입력합니다. PyTorch DDP를 사용하는 등의 분산학습 상황을 지원하기 위해 PeriFlow에서는 다음과 같은 분산학습 관련 환경 변수를 자동으로 설정합니다.
+      - MASTER_ADDR
+      - WORLD_SIZE
+      - RANK
+      - LOCAL_RANK
+      - NODE_RANK
+  - `workspace`
+    - `mount_path`:  현재 나의 로컬에 있는 `main.py` 파일을 볼륨 마운트 할 곳을 지정합니다. 뒤의 [Job 실행](#job-실행) 섹션에서 자세한 내용이 설명되겠지만 `pf job run`의 `-d` 옵션에 입력한 로컬 디렉토리가 `mount_path` 필드로 마운트 됩니다. 로컬에서 `main.py`의 위치가 `./cifar/main.py`이고 `pf job run ... -d ./cifar` 명령어로 Job을 실행했다면 Job의 실행 환경에서 `main.py`의 위치는 `/workspace/cifar/main.py`가 됩니다.
 - `checkpoint`
-    - `output_checkpoint_dir`: SDK에서 `pf.upload_checkpoint()`를 호출하였을 때 이 필드에 입력한 경로에 있는 모든 파일들이 업로드 됩니다.
+  - `output_checkpoint_dir`: SDK에서 `pf.upload_checkpoint()`를 호출하였을 때 이 필드에 입력한 경로에 있는 모든 파일들이 업로드 됩니다.
 - `data`
-    - `name`: [Dataset 생성](./common_step.md#dataset-생성) 매뉴얼을 따라 생성된 CIFAR-100 데이터셋의 이름을 입력합니다. 여기에서는 앞에서 생성한 데이터셋인 `my-cifar-100`을 입력합니다. Datastore에 있는 데이터셋 목록을 확인하려면 `pf datastore list` 명령어를 사용합니다.
-    - `mount_path`: 데이터셋을 볼륨 마운트 할 곳을 지정합니다. 여기에선 `/workspace/data`로 경로를 지정하였기 때문에 앞서 생성한 `my-cifar-100` 데이터셋이 `/workspace/data`에 마운트 되어 `/workspace/data/cifar-100-python/train`, `/workspace/data/cifar-100-python/test`, `/workspace/data/cifar-100-python/meta`와 같은 파일 시스템 구조에서 Job이 실행 됩니다.
+  - `name`: [Dataset 생성](./common_step.md#dataset-생성) 매뉴얼을 따라 생성된 CIFAR-100 데이터셋의 이름을 입력합니다. 여기에서는 앞에서 생성한 데이터셋인 `my-cifar-100`을 입력합니다. Datastore에 있는 데이터셋 목록을 확인하려면 `pf datastore list` 명령어를 사용합니다.
+  - `mount_path`: 데이터셋을 볼륨 마운트 할 곳을 지정합니다. 여기에선 `/workspace/data`로 경로를 지정하였기 때문에 앞서 생성한 `my-cifar-100` 데이터셋이 `/workspace/data`에 마운트 되어 `/workspace/data/cifar-100-python/train`, `/workspace/data/cifar-100-python/test`, `/workspace/data/cifar-100-python/meta`와 같은 파일 시스템 구조에서 Job이 실행 됩니다.
 
 ## Job 실행
 
@@ -226,7 +226,8 @@ pf job run -f pf-template.yml -d ./cifar
 
 ## Job 모니터링
 
+[공통 매뉴얼](./common_step.md#job-모니터링)을 참고 바랍니다.
 
 ## Checkpoint 다운로드
 
-[공통 매뉴얼](./common_step.md#checkpoint-다운로드)
+[공통 매뉴얼](./common_step.md#checkpoint-다운로드)을 참고 바랍니다.
