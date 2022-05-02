@@ -190,9 +190,8 @@ data:
     - `command`: 학습 프로세스를 실행하기 위한 커맨드를 입력합니다. PyTorch DDP를 사용하는 등의 분산학습 상황을 지원하기 위해 PeriFlow에서는 다음과 같은 분산학습 관련 환경 변수를 자동으로 설정합니다.
       - MASTER_ADDR
       - WORLD_SIZE
-      - RANK
-      - LOCAL_RANK
       - NODE_RANK
+      - NPROC_PER_NODE
   - `workspace`
     - `mount_path`:  현재 나의 로컬에 있는 `main.py` 파일을 볼륨 마운트 할 곳을 지정합니다. 뒤의 [Job 실행](#job-실행) 섹션에서 자세한 내용이 설명되겠지만 `pf job run`의 `-d` 옵션에 입력한 로컬 디렉토리가 `mount_path` 필드로 마운트 됩니다. 로컬에서 `main.py`의 위치가 `./cifar/main.py`이고 `pf job run ... -d ./cifar` 명령어로 Job을 실행했다면 Job의 실행 환경에서 `main.py`의 위치는 `/workspace/cifar/main.py`가 됩니다.
 - `checkpoint`
