@@ -840,6 +840,7 @@ class CheckpointClientService(ClientService):
             response.raise_for_status()
         except HTTPError as exc:
             secho_error_and_exit(f"Cannot update checkpoint.\n{decode_http_err(exc)}")
+
         return response.json()
 
     def delete_checkpoint(self, checkpoint_id: T) -> None:
