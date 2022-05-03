@@ -82,9 +82,8 @@ CUSTOM_JOB_SETTING_CONFIG = JOB_SETTING_CONFIG + """\
     # NOTE: PeriFlow automatically sets the following environment variables for PyTorch DDP.
     #   - MASTER_ADDR: Address of rank 0 node.
     #   - WORLD_SIZE: The total number of GPUs participating in the task.
-    #   - RANK: Rank of the current process.
-    #   - LOCAL_RANK: Local rank of the current process in the node.
     #   - NODE_RANK: Index of the current node.
+    #   - NPROC_PER_NODE: The number of processes in the current node.
     command:
 """
 

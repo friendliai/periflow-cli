@@ -803,6 +803,46 @@ class CheckpointClientService(ClientService):
             secho_error_and_exit(f"Failed to get info of checkpoint ({checkpoint_id}).\n{decode_http_err(exc)}")
         return response.json()
 
+    def update_checkpoint(self,
+                          checkpoint_id: T,
+                          *,
+                          vendor: Optional[StorageType] = None,
+                          region: Optional[str] = None,
+                          credential_id: Optional[str] = None,
+                          iteration: Optional[int] = None,
+                          storage_name: Optional[str] = None,
+                          files: Optional[List[dict]] = None,
+                          dist_config: Optional[dict] = None,
+                          data_config: Optional[dict] = None,
+                          job_setting_config: Optional[dict] = None) -> dict:
+        request_data = {}
+        if vendor is not None:
+            request_data['vendor'] = vendor
+        if region is not None:
+            request_data['region'] = region
+        if credential_id is not None:
+            request_data['credential_id'] = credential_id
+        if iteration is not None:
+            request_data['iteration'] = iteration
+        if storage_name is not None:
+            request_data['storage_name'] = storage_name
+        if files is not None:
+            request_data['files'] = files
+        if dist_config is not None:
+            request_data['dist_json'] = dist_config
+        if data_config is not None:
+            request_data['data_json'] = data_config
+        if job_setting_config is not None:
+            request_data['job_setting_json'] = job_setting_config
+
+        try:
+            response = self.partial_update(checkpoint_id, json=request_data)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Cannot update checkpoint.\n{decode_http_err(exc)}")
+
+        return response.json()
+
     def delete_checkpoint(self, checkpoint_id: T) -> None:
         try:
             response = self.delete(checkpoint_id)
