@@ -957,6 +957,22 @@ class ServeClientService(ClientService):
             secho_error_and_exit(f"Failed to create new serve.\n{decode_http_err(exc)}")
         return response.json()
 
+    def list_serves(self) -> dict:
+        try:
+            response = self.list()
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list serves.\n{decode_http_err(exc)}")
+        return response.json()
+    
+    def delete_serve(self, serve_id: T) -> None:
+        try:
+            response = self.delete(serve_id)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to delete serve. {exc}")
+
+
 client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.USER_GROUP: (UserGroupClientService, Template(get_uri('user/'))),
     ServiceType.EXPERIMENT: (ExperimentClientService, Template(get_uri('experiment/'))),
