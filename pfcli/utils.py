@@ -142,6 +142,10 @@ def validate_cloud_region(vendor: CloudType, region: str):
         )
 
 
+def get_path_size(path: Path) -> int:
+    return sum(f.stat().st_size for f in path.glob('**/*') if f.is_file())
+
+
 def _upload_file(file_path: str, url: str, ctx: tqdm):
     try:
         with open(file_path, 'rb') as f:

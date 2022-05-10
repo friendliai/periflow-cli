@@ -82,3 +82,19 @@ def login(
         typer.echo("\n\n")
     except HTTPError:
         secho_error_and_exit("Login failed... Please check your username and password.")
+
+
+@app.command(help="Change your password")
+def passwd(
+    old_password: str = typer.Option(..., prompt="Enter your current password", hide_input=True),
+    new_password: str = typer.Option(..., prompt="Enter your new password", hide_input=True),
+    confirm_password: str = typer.Option(..., prompt="Enter the new password again (confirmation)", hide_input=True)
+):
+    if old_password == new_password:
+        secho_error_and_exit("The current password is the same with the new password.")
+    if new_password != confirm_password:
+        secho_error_and_exit("Passwords did not match.")
+    client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
+    client.change_password(old_password, new_password)
+
+    typer.secho("Password is changed successfully!", fg=typer.colors.BLUE)

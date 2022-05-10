@@ -28,6 +28,7 @@ from websockets.client import WebSocketClientProtocol
 from websockets.exceptions import ConnectionClosed
 from requests import HTTPError
 from requests import Response
+from rich.filesize import decimal
 
 from pfcli.service.auth import (
     TokenType,
@@ -37,6 +38,7 @@ from pfcli.service.auth import (
 )
 from pfcli.utils import (
     decode_http_err,
+    get_path_size,
     get_uri,
     get_wss_uri,
     secho_error_and_exit,
@@ -150,6 +152,19 @@ class UserGroupClientService(ClientService):
             headers=get_auth_header(),
         )
 
+    @auto_token_refresh
+    def password(self, old_password: str, new_password: str) -> Response:
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('password/')
+        return requests.put(
+            url_template.render(**self.url_kwargs),
+            headers=get_auth_header(),
+            json={
+                'old_password': old_password,
+                'new_password': new_password
+            }
+        )
+
     def get_group_id(self) -> int:
         try:
             response = self.group()
@@ -181,6 +196,13 @@ class UserGroupClientService(ClientService):
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to get my group info.\n{decode_http_err(exc)}")
         return response.json()['results']
+
+    def change_password(self, old_password: str, new_password: str) -> None:
+        try:
+            response = self.password(old_password, new_password)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to change password.\n{decode_http_err(exc)}")
 
 
 class ExperimentClientService(ClientService):
@@ -270,6 +292,9 @@ class JobClientService(ClientService):
     def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
         try:
             if workspace_dir is not None:
+                workspace_size = get_path_size(workspace_dir)
+                if workspace_size <= 0 or workspace_size > 100 * 1024 * 1024:
+                    secho_error_and_exit(f"Workspace directory size ({decimal(workspace_size)}) should be 0 < size <= 100MB.")
                 workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
                 with zip_dir(workspace_dir, workspace_zip) as zip_file:
                     files = {'workspace_zip': ('workspace.zip', zip_file)}
