@@ -36,6 +36,7 @@ from pfcli.service.client import (
     GroupExperimentClientService,
     GroupJobClientService,
     GroupVMClientService,
+    GroupVMConfigClientService,
     GroupVMQuotaClientService,
     JobArtifactClientService,
     JobCheckpointClientService,
@@ -44,6 +45,7 @@ from pfcli.service.client import (
     JobWebSocketClientService,
     URLTemplate,
     UserGroupClientService,
+    VMConfigClientService,
     build_client,
 )
 
@@ -126,6 +128,16 @@ def group_vm_client() -> GroupVMClientService:
 @pytest.fixture
 def group_vm_quota_client() -> GroupVMQuotaClientService:
     return build_client(ServiceType.GROUP_VM_QUOTA)
+
+
+@pytest.fixture
+def vm_config_client() -> VMConfigClientService:
+    return build_client(ServiceType.VM_CONFIG)
+
+
+@pytest.fixture
+def group_vm_config_client() -> GroupVMConfigClientService:
+    return build_client(ServiceType.GROUP_VM_CONFIG)
 
 
 @pytest.fixture
@@ -1287,6 +1299,55 @@ def test_group_vm_quota_client_list_vm_quotas(requests_mock: requests_mock.Mocke
     requests_mock.get(group_vm_quota_client.url_template.render(group_id=0), status_code=400)
     with pytest.raises(typer.Exit):
         group_vm_quota_client.list_vm_quotas()
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_vm_config_client_get_active_vm_count(requests_mock: requests_mock.Mocker,
+                                              vm_config_client: VMConfigClientService):
+    assert isinstance(vm_config_client, VMConfigClientService)
+
+    # Success
+    url_template = deepcopy(vm_config_client.url_template)
+    url_template.attach_pattern('$vm_config_id/vm_lock/')
+    requests_mock.get(
+        url_template.render(vm_config_id=0),
+        json=[
+            {'lock_type': 'active', 'vm_config_id': 0, 'job_id': 0},
+            {'lock_type': 'active', 'vm_config_id': 0, 'job_id': 0},
+            {'lock_type': 'active', 'vm_config_id': 0, 'job_id': 1},
+            {'lock_type': 'active', 'vm_config_id': 0, 'job_id': 2},
+        ]
+    )
+    assert vm_config_client.get_active_vm_count(0) == 4
+
+    # Failed due to HTTP error
+    requests_mock.get(url_template.render(vm_config_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        vm_config_client.get_active_vm_count(0)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_vm_config_client_get_vm_config_id_map(requests_mock: requests_mock.Mocker,
+                                                     group_vm_config_client: GroupVMConfigClientService):
+    assert isinstance(group_vm_config_client, GroupVMConfigClientService)
+
+    # Success
+    requests_mock.get(
+        group_vm_config_client.url_template.render(group_id=0),
+        json=[
+            {'id': 0, 'vm_config_type': {'vm_instance_type': {'code': 'azure-v100'}}},
+            {'id': 1, 'vm_config_type': {'vm_instance_type': {'code': 'aws-v100'}}}
+        ]
+    )
+    assert group_vm_config_client.get_vm_config_id_map() == {
+        'azure-v100': 0,
+        'aws-v100' : 1
+    }
+
+    # Failed due to HTTP error
+    requests_mock.get(group_vm_config_client.url_template.render(group_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        group_vm_config_client.get_vm_config_id_map()
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
