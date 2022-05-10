@@ -344,6 +344,26 @@ def test_user_group_client_get_user_info(requests_mock: requests_mock.Mocker,
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_user_group_client_change_password(requests_mock: requests_mock.Mocker,
+                                           user_group_client: UserGroupClientService):
+    assert isinstance(user_group_client, UserGroupClientService)
+
+    # Success
+    url_template = deepcopy(user_group_client.url_template)
+    url_template.attach_pattern('password/')
+    requests_mock.put(url_template.render(), status_code=204)
+    try:
+        user_group_client.change_password('1234', '5678')
+    except typer.Exit:
+        raise pytest.fail("Test change password failed.")
+
+    # Failed
+    requests_mock.put(url_template.render(), status_code=400)
+    with pytest.raises(typer.Exit):
+        user_group_client.change_password('1234', '5678')
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
 def test_experiment_client_list_jobs_in_experiment(requests_mock: requests_mock.Mocker,
                                                    experiment_client: ExperimentClientService):
     assert isinstance(experiment_client, ExperimentClientService)
@@ -505,6 +525,15 @@ def test_job_client_run_job(requests_mock: requests_mock.Mocker, job_client: Job
     with TemporaryDirectory() as dir:
         ws_dir = Path(dir)
         assert job_client.run_job({'k': 'v'}, ws_dir) == {'id': 1}
+
+    # Failed due to large workspace dir exceeding the size limit
+    with TemporaryDirectory() as dir:
+        ws_dir = Path(dir)
+        with open(ws_dir / 'large_file', 'wb') as f:
+            f.seek(2 * 1024 * 1024 * 1024)  # 2GB
+            f.write(b'0')
+        with pytest.raises(typer.Exit):
+            job_client.run_job({'k': 'v'}, ws_dir)
 
     # Failed due to HTTP error
     requests_mock.post(job_client.url_template.render(), status_code=500)
@@ -943,6 +972,11 @@ def test_data_client_get_upload_urls(requests_mock: requests_mock.Mocker, data_c
     with TemporaryDirectory() as dir:
         (Path(dir) / 'file').touch()
         assert data_client.get_upload_urls(0, Path(dir), True) == [
+            {'path': '/path/to/local/file', 'upload_url': 'https://s3.bucket.com'}
+        ]
+
+        # Handle a single file
+        assert data_client.get_upload_urls(0, Path(dir) / 'file', True) == [
             {'path': '/path/to/local/file', 'upload_url': 'https://s3.bucket.com'}
         ]
 
