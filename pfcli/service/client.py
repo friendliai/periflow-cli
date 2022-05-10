@@ -202,7 +202,7 @@ class UserGroupClientService(ClientService):
             response = self.password(old_password, new_password)
             response.raise_for_status()
         except HTTPError as exc:
-            secho_error_and_exit(f"Failed to get your group info.\n{decode_http_err(exc)}")
+            secho_error_and_exit(f"Failed to change password.\n{decode_http_err(exc)}")
 
 
 class ExperimentClientService(ClientService):
