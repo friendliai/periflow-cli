@@ -293,8 +293,8 @@ class JobClientService(ClientService):
         try:
             if workspace_dir is not None:
                 workspace_size = get_path_size(workspace_dir)
-                if workspace_size > 100 * 1024 * 1024:
-                    secho_error_and_exit(f"Workspace directory size ({decimal(workspace_size)}) should be <= 100MB.")
+                if workspace_size <= 0 or workspace_size > 100 * 1024 * 1024:
+                    secho_error_and_exit(f"Workspace directory size ({decimal(workspace_size)}) should be 0 < size <= 100MB.")
                 workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
                 with zip_dir(workspace_dir, workspace_zip) as zip_file:
                     files = {'workspace_zip': ('workspace.zip', zip_file)}
