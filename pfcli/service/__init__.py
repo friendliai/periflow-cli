@@ -15,6 +15,8 @@ class ServiceType(str, Enum):
     JOB_TEMPLATE = "JOB_TEMPLATE"
     GROUP_VM = "GROUP_VM"
     GROUP_VM_QUOTA = "GROUP_VM_QUOTA"
+    VM_CONFIG = "VM_CONFIG"
+    GROUP_VM_CONFIG = "GROUP_VM_CONFIG"
     CREDENTIAL = "CREDENTIAL"
     GROUP_CREDENTIAL = "GROUP_CREDENTIAL"
     CREDENTIAL_TYPE = "CREDENTIAL_TYPE"
@@ -28,6 +30,11 @@ class ServiceType(str, Enum):
 class JobType(str, Enum):
     PREDEFINED = "predefined"
     CUSTOM = "custom"
+
+
+class LockType(str, Enum):
+    ACTIVE = "active"
+    STALE = "stale"
 
 
 class LogType(str, Enum):

@@ -48,6 +48,7 @@ from pfcli.utils import (
 from pfcli.service import (
     CheckpointCategory,
     CloudType,
+    LockType,
     StorageType,
     CredType,
     ServiceType,
@@ -676,6 +677,50 @@ class GroupVMQuotaClientService(ClientService, GroupRequestMixin):
         return vm_dict_list
 
 
+class VMConfigClientService(ClientService):
+    @auto_token_refresh
+    def vm_lock(self, vm_config_id: T, lock_type: LockType) -> Response:
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('$vm_config_id/vm_lock/')
+        return requests.get(
+            url_template.render(vm_config_id=vm_config_id),
+            params={'lock_type': lock_type},
+            headers=get_auth_header()
+        )
+
+    def list_vm_locks(self, vm_config_id: T, lock_type: LockType) -> List[dict]:
+        try:
+            response = self.vm_lock(vm_config_id, lock_type)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to inspect locked VMs.\n{decode_http_err(exc)}")
+        return response.json()
+
+    def get_active_vm_count(self, vm_config_id: T) -> int:
+        vm_locks = self.list_vm_locks(vm_config_id, LockType.ACTIVE)
+        return len(vm_locks)
+
+
+class GroupVMConfigClientService(ClientService, GroupRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
+        super().__init__(template, group_id=self.group_id, **kwargs)
+
+    def list_vm_config(self) -> List[dict]:
+        try:
+            response = self.list()
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list available VM list.\n{decode_http_err(exc)}")
+        return response.json()
+
+    def get_vm_config_id_map(self) -> Dict[str, T]:
+        id_map = {}
+        for vm_config in self.list_vm_config():
+            id_map[vm_config['vm_config_type']['vm_instance_type']['code']] = vm_config['id']
+        return id_map
+
+
 class CredentialClientService(ClientService):
     def list_credentials(self, cred_type: CredType) -> List[dict]:
         type_name = cred_type_map[cred_type]
@@ -926,6 +971,8 @@ client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.GROUP_DATA: (GroupDataClientService, Template(get_uri('group/$group_id/datastore/'))),
     ServiceType.GROUP_VM: (GroupVMClientService, Template(get_uri('group/$group_id/vm_config/'))),
     ServiceType.GROUP_VM_QUOTA: (GroupVMQuotaClientService, Template(get_uri('group/$group_id/vm_quota/'))),
+    ServiceType.VM_CONFIG: (VMConfigClientService, Template(get_uri('vm_config/'))),
+    ServiceType.GROUP_VM_CONFIG: (GroupVMConfigClientService, Template(get_uri('group/$group_id/vm_config/'))),
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_uri('checkpoint/'))),
     ServiceType.GROUP_CHECKPOINT: (GroupCheckpointClinetService, Template(get_uri('group/$group_id/checkpoint/'))),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri('job/'))),
