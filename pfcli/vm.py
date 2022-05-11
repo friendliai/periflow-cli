@@ -7,7 +7,7 @@ from typing import Optional
 import typer
 
 from pfcli.service import CloudType, ServiceType
-from pfcli.service.client import GroupVMQuotaClientService, build_client
+from pfcli.service.client import GroupVMConfigClientService, GroupVMQuotaClientService, VMConfigClientService, build_client
 from pfcli.service.formatter import TableFormatter
 from pfcli.utils import validate_cloud_region
 
@@ -27,7 +27,7 @@ formatter = TableFormatter(
         'vm_instance_type.device_type',
         'quota'
     ],
-    headers=['VM', 'Cloud', 'Region', 'Device', 'Quota']
+    headers=['VM', 'Cloud', 'Region', 'Device', 'Quota (Available / Total)']
 )
 
 
@@ -57,7 +57,15 @@ def list(
     if cloud is not None and region is not None:
         validate_cloud_region(cloud, region)
 
-    client: GroupVMQuotaClientService = build_client(ServiceType.GROUP_VM_QUOTA)
-    vm_dict_list = client.list_vm_quotas(vendor=cloud, region=region, device_type=device_type)
+    vm_quota_client: GroupVMQuotaClientService = build_client(ServiceType.GROUP_VM_QUOTA)
+    vm_config_client: VMConfigClientService = build_client(ServiceType.VM_CONFIG)
+    group_vm_config_client: GroupVMConfigClientService = build_client(ServiceType.GROUP_VM_CONFIG)
+
+    vm_dict_list = vm_quota_client.list_vm_quotas(vendor=cloud, region=region, device_type=device_type)
+    vm_id_map = group_vm_config_client.get_vm_config_id_map()
+    for vm_dict in vm_dict_list:
+        vm_instance_name = vm_dict['vm_instance_type']['code']
+        active_vm_count = vm_config_client.get_active_vm_count(vm_id_map[vm_instance_name])
+        vm_dict['quota'] = f"{vm_dict['quota'] - active_vm_count} / {vm_dict['quota']}"
 
     formatter.render(vm_dict_list)

@@ -38,6 +38,7 @@ from pfcli.service.client import (
     GroupExperimentClientService,
     GroupJobClientService,
     GroupVMClientService,
+    GroupVMConfigClientService,
     GroupVMQuotaClientService,
     JobArtifactClientService,
     JobCheckpointClientService,
@@ -47,6 +48,7 @@ from pfcli.service.client import (
     URLTemplate,
     UserGroupClientService,
     ServeClientService,
+    VMConfigClientService,
     build_client,
 )
 
@@ -129,6 +131,16 @@ def group_vm_client() -> GroupVMClientService:
 @pytest.fixture
 def group_vm_quota_client() -> GroupVMQuotaClientService:
     return build_client(ServiceType.GROUP_VM_QUOTA)
+
+
+@pytest.fixture
+def vm_config_client() -> VMConfigClientService:
+    return build_client(ServiceType.VM_CONFIG)
+
+
+@pytest.fixture
+def group_vm_config_client() -> GroupVMConfigClientService:
+    return build_client(ServiceType.GROUP_VM_CONFIG)
 
 
 @pytest.fixture
@@ -351,6 +363,26 @@ def test_user_group_client_get_user_info(requests_mock: requests_mock.Mocker,
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_user_group_client_change_password(requests_mock: requests_mock.Mocker,
+                                           user_group_client: UserGroupClientService):
+    assert isinstance(user_group_client, UserGroupClientService)
+
+    # Success
+    url_template = deepcopy(user_group_client.url_template)
+    url_template.attach_pattern('password/')
+    requests_mock.put(url_template.render(), status_code=204)
+    try:
+        user_group_client.change_password('1234', '5678')
+    except typer.Exit:
+        raise pytest.fail("Test change password failed.")
+
+    # Failed
+    requests_mock.put(url_template.render(), status_code=400)
+    with pytest.raises(typer.Exit):
+        user_group_client.change_password('1234', '5678')
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
 def test_experiment_client_list_jobs_in_experiment(requests_mock: requests_mock.Mocker,
                                                    experiment_client: ExperimentClientService):
     assert isinstance(experiment_client, ExperimentClientService)
@@ -511,7 +543,25 @@ def test_job_client_run_job(requests_mock: requests_mock.Mocker, job_client: Job
     # Success w workspace dir
     with TemporaryDirectory() as dir:
         ws_dir = Path(dir)
+        with open(ws_dir / 'large_file', 'wb') as f:
+            f.seek(500 * 1024)  # 500KB
+            f.write(b'0')
         assert job_client.run_job({'k': 'v'}, ws_dir) == {'id': 1}
+
+    # Failed due to large workspace dir exceeding the size limit
+    with TemporaryDirectory() as dir:
+        ws_dir = Path(dir)
+        with open(ws_dir / 'large_file', 'wb') as f:
+            f.seek(2 * 1024 * 1024 * 1024)  # 2GB
+            f.write(b'0')
+        with pytest.raises(typer.Exit):
+            job_client.run_job({'k': 'v'}, ws_dir)
+
+    # Failed due to empty workspace dir
+    with TemporaryDirectory() as dir:
+        ws_dir = Path(dir)
+        with pytest.raises(typer.Exit):
+            job_client.run_job({'k': 'v'}, ws_dir)
 
     # Failed due to HTTP error
     requests_mock.post(job_client.url_template.render(), status_code=500)
@@ -953,6 +1003,11 @@ def test_data_client_get_upload_urls(requests_mock: requests_mock.Mocker, data_c
             {'path': '/path/to/local/file', 'upload_url': 'https://s3.bucket.com'}
         ]
 
+        # Handle a single file
+        assert data_client.get_upload_urls(0, Path(dir) / 'file', True) == [
+            {'path': '/path/to/local/file', 'upload_url': 'https://s3.bucket.com'}
+        ]
+
     # Failed when uploading empty directory.
     with TemporaryDirectory() as dir:
         with pytest.raises(typer.Exit):
@@ -1251,6 +1306,55 @@ def test_group_vm_quota_client_list_vm_quotas(requests_mock: requests_mock.Mocke
     requests_mock.get(group_vm_quota_client.url_template.render(group_id=0), status_code=400)
     with pytest.raises(typer.Exit):
         group_vm_quota_client.list_vm_quotas()
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_vm_config_client_get_active_vm_count(requests_mock: requests_mock.Mocker,
+                                              vm_config_client: VMConfigClientService):
+    assert isinstance(vm_config_client, VMConfigClientService)
+
+    # Success
+    url_template = deepcopy(vm_config_client.url_template)
+    url_template.attach_pattern('$vm_config_id/vm_lock/')
+    requests_mock.get(
+        url_template.render(vm_config_id=0),
+        json=[
+            {'lock_type': 'active', 'vm_config_id': 0, 'job_id': 0},
+            {'lock_type': 'active', 'vm_config_id': 0, 'job_id': 0},
+            {'lock_type': 'active', 'vm_config_id': 0, 'job_id': 1},
+            {'lock_type': 'active', 'vm_config_id': 0, 'job_id': 2},
+        ]
+    )
+    assert vm_config_client.get_active_vm_count(0) == 4
+
+    # Failed due to HTTP error
+    requests_mock.get(url_template.render(vm_config_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        vm_config_client.get_active_vm_count(0)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+def test_group_vm_config_client_get_vm_config_id_map(requests_mock: requests_mock.Mocker,
+                                                     group_vm_config_client: GroupVMConfigClientService):
+    assert isinstance(group_vm_config_client, GroupVMConfigClientService)
+
+    # Success
+    requests_mock.get(
+        group_vm_config_client.url_template.render(group_id=0),
+        json=[
+            {'id': 0, 'vm_config_type': {'vm_instance_type': {'code': 'azure-v100'}}},
+            {'id': 1, 'vm_config_type': {'vm_instance_type': {'code': 'aws-v100'}}}
+        ]
+    )
+    assert group_vm_config_client.get_vm_config_id_map() == {
+        'azure-v100': 0,
+        'aws-v100' : 1
+    }
+
+    # Failed due to HTTP error
+    requests_mock.get(group_vm_config_client.url_template.render(group_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        group_vm_config_client.get_vm_config_id_map()
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')

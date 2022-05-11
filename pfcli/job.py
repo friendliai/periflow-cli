@@ -70,8 +70,6 @@ job_table = TableFormatter(
         'duration',
     ],
     headers=['ID', 'Name', 'Status', 'VM', 'Device', 'Device Cnt', 'Data', 'Start', 'Duration'],
-    extra_fields=['error_message'],
-    extra_headers=['error']
 )
 job_table.apply_styling("ID", style="bold")
 job_table.add_substitution_rule("waiting", "[bold]waiting")
@@ -97,8 +95,6 @@ job_panel = PanelFormatter(
         'duration',
     ],
     headers=['ID', 'Name', 'Status', 'VM', 'Device', 'Device Cnt', 'Data', 'Start', 'Duration'],
-    extra_fields=['error_message'],
-    extra_headers=['error']
 )
 job_panel.add_substitution_rule("waiting", "[bold]waiting")
 job_panel.add_substitution_rule("enqueued", "[bold cyan]enqueued")

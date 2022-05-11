@@ -30,6 +30,7 @@ from websockets.client import WebSocketClientProtocol
 from websockets.exceptions import ConnectionClosed
 from requests import HTTPError
 from requests import Response
+from rich.filesize import decimal
 
 from pfcli.service.auth import (
     TokenType,
@@ -39,6 +40,7 @@ from pfcli.service.auth import (
 )
 from pfcli.utils import (
     decode_http_err,
+    get_path_size,
     get_uri,
     get_wss_uri,
     get_mr_uri,
@@ -51,6 +53,7 @@ from pfcli.service import (
     CheckpointCategory,
     CloudType,
     ModelFormCategory,
+    LockType,
     StorageType,
     CredType,
     ServiceType,
@@ -180,6 +183,19 @@ class UserGroupClientService(ClientService):
             headers=get_auth_header(),
         )
 
+    @auto_token_refresh
+    def password(self, old_password: str, new_password: str) -> Response:
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('password/')
+        return requests.put(
+            url_template.render(**self.url_kwargs),
+            headers=get_auth_header(),
+            json={
+                'old_password': old_password,
+                'new_password': new_password
+            }
+        )
+
     def get_group_id(self) -> int:
         try:
             response = self.group()
@@ -211,6 +227,13 @@ class UserGroupClientService(ClientService):
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to get my group info.\n{decode_http_err(exc)}")
         return response.json()['results']
+
+    def change_password(self, old_password: str, new_password: str) -> None:
+        try:
+            response = self.password(old_password, new_password)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to change password.\n{decode_http_err(exc)}")
 
 
 class ExperimentClientService(ClientService):
@@ -300,6 +323,9 @@ class JobClientService(ClientService):
     def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
         try:
             if workspace_dir is not None:
+                workspace_size = get_path_size(workspace_dir)
+                if workspace_size <= 0 or workspace_size > 100 * 1024 * 1024:
+                    secho_error_and_exit(f"Workspace directory size ({decimal(workspace_size)}) should be 0 < size <= 100MB.")
                 workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
                 with zip_dir(workspace_dir, workspace_zip) as zip_file:
                     files = {'workspace_zip': ('workspace.zip', zip_file)}
@@ -681,6 +707,50 @@ class GroupVMQuotaClientService(ClientService, GroupRequestMixin):
         return vm_dict_list
 
 
+class VMConfigClientService(ClientService):
+    @auto_token_refresh
+    def vm_lock(self, vm_config_id: T, lock_type: LockType) -> Response:
+        url_template = copy.deepcopy(self.url_template)
+        url_template.attach_pattern('$vm_config_id/vm_lock/')
+        return requests.get(
+            url_template.render(vm_config_id=vm_config_id),
+            params={'lock_type': lock_type},
+            headers=get_auth_header()
+        )
+
+    def list_vm_locks(self, vm_config_id: T, lock_type: LockType) -> List[dict]:
+        try:
+            response = self.vm_lock(vm_config_id, lock_type)
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to inspect locked VMs.\n{decode_http_err(exc)}")
+        return response.json()
+
+    def get_active_vm_count(self, vm_config_id: T) -> int:
+        vm_locks = self.list_vm_locks(vm_config_id, LockType.ACTIVE)
+        return len(vm_locks)
+
+
+class GroupVMConfigClientService(ClientService, GroupRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
+        super().__init__(template, group_id=self.group_id, **kwargs)
+
+    def list_vm_config(self) -> List[dict]:
+        try:
+            response = self.list()
+            response.raise_for_status()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to list available VM list.\n{decode_http_err(exc)}")
+        return response.json()
+
+    def get_vm_config_id_map(self) -> Dict[str, T]:
+        id_map = {}
+        for vm_config in self.list_vm_config():
+            id_map[vm_config['vm_config_type']['vm_instance_type']['code']] = vm_config['id']
+        return id_map
+
+
 class CredentialClientService(ClientService):
     def list_credentials(self, cred_type: CredType) -> List[dict]:
         type_name = cred_type_map[cred_type]
@@ -840,7 +910,6 @@ class CheckpointClientService(ClientService):
             response.raise_for_status()
         except HTTPError as exc:
             secho_error_and_exit(f"Cannot update checkpoint.\n{decode_http_err(exc)}")
-
         return response.json()
 
     def delete_checkpoint(self, checkpoint_id: T) -> None:
@@ -991,6 +1060,8 @@ client_template_map: Dict[ServiceType, Tuple[Type[A], Template]] = {
     ServiceType.GROUP_VM_QUOTA: (GroupVMQuotaClientService, Template(get_uri('group/$group_id/vm_quota/'))),
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_mr_uri('models/'))),
     ServiceType.GROUP_CHECKPOINT: (GroupCheckpointClientService, Template(get_mr_uri('orgs/$group_id/prjs/$project_id/models/'))),
+    ServiceType.VM_CONFIG: (VMConfigClientService, Template(get_uri('vm_config/'))),
+    ServiceType.GROUP_VM_CONFIG: (GroupVMConfigClientService, Template(get_uri('group/$group_id/vm_config/'))),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri('job/'))),
     ServiceType.SERVE: (ServeClientService, Template(get_pfs_uri('deployment/')))
 }
