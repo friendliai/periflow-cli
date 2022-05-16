@@ -6,6 +6,7 @@ from dateutil.parser import parse
 from typing import Optional
 
 import typer
+import requests
 
 from pfcli.service import (
     ServiceType,
@@ -16,8 +17,9 @@ from pfcli.service.client import (
     build_client,
 )
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import datetime_to_pretty_str
+from pfcli.utils import datetime_to_pretty_str, get_pfs_engine_uri
 
+EXIT_TEXTS = ["exit()", "quit()"]
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -93,6 +95,13 @@ def list(
         else:
             start = None    
         serve["start"] = start
+        serve["gpu_type"] = serve.get("config")["gpu_type"]
+        serve["name"] = serve.get("config")["name"]
+        
+        # Hard coding..
+        serve["vm"] = "p3.8xlarge"
+        serve["num_gpus"] = 4
+        serve["status"] = "enqueued" if serve["status"] == "False" else "running"
     
     if tail is not None or head is not None:
         target_serve_list = []
@@ -135,8 +144,18 @@ def view(
     if started_at is not None:
         start = datetime_to_pretty_str(parse(started_at))
     else:
-        start = None    
+        start = None
     serve["start"] = start
+    serve["name"] = serve.get("config")["name"]
+    serve["gpu_type"] = serve.get("config")["gpu_type"] 
+
+    # Hard coding..
+    serve["vm"] = "p3.8xlarge"
+    serve["num_gpus"] = 4
+    serve["status"] = "enqueued" if serve["status"] == "False" else "running"
+
+    engine_path = f"{serve['id']}/v1/completions"
+    serve["endpoint"] = f"{get_pfs_engine_uri(engine_path)}"
 
     serve_panel.render([serve])
 
@@ -178,9 +197,70 @@ def create(
     }
     client: ServeClientService = build_client(ServiceType.SERVE)
     serve = client.create_serve(request_data)
+    engine_path = f"{serve['id']}/v1/completions"
 
     typer.secho(
-        f"Serve ({serve['id']}) started successfully. Use 'pf serivce view <id>' to see the serve details.\n" \
-        f"Run 'curl {serve['endpoint']}' for inference request",
+        f"Serve ({serve['id']}) started successfully. Use 'pf serve view <id>' to see the serve details.\n" \
+        # f"Run `curl {serve['endpoint']}` for inference request",
+        f"Run `curl {get_pfs_engine_uri(engine_path)}` for inference request",
         fg=typer.colors.BLUE
     )
+
+
+@app.command()
+def request(
+    serve_id: str = typer.Argument(
+        ...,
+        help="Serve id to chat."
+    ),
+    max_tokens: int = typer.Option(
+        20,
+        "--max_tokens",
+        "-t",
+        help="Maximum sentence length to generate."
+    ),
+    top_k: int = typer.Option(
+        5,
+        "--top_k",
+        "-k",
+        help="Value of top k."
+    ),
+    no_repeat_ngram: int = typer.Option(
+        4,
+        "--no-repeat-ngram",
+        "-g",
+        help="N-gram size not to be repeated."
+    )
+):
+    """Request to the serve id engine.
+    """
+    # client: ServeClientService = build_client(ServiceType.SERVE)
+    # serve = client.get_serve(serve_id)
+    # endpoint = serve.get("endpoint")
+    engine_path = f"{serve_id}/v1/completions"
+    endpoint = f"{get_pfs_engine_uri(engine_path)}"
+    
+    typer.secho(
+        f"Chat with ({serve_id}) inference engine.\n" \
+        f"For exit chat, enter empty line.",
+        fg=typer.colors.BLUE
+    )
+    
+    while True:
+        prompt: str = input("> ")
+        if not prompt:
+            break
+        request_body = {
+            "prompt": prompt,
+            "max_tokens": max_tokens,
+            "no_repeat_ngram": no_repeat_ngram,
+            "top_k": top_k,
+            "n": 1
+        }
+        headers = {"Authorization": "Bearer test", "accept": "application/json"}
+        
+        response = requests.post(url=endpoint, json=request_body, headers=headers)
+        output = response.json()["choices"][0]["text"]
+        typer.secho(f"! {output}", fg=typer.colors.MAGENTA)
+   
+    typer.secho("Bye~!", fg=typer.colors.BLUE)

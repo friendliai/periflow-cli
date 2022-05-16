@@ -1019,6 +1019,15 @@ class ServeClientService(ClientService):
         return response.json()
     
     def create_serve(self, config = dict) -> dict:
+        # 13B demo hard coding
+        if config["name"] in ["13b", "13B"]:
+            config["engine_config"] = {
+                "num_workers": 1,
+                "num_devices": 4,
+                "max_token_count": 10000,
+                "max_batch_size": 256,
+                "kv_cache_size": 40000,
+            }
         try:
             response = self.create(json=config)
             response.raise_for_status()

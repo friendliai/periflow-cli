@@ -30,7 +30,8 @@ periflow_api_server = "https://api-dev.friendli.ai/api/"
 periflow_ws_server = "wss://api-ws-dev.friendli.ai/ws/"
 periflow_discuss_url = "https://discuss-staging.friendli.ai/"
 periflow_mr_server = "https://pfmodelregistry-dev.friendli.ai/"
-periflow_serve_server = "http://0.0.0.0:8000/"
+periflow_serve_server = "http://aead047c949fa4d1fa71659d4bc8cff3-994673961.us-west-2.elb.amazonaws.com:8000/"
+periflow_serve_engine_server = "http://aa6a98a9e89c345fe80ecaa562557f3a-359484990.us-west-2.elb.amazonaws.com:8090/"
 
 
 def datetime_to_pretty_str(past: Optional[datetime], long_list: bool = False):
@@ -88,6 +89,8 @@ def get_wss_uri(path: str):
 def get_pfs_uri(path: str):
     return periflow_serve_server + path
 
+def get_pfs_engine_uri(path: str):
+    return periflow_serve_engine_server + path
 
 def get_mr_uri(path: str) -> str:
     return periflow_mr_server + path

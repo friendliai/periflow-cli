@@ -65,6 +65,7 @@ class ModelFormCategory(str, Enum):
 class GpuType(str, Enum):
     T4 = "t4"
     V100 = "v100"
+    A100 = "a100"
 
 
 storage_type_map: Dict[StorageType, str] = {
