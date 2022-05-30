@@ -80,7 +80,6 @@ def main(
 
     typer.secho("Credential created successfully!", fg=typer.colors.BLUE)
     panel_formatter.render([cred])
-    exit(0)
 
 
 @create_app.command()
