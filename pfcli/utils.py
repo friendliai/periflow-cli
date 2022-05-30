@@ -9,8 +9,9 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from dateutil.tz import tzlocal
 from pathlib import Path
-from typing import Optional, List, Dict
 from subprocess import CalledProcessError, check_call
+from typing import Optional, List, Dict
+from urllib.parse import urljoin
 
 import typer
 import requests
@@ -31,6 +32,7 @@ periflow_ws_server = "wss://api-ws-dev.friendli.ai/ws/"
 periflow_discuss_url = "https://discuss-staging.friendli.ai/"
 periflow_mr_server = "https://pfmodelregistry-dev.friendli.ai/"
 periflow_serve_server = "http://0.0.0.0:8000/"
+periflow_auth_server = "https://pfauth-dev.friendli.ai/"
 
 
 def datetime_to_pretty_str(past: Optional[datetime], long_list: bool = False):
@@ -78,19 +80,24 @@ def timedelta_to_pretty_str(start: datetime, finish: datetime, long_list: bool =
             return f'{delta.days + round(delta.seconds / (3600 * 24))} days'
 
 
-def get_uri(path: str):
-    return periflow_api_server + path
+def get_auth_uri(path: str) -> str:
+    return urljoin(periflow_auth_server, path)
 
 
-def get_wss_uri(path: str):
-    return periflow_ws_server + path
+def get_uri(path: str) -> str:
+    return urljoin(periflow_api_server, path)
 
-def get_pfs_uri(path: str):
-    return periflow_serve_server + path
+
+def get_wss_uri(path: str) -> str:
+    return urljoin(periflow_ws_server, path)
+
+
+def get_pfs_uri(path: str) -> str:
+    return urljoin(periflow_serve_server, path)
 
 
 def get_mr_uri(path: str) -> str:
-    return periflow_mr_server + path
+    return urljoin(periflow_mr_server, path)
 
 
 def secho_error_and_exit(text: str, color: str = typer.colors.RED):
