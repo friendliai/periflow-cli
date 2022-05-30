@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import os
 import copy
 import json
 from string import Template
