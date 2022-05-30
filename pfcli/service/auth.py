@@ -4,13 +4,14 @@
 
 import functools
 import os
+import uuid
 from enum import Enum
 from pathlib import Path
 from typing import Callable, Union
 
 import requests
 
-from pfcli.utils import get_uri, secho_error_and_exit
+from pfcli.utils import decode_http_err, get_auth_uri, secho_error_and_exit
 
 credential_path = Path(os.environ["HOME"], ".periflow")
 access_token_path = credential_path / "access_token"
@@ -62,11 +63,11 @@ def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable[..., 
                 except requests.HTTPError:
                     secho_error_and_exit("Failed to refresh access token... Please login again")
 
-                update_token(token_type=TokenType.ACCESS, token=refresh_r.json()["access"])
+                update_token(token_type=TokenType.ACCESS, token=refresh_r.json()["access_token"])
                 # We need to restore file offset if we want to transfer file objects
                 if "files" in kwargs:
                     files = kwargs["files"]
-                    for file_name, file_tuple in files.items():
+                    for _, file_tuple in files.items():
                         for element in file_tuple:
                             if hasattr(element, "seek"):
                                 # Restore file offset
@@ -79,3 +80,22 @@ def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable[..., 
             r.raise_for_status()
         return r
     return inner
+
+
+@auto_token_refresh
+def _userinfo() -> requests.Response:
+    return requests.get(get_auth_uri("oauth2/userinfo"),
+                        headers=get_auth_header())
+
+
+def get_current_userinfo() -> dict:
+    try:
+        response = _userinfo()
+    except requests.HTTPError as exc:
+        secho_error_and_exit(f"Failed to get userinfo.\n{decode_http_err(exc)}")
+    return response.json()
+
+
+def get_current_user_id() -> uuid.UUID:
+    userinfo = get_current_userinfo()
+    return uuid.UUID(userinfo['sub'].split('|')[1])
