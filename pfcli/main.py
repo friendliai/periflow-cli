@@ -17,7 +17,7 @@ from pfcli import (
     serve
 )
 from pfcli.service import ServiceType
-from pfcli.service.auth import TokenType, get_current_user_id, get_current_userinfo, update_token
+from pfcli.service.auth import TokenType, get_current_userinfo, update_token
 from pfcli.service.client import UserClientService, build_client
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import get_uri, secho_error_and_exit
@@ -57,7 +57,7 @@ def whoami():
 
 @app.command(name="org", help="Show what organizations I belong to")
 def organization():
-    client: UserClientService = build_client(ServiceType.USER, pf_user_id=get_current_user_id())
+    client: UserClientService = build_client(ServiceType.USER)
     orgs = client.get_group_info()
     org_table_formatter.render(orgs)
 
@@ -95,7 +95,7 @@ def passwd(
         secho_error_and_exit("The current password is the same with the new password.")
     if new_password != confirm_password:
         secho_error_and_exit("Passwords did not match.")
-    client: UserClientService = build_client(ServiceType.USER, pf_user_id=get_current_user_id())
+    client: UserClientService = build_client(ServiceType.USER)
     client.change_password(old_password, new_password)
 
     typer.secho("Password is changed successfully!", fg=typer.colors.BLUE)

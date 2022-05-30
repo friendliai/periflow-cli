@@ -34,6 +34,7 @@ from rich.filesize import decimal
 from pfcli.service.auth import (
     TokenType,
     get_auth_header,
+    get_current_user_id,
     get_token,
     auto_token_refresh,
 )
@@ -172,6 +173,9 @@ class ProjectClientService(ClientService):
 
 
 class UserClientService(ClientService):
+    def __init__(self, template: Template, **kwargs):
+        super().__init__(template, pf_user_id=get_current_user_id(), **kwargs)
+
     @auto_token_refresh
     def group(self) -> Response:
         url_template = copy.deepcopy(self.url_template)
