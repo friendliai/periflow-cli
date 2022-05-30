@@ -11,7 +11,7 @@ from typing import Callable, Union
 
 import requests
 
-from pfcli.utils import decode_http_err, get_auth_uri, secho_error_and_exit
+from pfcli.utils import decode_http_err, get_uri, secho_error_and_exit
 
 credential_path = Path(os.environ["HOME"], ".periflow")
 access_token_path = credential_path / "access_token"
