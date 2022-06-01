@@ -185,7 +185,7 @@ class UserRequestMixin:
         userinfo = self.get_current_userinfo()
         return uuid.UUID(userinfo['sub'].split('|')[1])
 
-    def initializer_user(self):
+    def initialize_user(self):
         self.user_id = self.get_current_user_id()
 
 
@@ -205,7 +205,7 @@ class ProjectRequestMixin:
 
 class UserClientService(ClientService, UserRequestMixin):
     def __init__(self, template: Template, **kwargs):
-        self.initializer_user()
+        self.initialize_user()
         super().__init__(template, **kwargs)
 
     def change_password(self, old_password: str, new_password: str) -> None:
@@ -222,7 +222,7 @@ class UserClientService(ClientService, UserRequestMixin):
 
 class UserGroupClientService(ClientService, UserRequestMixin):
     def __init__(self, template: Template, **kwargs):
-        self.initializer_user()
+        self.initialize_user()
         super().__init__(template, pf_user_id=self.user_id, **kwargs)
 
     def get_group_info(self) -> list:
@@ -235,7 +235,7 @@ class UserGroupClientService(ClientService, UserRequestMixin):
 
 class UserGroupProjectClientService(ClientService, UserRequestMixin, GroupRequestMixin):
     def __init__(self, template: Template, **kwargs):
-        self.initializer_user()
+        self.initialize_user()
         self.initialize_group()
         super().__init__(template, pf_user_id=self.user_id, pf_group_id=self.group_id, **kwargs)
 
@@ -896,8 +896,9 @@ class CheckpointClientService(ClientService):
         return response.json()['files']
 
 
-class GroupProjectCheckpointClientService(ClientService, GroupRequestMixin, ProjectRequestMixin):
+class GroupProjectCheckpointClientService(ClientService, UserRequestMixin, GroupRequestMixin, ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
+        self.initialize_user()
         self.initialize_group()
         self.initialize_project()
         super().__init__(
@@ -932,7 +933,6 @@ class GroupProjectCheckpointClientService(ClientService, GroupRequestMixin, Proj
                           data_config: dict,
                           job_setting_config: Optional[dict]) -> dict:
         validate_storage_region(vendor, region)
-        FAKE_USER_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
 
         request_data = {
             "job_id": None,
@@ -941,7 +941,7 @@ class GroupProjectCheckpointClientService(ClientService, GroupRequestMixin, Proj
                 "data_json": data_config,
                 "job_setting_json": job_setting_config,
             },
-            "user_id": str(FAKE_USER_ID), # TODO: change after PFA integration
+            "user_id": str(self.user_id),
             "credential_id": credential_id if credential_id else None,
             "model_category": "USER",
             "form_category": model_form_category.value,
