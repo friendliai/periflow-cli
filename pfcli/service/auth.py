@@ -3,13 +3,12 @@
 """PeriFlow Auth Tools"""
 
 import functools
-import uuid
 from enum import Enum
 from typing import Callable, Union
 
 import requests
 
-from pfcli.utils import decode_http_err, get_auth_uri, get_periflow_directory, get_uri, secho_error_and_exit
+from pfcli.utils import get_periflow_directory, get_uri, secho_error_and_exit
 
 access_token_path = get_periflow_directory() / "access_token"
 refresh_token_path = get_periflow_directory() / "refresh_token"
