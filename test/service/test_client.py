@@ -32,20 +32,20 @@ from pfcli.service.client import (
     CredentialTypeClientService,
     DataClientService,
     ExperimentClientService,
-    GroupCheckpointClientService,
-    GroupCredentialClientService,
-    GroupDataClientService,
-    GroupExperimentClientService,
-    GroupJobClientService,
-    GroupVMClientService,
+    GroupProjectCheckpointClientService,
+    ProjectCredentialClientService,
+    ProjectDataClientService,
+    ProjectExperimentClientService,
+    ProjectJobClientService,
     GroupVMConfigClientService,
-    GroupVMQuotaClientService,
+    ProjectVMQuotaClientService,
     JobArtifactClientService,
     JobCheckpointClientService,
     JobClientService,
     JobTemplateClientService,
     JobWebSocketClientService,
     URLTemplate,
+    UserClientService,
     UserGroupClientService,
     ServeClientService,
     VMConfigClientService,
@@ -59,7 +59,12 @@ def base_url() -> str:
 
 
 @pytest.fixture
-def user_group_client() -> UserGroupClientService:
+def user_client(user_project_group_context) -> UserClientService:
+    return build_client(ServiceType.USER)
+
+
+@pytest.fixture
+def user_group_client(user_project_group_context) -> UserGroupClientService:
     return build_client(ServiceType.USER_GROUP)
 
 
@@ -69,8 +74,8 @@ def experiment_client() -> ExperimentClientService:
 
 
 @pytest.fixture
-def group_experiment_client() -> GroupExperimentClientService:
-    return build_client(ServiceType.GROUP_EXPERIMENT)
+def project_experiment_client(user_project_group_context) -> ProjectExperimentClientService:
+    return build_client(ServiceType.PROJECT_EXPERIMENT)
 
 
 @pytest.fixture
@@ -89,8 +94,8 @@ def job_artifact_client() -> JobArtifactClientService:
 
 
 @pytest.fixture
-def group_job_client() -> GroupJobClientService:
-    return build_client(ServiceType.GROUP_JOB)
+def project_job_client(user_project_group_context) -> ProjectJobClientService:
+    return build_client(ServiceType.PROJECT_JOB)
 
 
 @pytest.fixture
@@ -104,8 +109,8 @@ def credential_client() -> CredentialClientService:
 
 
 @pytest.fixture
-def group_credential_client() -> GroupCredentialClientService:
-    return build_client(ServiceType.GROUP_CREDENTIAL)
+def project_credential_client(user_project_group_context) -> ProjectCredentialClientService:
+    return build_client(ServiceType.PROJECT_CREDENTIAL)
 
 
 @pytest.fixture
@@ -119,18 +124,13 @@ def data_client() -> DataClientService:
 
 
 @pytest.fixture
-def group_data_client() -> GroupDataClientService:
-    return build_client(ServiceType.GROUP_DATA)
+def project_data_client(user_project_group_context) -> ProjectDataClientService:
+    return build_client(ServiceType.PROJECT_DATA)
 
 
 @pytest.fixture
-def group_vm_client() -> GroupVMClientService:
-    return build_client(ServiceType.GROUP_VM)
-
-
-@pytest.fixture
-def group_vm_quota_client() -> GroupVMQuotaClientService:
-    return build_client(ServiceType.GROUP_VM_QUOTA)
+def project_vm_quota_client(user_project_group_context) -> ProjectVMQuotaClientService:
+    return build_client(ServiceType.PROJECT_VM_QUOTA)
 
 
 @pytest.fixture
@@ -139,7 +139,7 @@ def vm_config_client() -> VMConfigClientService:
 
 
 @pytest.fixture
-def group_vm_config_client() -> GroupVMConfigClientService:
+def group_vm_config_client(user_project_group_context) -> GroupVMConfigClientService:
     return build_client(ServiceType.GROUP_VM_CONFIG)
 
 
@@ -149,8 +149,8 @@ def checkpoint_client() -> CheckpointClientService:
 
 
 @pytest.fixture
-def group_checkpoint_client() -> GroupCheckpointClientService:
-    return build_client(ServiceType.GROUP_CHECKPOINT)
+def group_project_checkpoint_client(user_project_group_context) -> GroupProjectCheckpointClientService:
+    return build_client(ServiceType.GROUP_PROJECT_CHECKPOINT)
 
 
 @pytest.fixture
@@ -160,24 +160,6 @@ def job_ws_client() -> JobWebSocketClientService:
 @pytest.fixture
 def serve_client() -> ServeClientService:
     return build_client(ServiceType.SERVE)
-
-
-@pytest.fixture
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def patch_init_group(requests_mock: requests_mock.Mocker, user_group_client: UserGroupClientService):
-    url_template = deepcopy(user_group_client.url_template)
-    url_template.attach_pattern('group/')
-    requests_mock.get(
-        url_template.render(),
-        json={
-            'results': [
-                {
-                    'id': 0,
-                    'name': 'my-group'
-                }
-            ]
-        }
-    )
 
 
 def test_url_template_render(base_url: str):
@@ -234,7 +216,7 @@ def test_client_service_base(requests_mock: requests_mock.Mocker, base_url: str)
     assert resp.json() == {'data': 'value'}
     assert resp.status_code == 200
 
-    resp = client.create()
+    resp = client.post()
     assert resp.json() == {'data': 'value'}
     assert resp.status_code == 201
 
@@ -247,139 +229,51 @@ def test_client_service_base(requests_mock: requests_mock.Mocker, base_url: str)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_user_group_client_get_group_id(requests_mock: requests_mock.Mocker,
-                                        user_group_client: UserGroupClientService):
-    assert isinstance(user_group_client, UserGroupClientService)
-
-    # Success
-    url_template = deepcopy(user_group_client.url_template)
-    url_template.attach_pattern('group/')
-    requests_mock.get(
-        url_template.render(),
-        json={
-            'results': [
-                {
-                    'id': 0,
-                    'name': 'my-group'
-                }
-            ]
-        }
-    )
-    assert user_group_client.get_group_id() == 0
-
-    # Failed due to HTTP error
-    requests_mock.get(url_template.render(), status_code=404)
-    with pytest.raises(typer.Exit):
-        user_group_client.get_group_id()
-
-    # Failed due to no involved group
-    requests_mock.get(
-        url_template.render(),
-        json={
-            'results': []
-        }
-    )
-    with pytest.raises(typer.Exit):
-        user_group_client.get_group_id()
-
-    # Failed due to multiple group (TODO: multi-group will be supported very soon.)
-    requests_mock.get(
-        url_template.render(),
-        json={
-            'results': [
-                {
-                    'id': 0,
-                    'name': 'group-1'
-                },
-                {
-                    'id': 1,
-                    'name': 'group-2'
-                }
-            ]
-        }
-    )
-    with pytest.raises(typer.Exit):
-        user_group_client.get_group_id()
-
-
-@pytest.mark.usefixtures('patch_auto_token_refresh')
 def test_user_group_client_get_group_info(requests_mock: requests_mock.Mocker,
                                           user_group_client: UserGroupClientService):
     assert isinstance(user_group_client, UserGroupClientService)
 
     # Success
     url_template = deepcopy(user_group_client.url_template)
-    url_template.attach_pattern('group/')
+    # url_template.attach_pattern('group/')
     requests_mock.get(
-        url_template.render(),
-        json={
-            'results': [
-                {
-                    'id': 0,
-                    'name': 'my-group'
-                }
-            ]
-        }
+        url_template.render(**user_group_client.url_kwargs),
+        json=[
+            {
+                'id': '00000000-0000-0000-0000-000000000000',
+                'name': 'my-group'
+            }
+        ]
     )
     assert user_group_client.get_group_info() == [
         {
-            'id': 0,
+            'id': '00000000-0000-0000-0000-000000000000',
             'name': 'my-group'
         }
     ]
 
     # Failed
-    requests_mock.get(url_template.render(), status_code=404)
+    requests_mock.get(url_template.render(**user_group_client.url_kwargs), status_code=404)
     with pytest.raises(typer.Exit):
         user_group_client.get_group_info()
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_user_group_client_get_user_info(requests_mock: requests_mock.Mocker,
-                                         user_group_client: UserGroupClientService):
-    assert isinstance(user_group_client, UserGroupClientService)
-
+def test_user_client_change_password(requests_mock: requests_mock.Mocker,
+                                     user_client: UserClientService):
     # Success
-    url_template = deepcopy(user_group_client.url_template)
-    url_template.attach_pattern('self/')
-    requests_mock.get(
-        url_template.render(),
-        json={
-            'id': 0,
-            'username': 'alice',
-            'email': 'alice@periflow.com'
-        }
-    )
-    assert user_group_client.get_user_info() == {
-        'id': 0,
-        'username': 'alice',
-        'email': 'alice@periflow.com'
-    }
-
-    # Failed
-    requests_mock.get(url_template.render(), status_code=404)
-    with pytest.raises(typer.Exit):
-        user_group_client.get_user_info()
-
-
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_user_group_client_change_password(requests_mock: requests_mock.Mocker,
-                                           user_group_client: UserGroupClientService):
-    assert isinstance(user_group_client, UserGroupClientService)
-
-    # Success
-    url_template = deepcopy(user_group_client.url_template)
-    url_template.attach_pattern('password/')
-    requests_mock.put(url_template.render(), status_code=204)
+    url_template = deepcopy(user_client.url_template)
+    url_template.attach_pattern(f'{user_client.user_id}/password')
+    requests_mock.put(url_template.render(**user_client.url_kwargs), status_code=204)
     try:
-        user_group_client.change_password('1234', '5678')
+        user_client.change_password('1234', '5678')
     except typer.Exit:
         raise pytest.fail("Test change password failed.")
 
     # Failed
-    requests_mock.put(url_template.render(), status_code=400)
+    requests_mock.put(url_template.render(**user_client.url_kwargs), status_code=400)
     with pytest.raises(typer.Exit):
-        user_group_client.change_password('1234', '5678')
+        user_client.change_password('1234', '5678')
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
@@ -439,60 +333,54 @@ def test_experiment_client_update_experiment(requests_mock: requests_mock.Mocker
         experiment_client.update_experiment_name(1, 'new-exp')
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
-def test_group_experiment_client_list_experiments(requests_mock: requests_mock.Mocker,
-                                                  group_experiment_client: GroupExperimentClientService):
-    assert isinstance(group_experiment_client, GroupExperimentClientService)
-
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_project_experiment_client_list_experiments(requests_mock: requests_mock.Mocker,
+                                                    project_experiment_client: ProjectExperimentClientService):
     # Success
     requests_mock.get(
-        group_experiment_client.url_template.render(group_id=0),
+        project_experiment_client.url_template.render(project_id=project_experiment_client.project_id),
         json=[{'id': 0, 'name': 'exp-0'}, {'id': 1, 'name': 'exp-1'}]
     )
-    assert group_experiment_client.list_experiments() == [{'id': 0, 'name': 'exp-0'}, {'id': 1, 'name': 'exp-1'}]
+    assert project_experiment_client.list_experiments() == [{'id': 0, 'name': 'exp-0'}, {'id': 1, 'name': 'exp-1'}]
 
     # Failed due to HTTP error
-    requests_mock.get(group_experiment_client.url_template.render(group_id=0), status_code=404)
+    requests_mock.get(project_experiment_client.url_template.render(project_id=project_experiment_client.project_id), status_code=404)
     with pytest.raises(typer.Exit):
-        group_experiment_client.list_experiments()
+        project_experiment_client.list_experiments()
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
-def test_group_experiment_client_get_id_by_name(requests_mock: requests_mock.Mocker,
-                                                group_experiment_client: GroupExperimentClientService):
-    assert isinstance(group_experiment_client, GroupExperimentClientService)
-
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_project_experiment_client_get_id_by_name(requests_mock: requests_mock.Mocker,
+                                                  project_experiment_client: ProjectExperimentClientService):
     # Success
     requests_mock.get(
-        group_experiment_client.url_template.render(group_id=0),
+        project_experiment_client.url_template.render(project_id=project_experiment_client.project_id),
         json=[{'id': 0, 'name': 'exp-0'}, {'id': 1, 'name': 'exp-1'}]
     )
-    assert group_experiment_client.get_id_by_name('exp-0') == 0
-    assert group_experiment_client.get_id_by_name('exp-1') == 1
-    assert group_experiment_client.get_id_by_name('exp-2') is None
+    assert project_experiment_client.get_id_by_name('exp-0') == 0
+    assert project_experiment_client.get_id_by_name('exp-1') == 1
+    assert project_experiment_client.get_id_by_name('exp-2') is None
 
     # Failed due to HTTP error
-    requests_mock.get(group_experiment_client.url_template.render(group_id=0), status_code=404)
+    requests_mock.get(project_experiment_client.url_template.render(project_id=project_experiment_client.project_id), status_code=404)
     with pytest.raises(typer.Exit):
-        group_experiment_client.get_id_by_name('exp-3')
+        project_experiment_client.get_id_by_name('exp-3')
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
-def test_group_experiment_client_create_experiment(requests_mock: requests_mock.Mocker,
-                                                   group_experiment_client: GroupExperimentClientService):
-    assert isinstance(group_experiment_client, GroupExperimentClientService)
-
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_project_experiment_client_create_experiment(requests_mock: requests_mock.Mocker,
+                                                     project_experiment_client: ProjectExperimentClientService):
     # Success
     requests_mock.post(
-        group_experiment_client.url_template.render(group_id=0),
+        project_experiment_client.url_template.render(project_id=project_experiment_client.project_id),
         json={'id': 0, 'name': 'exp-0'}
     )
-    assert group_experiment_client.create_experiment('exp-0') == {'id': 0, 'name': 'exp-0'}
+    assert project_experiment_client.create_experiment('exp-0') == {'id': 0, 'name': 'exp-0'}
 
     # Failed due to HTTP error
-    requests_mock.post(group_experiment_client.url_template.render(group_id=0), status_code=400)
+    requests_mock.post(project_experiment_client.url_template.render(project_id=project_experiment_client.project_id), status_code=400)
     with pytest.raises(typer.Exit):
-        group_experiment_client.create_experiment('exp-0')
+        project_experiment_client.create_experiment('exp-0')
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
@@ -814,22 +702,20 @@ def test_job_artifact_client_list_artifacts(requests_mock: requests_mock.Mocker,
         job_artifact_client.list_artifacts()
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
-def test_group_job_client_list_jobs(requests_mock: requests_mock.Mocker,
-                                    group_job_client: GroupJobClientService):
-    assert isinstance(group_job_client, GroupJobClientService)
-
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_project_job_client_list_jobs(requests_mock: requests_mock.Mocker,
+                                      project_job_client: ProjectJobClientService):
     # Success
     requests_mock.get(
-        group_job_client.url_template.render(group_id=0),
+        project_job_client.url_template.render(project_id=project_job_client.project_id),
         json={'results': [{'id': 0}, {'id': 1}]}
     )
-    assert group_job_client.list_jobs() == [{'id' : 0}, {'id': 1}]
+    assert project_job_client.list_jobs() == [{'id' : 0}, {'id': 1}]
 
     # Failed due to HTTP error
-    requests_mock.get(group_job_client.url_template.render(group_id=0), status_code=404)
+    requests_mock.get(project_job_client.url_template.render(project_id=project_job_client.project_id), status_code=404)
     with pytest.raises(typer.Exit):
-        group_job_client.list_jobs()
+        project_job_client.list_jobs()
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
@@ -1021,55 +907,49 @@ def test_data_client_get_upload_urls(requests_mock: requests_mock.Mocker, data_c
             data_client.get_upload_urls(0, Path(dir), True)
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
-def test_group_data_client_list_datastores(requests_mock: requests_mock.Mocker,
-                                           group_data_client: GroupDataClientService):
-    assert isinstance(group_data_client, GroupDataClientService)
-
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_project_data_client_list_datastores(requests_mock: requests_mock.Mocker,
+                                             project_data_client: ProjectDataClientService):
     # Success
     requests_mock.get(
-        group_data_client.url_template.render(group_id=0),
+        project_data_client.url_template.render(project_id=project_data_client.project_id),
         json=[{'id': 0, 'name': 'wikitext'}, {'id': 1, 'name': 'imagenet'}]
     )
-    assert group_data_client.list_datastores() == [{'id': 0, 'name': 'wikitext'}, {'id': 1, 'name': 'imagenet'}]
+    assert project_data_client.list_datastores() == [{'id': 0, 'name': 'wikitext'}, {'id': 1, 'name': 'imagenet'}]
 
     # Failed due to HTTP error
-    requests_mock.get(group_data_client.url_template.render(group_id=0), status_code=404)
+    requests_mock.get(project_data_client.url_template.render(project_id=project_data_client.project_id), status_code=404)
     with pytest.raises(typer.Exit):
-        group_data_client.list_datastores()
+        project_data_client.list_datastores()
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
-def test_group_data_client_get_id_by_name(requests_mock: requests_mock.Mocker,
-                                          group_data_client: GroupDataClientService):
-    assert isinstance(group_data_client, GroupDataClientService)
-
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_project_data_client_get_id_by_name(requests_mock: requests_mock.Mocker,
+                                            project_data_client: ProjectDataClientService):
     # Success
     requests_mock.get(
-        group_data_client.url_template.render(group_id=0),
+        project_data_client.url_template.render(project_id=project_data_client.project_id),
         json=[{'id': 0, 'name': 'wikitext'}, {'id': 1, 'name': 'imagenet'}]
     )
-    assert group_data_client.get_id_by_name('wikitext') == 0
-    assert group_data_client.get_id_by_name('imagenet') == 1
-    assert group_data_client.get_id_by_name('openwebtext') is None
+    assert project_data_client.get_id_by_name('wikitext') == 0
+    assert project_data_client.get_id_by_name('imagenet') == 1
+    assert project_data_client.get_id_by_name('openwebtext') is None
 
     # Failed due to HTTP error
-    requests_mock.get(group_data_client.url_template.render(group_id=0), status_code=404)
+    requests_mock.get(project_data_client.url_template.render(project_id=project_data_client.project_id), status_code=404)
     with pytest.raises(typer.Exit):
-        group_data_client.get_id_by_name('glue')
+        project_data_client.get_id_by_name('glue')
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
-def test_group_data_client_create_datastore(requests_mock: requests_mock.Mocker,
-                                            group_data_client: GroupDataClientService):
-    assert isinstance(group_data_client, GroupDataClientService)
-
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_project_data_client_create_datastore(requests_mock: requests_mock.Mocker,
+                                              project_data_client: ProjectDataClientService):
     # Success
     requests_mock.post(
-        group_data_client.url_template.render(group_id=0),
+        project_data_client.url_template.render(project_id=project_data_client.project_id),
         json={'id': 0, 'name': 'cifar100'}
     )
-    assert group_data_client.create_datastore(
+    assert project_data_client.create_datastore(
         name='cifar100',
         vendor=StorageType.FAI,
         region='',
@@ -1082,7 +962,7 @@ def test_group_data_client_create_datastore(requests_mock: requests_mock.Mocker,
 
     # Failed at region validation
     with pytest.raises(typer.Exit):
-        group_data_client.create_datastore(
+        project_data_client.create_datastore(
             name='cifar100',
             vendor=StorageType.FAI,
             region='us-east-1',   # not supported by FAI storage type
@@ -1094,9 +974,9 @@ def test_group_data_client_create_datastore(requests_mock: requests_mock.Mocker,
         )
 
     # Failed due to HTTP error
-    requests_mock.post(group_data_client.url_template.render(group_id=0), status_code=400)
+    requests_mock.post(project_data_client.url_template.render(project_id=project_data_client.project_id), status_code=400)
     with pytest.raises(typer.Exit):
-        group_data_client.create_datastore(
+        project_data_client.create_datastore(
             name='cifar100',
             vendor=StorageType.FAI,
             region='',
@@ -1108,11 +988,9 @@ def test_group_data_client_create_datastore(requests_mock: requests_mock.Mocker,
         )
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
-def test_group_vm_client_get_id_by_name(requests_mock: requests_mock.Mocker,
-                                        group_vm_client: GroupVMClientService):
-    assert isinstance(group_vm_client, GroupVMClientService)
-
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_group_vm_config_client_get_id_by_name(requests_mock: requests_mock.Mocker,
+                                               group_vm_config_client: GroupVMConfigClientService):
     example_data = [
         {
             "id": 0,
@@ -1149,22 +1027,20 @@ def test_group_vm_client_get_id_by_name(requests_mock: requests_mock.Mocker,
     ]
 
     # Success
-    requests_mock.get(group_vm_client.url_template.render(group_id=0), json=example_data)
-    assert group_vm_client.get_id_by_name('azure-v100') == 0
-    assert group_vm_client.get_id_by_name('aws-a100') == 1
-    assert group_vm_client.get_id_by_name('gcp-k80') is None
+    requests_mock.get(group_vm_config_client.url_template.render(group_id=group_vm_config_client.group_id), json=example_data)
+    assert group_vm_config_client.get_id_by_name('azure-v100') == 0
+    assert group_vm_config_client.get_id_by_name('aws-a100') == 1
+    assert group_vm_config_client.get_id_by_name('gcp-k80') is None
 
     # Failed due to HTTP error
-    requests_mock.get(group_vm_client.url_template.render(group_id=0), status_code=404)
+    requests_mock.get(group_vm_config_client.url_template.render(**group_vm_config_client.url_kwargs), status_code=404)
     with pytest.raises(typer.Exit):
-        group_vm_client.get_id_by_name('azure-a100')
+        group_vm_config_client.get_id_by_name('azure-a100')
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
-def test_group_vm_quota_client_list_vm_quotas(requests_mock: requests_mock.Mocker,
-                                              group_vm_quota_client: GroupVMQuotaClientService):
-    assert isinstance(group_vm_quota_client, GroupVMQuotaClientService)
-
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_project_vm_quota_client_list_vm_quotas(requests_mock: requests_mock.Mocker,
+                                                project_vm_quota_client: ProjectVMQuotaClientService):
     example_data = [
         {
             "vm_instance_type": {
@@ -1202,13 +1078,13 @@ def test_group_vm_quota_client_list_vm_quotas(requests_mock: requests_mock.Mocke
     ]
 
     # Success
-    requests_mock.get(group_vm_quota_client.url_template.render(group_id=0), json=example_data)
+    requests_mock.get(project_vm_quota_client.url_template.render(**project_vm_quota_client.url_kwargs), json=example_data)
 
     # List VMs without filters
-    assert group_vm_quota_client.list_vm_quotas() == example_data
+    assert project_vm_quota_client.list_vm_quotas() == example_data
 
     # List VMs filtered by vendor
-    assert group_vm_quota_client.list_vm_quotas(vendor=CloudType.AWS) == [
+    assert project_vm_quota_client.list_vm_quotas(vendor=CloudType.AWS) == [
         {
             "vm_instance_type": {
                 "id": 1,
@@ -1221,7 +1097,7 @@ def test_group_vm_quota_client_list_vm_quotas(requests_mock: requests_mock.Mocke
             "quota": 16
         }
     ]
-    assert group_vm_quota_client.list_vm_quotas(vendor=CloudType.AZURE) == [
+    assert project_vm_quota_client.list_vm_quotas(vendor=CloudType.AZURE) == [
         {
             "vm_instance_type": {
                 "id": 0,
@@ -1247,7 +1123,7 @@ def test_group_vm_quota_client_list_vm_quotas(requests_mock: requests_mock.Mocke
     ]
 
     # List VMs filtered by region
-    assert group_vm_quota_client.list_vm_quotas(region='us-east-1') == [
+    assert project_vm_quota_client.list_vm_quotas(region='us-east-1') == [
         {
             "vm_instance_type": {
                 "id": 1,
@@ -1262,7 +1138,7 @@ def test_group_vm_quota_client_list_vm_quotas(requests_mock: requests_mock.Mocke
     ]
 
     # List VMs filtered by device type
-    assert group_vm_quota_client.list_vm_quotas(device_type='A100') == [
+    assert project_vm_quota_client.list_vm_quotas(device_type='A100') == [
         {
             "vm_instance_type": {
                 "id": 0,
@@ -1288,7 +1164,7 @@ def test_group_vm_quota_client_list_vm_quotas(requests_mock: requests_mock.Mocke
     ]
 
     # List VMs filtered by vendor, region and device type
-    assert group_vm_quota_client.list_vm_quotas(vendor='azure', region='westus2', device_type='A100') == [
+    assert project_vm_quota_client.list_vm_quotas(vendor='azure', region='westus2', device_type='A100') == [
         {
             "vm_instance_type": {
                 "id": 0,
@@ -1303,9 +1179,9 @@ def test_group_vm_quota_client_list_vm_quotas(requests_mock: requests_mock.Mocke
     ]
 
     # Failed due to HTTP error
-    requests_mock.get(group_vm_quota_client.url_template.render(group_id=0), status_code=400)
+    requests_mock.get(project_vm_quota_client.url_template.render(**project_vm_quota_client.url_kwargs), status_code=400)
     with pytest.raises(typer.Exit):
-        group_vm_quota_client.list_vm_quotas()
+        project_vm_quota_client.list_vm_quotas()
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
@@ -1333,14 +1209,14 @@ def test_vm_config_client_get_active_vm_count(requests_mock: requests_mock.Mocke
         vm_config_client.get_active_vm_count(0)
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+@pytest.mark.usefixtures('patch_auto_token_refresh')
 def test_group_vm_config_client_get_vm_config_id_map(requests_mock: requests_mock.Mocker,
                                                      group_vm_config_client: GroupVMConfigClientService):
     assert isinstance(group_vm_config_client, GroupVMConfigClientService)
 
     # Success
     requests_mock.get(
-        group_vm_config_client.url_template.render(group_id=0),
+        group_vm_config_client.url_template.render(**group_vm_config_client.url_kwargs),
         json=[
             {'id': 0, 'vm_config_type': {'vm_instance_type': {'code': 'azure-v100'}}},
             {'id': 1, 'vm_config_type': {'vm_instance_type': {'code': 'aws-v100'}}}
@@ -1352,39 +1228,9 @@ def test_group_vm_config_client_get_vm_config_id_map(requests_mock: requests_moc
     }
 
     # Failed due to HTTP error
-    requests_mock.get(group_vm_config_client.url_template.render(group_id=0), status_code=404)
+    requests_mock.get(group_vm_config_client.url_template.render(**group_vm_config_client.url_kwargs), status_code=404)
     with pytest.raises(typer.Exit):
         group_vm_config_client.get_vm_config_id_map()
-
-
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_credential_client_list_credentials(requests_mock: requests_mock.Mocker,
-                                            credential_client: CredentialClientService):
-    assert isinstance(credential_client, CredentialClientService)
-
-    # Success
-    requests_mock.get(
-        credential_client.url_template.render(),
-        json=[
-            {
-                'id': 0,
-                'name': 'my-docker-secret',
-                'type': 'docker'
-            }
-        ]
-    )
-    assert credential_client.list_credentials(CredType.DOCKER) == [
-        {
-            'id': 0,
-            'name': 'my-docker-secret',
-            'type': 'docker'
-        }
-    ]
-
-    # Failed due to HTTP error
-    requests_mock.get(credential_client.url_template.render(credential_id=0), status_code=404)
-    with pytest.raises(typer.Exit):
-        credential_client.list_credentials(CredType.BLOB)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
@@ -1394,7 +1240,7 @@ def test_credential_client_get_credential(requests_mock: requests_mock.Mocker,
 
     # Success
     url_template = deepcopy(credential_client.url_template)
-    url_template.attach_pattern('$credential_id/')
+    url_template.attach_pattern('$credential_id')
     requests_mock.get(
         url_template.render(credential_id=0),
         json={
@@ -1416,39 +1262,13 @@ def test_credential_client_get_credential(requests_mock: requests_mock.Mocker,
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_credential_client_create_credential(requests_mock: requests_mock.Mocker,
-                                             credential_client: CredentialClientService):
-    assert isinstance(credential_client, CredentialClientService)
-
-    # Success
-    requests_mock.post(
-        credential_client.url_template.render(),
-        json={
-            'id': 0,
-            'name': 'my-slack-token',
-            'type': 'slack'
-        }
-    )
-    assert credential_client.create_credential(CredType.SLACK, 'my-slack-token', 1, {'k': 'v'}) == {
-        'id': 0,
-        'name': 'my-slack-token',
-        'type': 'slack'
-    }
-
-    # Failed due to HTTP error
-    requests_mock.post(credential_client.url_template.render(), status_code=404)
-    with pytest.raises(typer.Exit):
-        credential_client.create_credential(CredType.S3, 'aws-secret', 1, {'k': 'v'})
-
-
-@pytest.mark.usefixtures('patch_auto_token_refresh')
 def test_credential_client_update_credential(requests_mock: requests_mock.Mocker,
                                           credential_client: CredentialClientService):
     assert isinstance(credential_client, CredentialClientService)
 
     # Success
     url_template = deepcopy(credential_client.url_template)
-    url_template.attach_pattern('$credential_id/')
+    url_template.attach_pattern('$credential_id')
     requests_mock.patch(
         url_template.render(credential_id=0),
         json={
@@ -1491,7 +1311,7 @@ def test_credential_client_delete_credential(requests_mock: requests_mock.Mocker
 
     # Success
     url_template = deepcopy(credential_client.url_template)
-    url_template.attach_pattern('$credential_id/')
+    url_template.attach_pattern('$credential_id')
     requests_mock.delete(url_template.render(credential_id=0), status_code=204)
     try:
         credential_client.delete_credential(0)
@@ -1504,14 +1324,12 @@ def test_credential_client_delete_credential(requests_mock: requests_mock.Mocker
         credential_client.delete_credential(0)
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
-def test_group_credential_client_service(requests_mock: requests_mock.Mocker,
-                                         group_credential_client: GroupCredentialClientService):
-    assert isinstance(group_credential_client, GroupCredentialClientService)
-
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_project_credential_client_service(requests_mock: requests_mock.Mocker,
+                                           project_credential_client: ProjectCredentialClientService):
     # Sucess
     requests_mock.get(
-        group_credential_client.url_template.render(group_id=0),
+        project_credential_client.url_template.render(**project_credential_client.url_kwargs),
         json=[
             {
                 'id': 0,
@@ -1520,7 +1338,7 @@ def test_group_credential_client_service(requests_mock: requests_mock.Mocker,
             }
         ]
     )
-    assert group_credential_client.list_credentials(CredType.DOCKER) == [
+    assert project_credential_client.list_credentials(CredType.DOCKER) == [
         {
             'id': 0,
             'name': 'our-docker-secret',
@@ -1529,45 +1347,9 @@ def test_group_credential_client_service(requests_mock: requests_mock.Mocker,
     ]
 
     # Failed due to HTTP error
-    requests_mock.get(group_credential_client.url_template.render(group_id=0), status_code=400)
+    requests_mock.get(project_credential_client.url_template.render(**project_credential_client.url_kwargs), status_code=400)
     with pytest.raises(typer.Exit):
-        group_credential_client.list_credentials(CredType.SLACK)
-
-
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
-def test_group_credential_client_service(requests_mock: requests_mock.Mocker,
-                                         group_credential_client: GroupCredentialClientService):
-    assert isinstance(group_credential_client, GroupCredentialClientService)
-
-    # Sucess
-    requests_mock.post(
-        group_credential_client.url_template.render(group_id=0),
-        json={
-            'id': 0,
-            'name': 'our-docker-secret',
-            'type': 'docker'
-        }
-    )
-    assert group_credential_client.create_credential(
-        cred_type=CredType.DOCKER,
-        name='our-docker-secret',
-        type_version=1,
-        value={'k': 'v'}
-    ) == {
-        'id': 0,
-        'name': 'our-docker-secret',
-        'type': 'docker'
-    }
-
-    # Failed due to HTTP error
-    requests_mock.post(group_credential_client.url_template.render(group_id=0), status_code=400)
-    with pytest.raises(typer.Exit):
-        group_credential_client.create_credential(
-            cred_type=CredType.DOCKER,
-            name='our-docker-secret',
-            type_version=1,
-            value={'k': 'v'}
-        )
+        project_credential_client.list_credentials(CredType.SLACK)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
@@ -1848,11 +1630,9 @@ def test_checkpoint_client_get_checkpoint_download_urls(requests_mock: requests_
         assert checkpoint_client.get_checkpoint_download_urls(UUID("ffffffff-ffff-ffff-ffff-ffffffffffff"))
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+@pytest.mark.usefixtures('patch_auto_token_refresh')
 def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
-                                           group_checkpoint_client: GroupCheckpointClientService):
-    assert isinstance(group_checkpoint_client, GroupCheckpointClientService)
-
+                                           group_project_checkpoint_client: GroupProjectCheckpointClientService):
     def build_response_item(category: str, vendor: str, region: str) -> dict:
         return {
             "id": "22222222-2222-2222-2222-222222222222",
@@ -1903,24 +1683,22 @@ def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
     }
 
     # Success
-    url = group_checkpoint_client.url_template.render(group_id="00000000-0000-0000-0000-000000000000", project_id="11111111-1111-1111-1111-111111111111")
+    url = group_project_checkpoint_client.url_template.render(group_id="00000000-0000-0000-0000-000000000000", project_id="11111111-1111-1111-1111-111111111111")
     requests_mock.get(url, json=data)
-    assert group_checkpoint_client.list_checkpoints(CheckpointCategory.USER_PROVIDED) == data['results']
+    assert group_project_checkpoint_client.list_checkpoints(CheckpointCategory.USER_PROVIDED) == data['results']
     assert requests_mock.request_history[-1].query == 'category=USER'
-    assert group_checkpoint_client.list_checkpoints(CheckpointCategory.JOB_GENERATED) == data['results']
+    assert group_project_checkpoint_client.list_checkpoints(CheckpointCategory.JOB_GENERATED) == data['results']
     assert requests_mock.request_history[-1].query == 'category=JOB'
 
     # Failed due to HTTP error
     requests_mock.get(url, status_code=400)
     with pytest.raises(typer.Exit):
-        group_checkpoint_client.list_checkpoints(CheckpointCategory.USER_PROVIDED)
+        group_project_checkpoint_client.list_checkpoints(CheckpointCategory.USER_PROVIDED)
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh', 'patch_init_group')
+@pytest.mark.usefixtures('patch_auto_token_refresh')
 def test_group_checkpoint_create_checkpoints(requests_mock: requests_mock.Mocker,
-                                           group_checkpoint_client: GroupCheckpointClientService):
-    assert isinstance(group_checkpoint_client, GroupCheckpointClientService)
-
+                                             group_project_checkpoint_client: GroupProjectCheckpointClientService):
     data = {
         "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "category": "user_provided",
@@ -1941,12 +1719,12 @@ def test_group_checkpoint_create_checkpoints(requests_mock: requests_mock.Mocker
 
     # Success
     # TODO: change after PFA integration
-    url = group_checkpoint_client.url_template.render(
+    url = group_project_checkpoint_client.url_template.render(
         group_id="00000000-0000-0000-0000-000000000000",
         project_id="11111111-1111-1111-1111-111111111111"
     )
     requests_mock.post(url, json=data)
-    assert group_checkpoint_client.create_checkpoint(
+    assert group_project_checkpoint_client.create_checkpoint(
         name="my-ckpt",
         model_form_category=ModelFormCategory.MEGATRON,
         vendor=StorageType.S3,
@@ -1995,7 +1773,7 @@ def test_group_checkpoint_create_checkpoints(requests_mock: requests_mock.Mocker
 
     # Failed due to invalid region
     with pytest.raises(typer.Exit):
-        group_checkpoint_client.create_checkpoint(
+        group_project_checkpoint_client.create_checkpoint(
             name="my-ckpt",
             model_form_category=ModelFormCategory.MEGATRON,
             vendor=StorageType.S3,
@@ -2019,7 +1797,7 @@ def test_group_checkpoint_create_checkpoints(requests_mock: requests_mock.Mocker
     # Failed due to HTTP error
     requests_mock.post(url, status_code=400)
     with pytest.raises(typer.Exit):
-        group_checkpoint_client.create_checkpoint(
+        group_project_checkpoint_client.create_checkpoint(
             name="my-ckpt",
             model_form_category=ModelFormCategory.MEGATRON,
             vendor=StorageType.S3,

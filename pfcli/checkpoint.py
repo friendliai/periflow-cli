@@ -20,7 +20,7 @@ from pfcli.service import (
 from pfcli.service.client import (
     CheckpointClientService,
     CredentialClientService,
-    GroupCheckpointClientService,
+    GroupProjectCheckpointClientService,
     build_client,
 )
 from pfcli.service.cloud import build_storage_helper
@@ -65,7 +65,7 @@ def list(
 ):
     """List all checkpoints that belong to the user's organization.
     """
-    client: GroupCheckpointClientService = build_client(ServiceType.GROUP_CHECKPOINT)
+    client: GroupProjectCheckpointClientService = build_client(ServiceType.GROUP_PROJECT_CHECKPOINT)
     checkpoints = client.list_checkpoints(category)
     for ckpt in checkpoints:
         for form in ckpt['forms']:
@@ -191,7 +191,7 @@ def create(
     if storage_path is not None:
         storage_name = f"{storage_name}/{storage_path}"
 
-    checkpoint_client: GroupCheckpointClientService = build_client(ServiceType.GROUP_CHECKPOINT)
+    checkpoint_client: GroupProjectCheckpointClientService = build_client(ServiceType.GROUP_PROJECT_CHECKPOINT)
     ckpt = checkpoint_client.create_checkpoint(
         name=name,
         model_form_category=format,

@@ -9,7 +9,7 @@ from dateutil.parser import parse
 import typer
 
 from pfcli.service import ServiceType
-from pfcli.service.client import ExperimentClientService, GroupExperimentClientService, build_client
+from pfcli.service.client import ExperimentClientService, ProjectExperimentClientService, build_client
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.job import job_table
 from pfcli.utils import datetime_to_pretty_str, timedelta_to_pretty_str
@@ -34,7 +34,7 @@ def create(
 ):
     """Create a new experiment.
     """
-    client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
+    client: ProjectExperimentClientService = build_client(ServiceType.PROJECT_EXPERIMENT)
     experiment = client.create_experiment(name)
     panel_formatter.render([experiment])
 
@@ -43,7 +43,7 @@ def create(
 def list():
     """List all experiments.
     """
-    client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
+    client: ProjectExperimentClientService = build_client(ServiceType.PROJECT_EXPERIMENT)
     experiments = client.list_experiments()
     table_formatter.render(experiments)
 
@@ -70,8 +70,8 @@ def view(
     """Show a list of jobs in the experiment.
     """
     client: ExperimentClientService = build_client(ServiceType.EXPERIMENT)
-    group_client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
-    experiment_id = group_client.get_id_by_name(name)
+    project_client: ProjectExperimentClientService = build_client(ServiceType.PROJECT_EXPERIMENT)
+    experiment_id = project_client.get_id_by_name(name)
     jobs = client.list_jobs_in_experiment(experiment_id)
 
     for job in jobs:
@@ -121,9 +121,9 @@ def edit(
     """Edit experiment info.
     """
     client: ExperimentClientService = build_client(ServiceType.EXPERIMENT)
-    group_client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
+    project_client: ProjectExperimentClientService = build_client(ServiceType.PROJECT_EXPERIMENT)
 
-    experiment_id = group_client.get_id_by_name(name)
+    experiment_id = project_client.get_id_by_name(name)
     experiment = client.update_experiment_name(experiment_id, new_name)
     panel_formatter.render([experiment])
 
@@ -155,9 +155,9 @@ def delete(
             raise typer.Abort()
 
     client: ExperimentClientService = build_client(ServiceType.EXPERIMENT)
-    group_client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
+    project_client: ProjectExperimentClientService = build_client(ServiceType.PROJECT_EXPERIMENT)
 
-    experiment_id = group_client.get_id_by_name(name)
+    experiment_id = project_client.get_id_by_name(name)
     client.delete_experiment(experiment_id)
 
     typer.secho(f"Experiment ({name}) is deleted successfully!", fg=typer.colors.BLUE)

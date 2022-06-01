@@ -30,7 +30,7 @@ from pfcli.service import (
 from pfcli.service.client import (
     CredentialClientService,
     CredentialTypeClientService,
-    GroupCredentialClientService,
+    ProjectCredentialClientService,
     JobTemplateClientService,
     build_client,
 )
@@ -150,7 +150,7 @@ SLACK_PLUGIN_CONFIG = """\
 
 J = TypeVar('J', bound='JobConfigService')
 D = TypeVar('D', bound='DataConfigService')
-T = TypeVar('T', bound=Union[str, Tuple[Any]])
+T = TypeVar('T', bound=Union[str, Tuple[Any, ...]])
 
 
 class InteractiveConfigMixin:
@@ -371,7 +371,7 @@ class CredentialConfigService(InteractiveConfigMixin):
         except ValidationError as exc:
             secho_error_and_exit(f"Format of credential value is invalid...! ({exc.message})")
 
-    def render(self) -> Tuple[Any]:
+    def render(self) -> Tuple[Any, ...]:
         assert self.ready
         return self.name, self.cred_type, self.value
 
@@ -431,7 +431,7 @@ class DataConfigService(InteractiveConfigMixin):
         storage_helper = build_storage_helper(self.vendor, credential_value)
         self.files = storage_helper.list_storage_files(self.storage_name)
 
-    def render(self) -> Tuple[Any]:
+    def render(self) -> Tuple[Any, ...]:
         assert self.ready
         return self.name, self.vendor, self.region, self.storage_name, self.credential_id, self.metadata, self.files
 

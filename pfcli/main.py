@@ -9,17 +9,19 @@ import typer
 
 from pfcli import (
     checkpoint,
-    experiment,
     credential,
-    job,
     datastore,
+    experiment,
+    group,
+    job,
+    project,
+    serve,
     vm,
-    serve
 )
 from pfcli.service import ServiceType
-from pfcli.service.auth import TokenType, get_current_userinfo, update_token
+from pfcli.service.auth import TokenType, update_token
 from pfcli.service.client import UserClientService, build_client
-from pfcli.service.formatter import PanelFormatter, TableFormatter
+from pfcli.service.formatter import PanelFormatter
 from pfcli.utils import get_uri, secho_error_and_exit
 
 app = typer.Typer(
@@ -35,6 +37,8 @@ app.add_typer(datastore.app, name="datastore", help="Manage datasets")
 app.add_typer(vm.app, name="vm", help="Manage VMs")
 app.add_typer(experiment.app, name="experiment", help="Manage experiments")
 app.add_typer(serve.app, name="serve", help="Manage serves")
+app.add_typer(project.app, name="project", help="Manage projects")
+app.add_typer(group.app, name="org", help="Manage organizations")
 
 
 user_panel_formatter = PanelFormatter(
@@ -42,24 +46,13 @@ user_panel_formatter = PanelFormatter(
     fields=['name', 'username', 'email'],
     headers=["Name", "Username", "Email"]
 )
-org_table_formatter = TableFormatter(
-    name="Organization",
-    fields=['name'],
-    headers=["Name"]
-)
 
 
 @app.command(help="Show who am I")
 def whoami():
-    info = get_current_userinfo()
-    user_panel_formatter.render([info])
-
-
-@app.command(name="org", help="Show what organizations I belong to")
-def organization():
     client: UserClientService = build_client(ServiceType.USER)
-    orgs = client.get_group_info()
-    org_table_formatter.render(orgs)
+    info = client.get_current_userinfo()
+    user_panel_formatter.render([info])
 
 
 @app.command(help="Sign in PeriFlow")

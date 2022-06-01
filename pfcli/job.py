@@ -18,10 +18,10 @@ from click import Choice
 
 from pfcli.service import JobType, ServiceType, storage_type_map_inv
 from pfcli.service.client import (
-    GroupDataClientService,
-    GroupExperimentClientService,
-    GroupJobClientService,
-    GroupVMClientService,
+    ProjectDataClientService,
+    ProjectExperimentClientService,
+    ProjectJobClientService,
+    GroupVMConfigClientService,
     JobArtifactClientService,
     JobCheckpointClientService,
     JobClientService,
@@ -135,9 +135,9 @@ def refine_config(config: dict,
     if config["job_setting"]["type"] == "custom" and "workspace" not in config["job_setting"]:
         config["job_setting"]["workspace"] = {"mount_path": "/workspace"}
 
-    experiment_client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
-    data_client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
-    vm_client: GroupVMClientService = build_client(ServiceType.GROUP_VM)
+    experiment_client: ProjectExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
+    data_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
+    vm_client: GroupVMConfigClientService = build_client(ServiceType.VM_CONFIG)
     job_template_client: JobTemplateClientService = build_client(ServiceType.JOB_TEMPLATE)
 
     experiment_name = experiment_name or config["experiment"]
@@ -263,17 +263,17 @@ def list(
         "--head",
         help="The number of job list to view at the head"
     ),
-    show_group_job: bool = typer.Option(
+    show_project_job: bool = typer.Option(
         False,
-        "--group",
-        "-g",
-        help="Show all jobs in my group including jobs launched by other users"
+        "--project",
+        "-p",
+        help="Show all jobs in my project including jobs launched by other users"
     )
 ):
     """List all jobs.
     """
-    if show_group_job:
-        client: GroupJobClientService = build_client(ServiceType.GROUP_JOB)
+    if show_project_job:
+        client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
     else:
         client: JobClientService = build_client(ServiceType.JOB)
     jobs = client.list_jobs()

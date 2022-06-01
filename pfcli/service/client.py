@@ -20,7 +20,7 @@ from typing import (
 from dataclasses import dataclass
 from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 import uuid
 
 import requests
@@ -31,10 +31,10 @@ from requests import HTTPError
 from requests import Response
 from rich.filesize import decimal
 
+from pfcli.context import get_current_group_id, get_current_project_id
 from pfcli.service.auth import (
     TokenType,
     get_auth_header,
-    get_current_user_id,
     get_token,
     auto_token_refresh,
 )
@@ -65,27 +65,44 @@ from pfcli.service import (
 )
 
 
-T = TypeVar('T', bound=Union[int, str])
+T = TypeVar('T', bound=Union[int, str, uuid.UUID])
 
 
 @dataclass
 class URLTemplate:
     pattern: Template
 
-    def render(self, pk: Optional[T] = None, **kwargs) -> str:
-        if pk is not None:
-            p = copy.deepcopy(self.pattern)
-            p.template += '$id/'
-            return p.substitute(**kwargs, id=pk)
+    def render(self, pk: Optional[T] = None, path: Optional[str] = None, **kwargs) -> str:
+        """render URLTemplate
 
-        return self.pattern.substitute(**kwargs)
+        Args:
+            pk: primary key
+            path: additional path to attach
+        """
+        if pk is None and path is None:
+            return self.pattern.substitute(**kwargs)
+
+        pattern = copy.deepcopy(self.pattern)
+        need_trailing_slash = pattern.template.endswith('/')
+
+        if pk is not None:
+            pattern.template = urljoin(pattern.template + '/', str(pk))
+            if need_trailing_slash:
+                pattern.template += '/'
+
+        if path is not None:
+            pattern.template = urljoin(pattern.template + '/', path.rstrip('/'))
+            if need_trailing_slash:
+                pattern.template += '/'
+
+        return pattern.substitute(**kwargs)
 
     def get_base_url(self) -> str:
         result = urlparse(self.pattern.template)
         return f"{result.scheme}://{result.hostname}"
 
     def attach_pattern(self, pattern: str) -> None:
-        self.pattern.template += pattern
+        self.pattern.template = urljoin(self.pattern.template + '/', pattern)
 
     def replace_path(self, path: str):
         result = urlparse(self.pattern.template)
@@ -102,144 +119,211 @@ class ClientService:
         self.url_kwargs = kwargs
 
     @auto_token_refresh
-    def list(self, **kwargs) -> Response:
+    def list(self, path: Optional[str] = None, **kwargs) -> Response:
         return requests.get(
-            self.url_template.render(**self.url_kwargs),
+            self.url_template.render(path=path, **self.url_kwargs),
             headers=get_auth_header(),
             **kwargs 
         )
 
     @auto_token_refresh
-    def retrieve(self, pk: T, **kwargs) -> Response:
+    def retrieve(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         return requests.get(
-            self.url_template.render(pk, **self.url_kwargs),
+            self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             headers=get_auth_header(),
             **kwargs
         )
 
     @auto_token_refresh
-    def create(self, **kwargs) -> Response:
+    def post(self, path: Optional[str] = None, **kwargs) -> Response:
         return requests.post(
-            self.url_template.render(**self.url_kwargs),
+            self.url_template.render(path=path, **self.url_kwargs),
             headers=get_auth_header(),
             **kwargs
         )
 
     @auto_token_refresh
-    def partial_update(self, pk: T, **kwargs) -> Response:
+    def partial_update(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         return requests.patch(
-            self.url_template.render(pk, **self.url_kwargs),
+            self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             headers=get_auth_header(),
             **kwargs
         )
 
     @auto_token_refresh
-    def delete(self, pk: T, **kwargs) -> Response:
+    def delete(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         return requests.delete(
-            self.url_template.render(pk, **self.url_kwargs),
+            self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             headers=get_auth_header(),
             **kwargs
         )
+
+    @auto_token_refresh
+    def update(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
+        return requests.put(
+            self.url_template.render(pk=pk, path=path, **self.url_kwargs),
+            headers=get_auth_header(),
+            **kwargs
+        )
+
+
+class UserRequestMixin:
+    user_id: uuid.UUID
+
+    @auto_token_refresh
+    def _userinfo(self) -> requests.Response:
+        return requests.get(get_auth_uri("oauth2/userinfo"), headers=get_auth_header())
+
+    def get_current_userinfo(self) -> dict:
+        try:
+            response = self._userinfo()
+        except requests.HTTPError as exc:
+            secho_error_and_exit(f"Failed to get userinfo.\n{decode_http_err(exc)}")
+        return response.json()
+
+    def get_current_user_id(self) -> uuid.UUID:
+        userinfo = self.get_current_userinfo()
+        return uuid.UUID(userinfo['sub'].split('|')[1])
+
+    def initializer_user(self):
+        self.user_id = self.get_current_user_id()
 
 
 class GroupRequestMixin:
-    user_group_service: UserGroupClientService
-    group_id: int
+    group_id: uuid.UUID
 
     def initialize_group(self):
-        self.user_group_service = build_client(ServiceType.USER_GROUP)
-        self.group_id = self.user_group_service.get_group_id()
+        self.group_id = get_current_group_id()
 
 
 class ProjectRequestMixin:
-    user_group_service: UserGroupClientService
-    group_id: uuid.UUID
     project_id: uuid.UUID
 
     def initialize_project(self):
-        # TODO: modify after CLI-PFA integration
-        self.user_group_service = build_client(ServiceType.USER_GROUP)
-        self.user_group_service.get_group_id()
-        self.group_id = uuid.UUID("00000000-0000-0000-0000-000000000000")
-        self.project_id = uuid.UUID("11111111-1111-1111-1111-111111111111")
+        self.project_id = get_current_project_id()
 
 
-class GroupClientService(ClientService):
-    pass
-
-
-class ProjectClientService(ClientService):
-    pass
-
-
-class UserClientService(ClientService):
+class UserClientService(ClientService, UserRequestMixin):
     def __init__(self, template: Template, **kwargs):
-        super().__init__(template, pf_user_id=get_current_user_id(), **kwargs)
-
-    @auto_token_refresh
-    def group(self) -> Response:
-        url_template = copy.deepcopy(self.url_template)
-        url_template.attach_pattern('pf_group')
-        return requests.get(
-            url_template.render(**self.url_kwargs),
-            headers=get_auth_header(),
-        )
-
-    @auto_token_refresh
-    def password(self, old_password: str, new_password: str) -> Response:
-        url_template = copy.deepcopy(self.url_template)
-        url_template.attach_pattern('password')
-        return requests.put(
-            url_template.render(**self.url_kwargs),
-            headers=get_auth_header(),
-            json={
-                'old_password': old_password,
-                'new_password': new_password
-            }
-        )
-
-    def get_group_id(self) -> int:
-        try:
-            response = self.group()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to get your group info.\n{decode_http_err(exc)}")
-
-        groups = response.json()["results"]
-        if len(groups) == 0:
-            secho_error_and_exit("You are not assigned to any group... Please contact admin")
-        if len(groups) > 1:
-            secho_error_and_exit(
-                "Currently we do not support users with more than two groups... Please contact admin"
-            )
-        return groups[0]['id']
-
-    def get_group_info(self) -> list:
-        try:
-            response = self.group()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to get my group info.\n{decode_http_err(exc)}")
-        return response.json()
+        self.initializer_user()
+        super().__init__(template, **kwargs)
 
     def change_password(self, old_password: str, new_password: str) -> None:
         try:
-            response = self.password(old_password, new_password)
+            self.update(pk=self.user_id,
+                        path="password",
+                        json={
+                            "old_password": old_password,
+                            "new_password": new_password
+                        })
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to change password.\n{decode_http_err(exc)}")
 
 
-class ExperimentClientService(ClientService):
-    @auto_token_refresh
-    def experiment_jobs(self, experiment_id: T) -> Response:
-        url_template = copy.deepcopy(self.url_template)
-        url_template.attach_pattern('$experiment_id/job/')
-        return requests.get(
-            url_template.render(experiment_id=experiment_id, **self.url_kwargs),
-            headers=get_auth_header()
-        )
+class UserGroupClientService(ClientService, UserRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initializer_user()
+        super().__init__(template, pf_user_id=self.user_id, **kwargs)
 
+    def get_group_info(self) -> list:
+        try:
+            response = self.list()
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get my group info.\n{decode_http_err(exc)}")
+        return response.json()
+
+
+class UserGroupProjectClientService(ClientService, UserRequestMixin, GroupRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initializer_user()
+        self.initialize_group()
+        super().__init__(template, pf_user_id=self.user_id, pf_group_id=self.group_id, **kwargs)
+
+    def list_project(self):
+        def _get_response_dict(cursor: Optional[str]):
+            try:
+                response = self.list(params={"cursor": cursor})
+            except HTTPError as exc:
+                secho_error_and_exit(f"Failed to list projects.\n{decode_http_err(exc)}")
+
+            return response.json()
+
+        response_dict = _get_response_dict(None)
+        projects = response_dict['results']
+        next_cursor = response_dict['next_cursor']
+        while next_cursor is not None:
+            response_dict = _get_response_dict(next_cursor)
+            projects.extend(response_dict['results'])
+            next_cursor = response_dict['next_cursor']
+
+        return projects
+
+
+class GroupClientService(ClientService):
+    def create_group(self, name: str):
+        try:
+            response = self.post(data=json.dumps({"name": name, "hosting_type": "hosted"}))
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to post an organization.\n{decode_http_err(exc)}")
+
+        return response.json()
+
+    def get_group(self, pf_group_id: uuid.UUID):
+        try:
+            response = self.retrieve(pf_group_id)
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get an organization.\n{decode_http_err(exc)}")
+
+        return response.json()
+
+
+class GroupProjectClientService(ClientService, GroupRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
+        super().__init__(template, pf_group_id=self.group_id, **kwargs)
+
+    def create_project(self, name: str):
+        try:
+            response = self.post(data=json.dumps({"name": name}))
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to post a project.\n{decode_http_err(exc)}")
+
+        return response.json()
+
+    def list_project(self):
+        def _get_response_dict(cursor: Optional[str]):
+            try:
+                response = self.list(params={"cursor": cursor})
+            except HTTPError as exc:
+                secho_error_and_exit(f"Failed to list projects.\n{decode_http_err(exc)}")
+
+            return response.json()
+
+        response_dict = _get_response_dict(None)
+        projects = response_dict['results']
+        next_cursor = response_dict['next_cursor']
+        while next_cursor is not None:
+            response_dict = _get_response_dict(next_cursor)
+            projects.extend(response_dict['results'])
+            next_cursor = response_dict['next_cursor']
+
+        return projects
+
+
+class ProjectClientService(ClientService):
+    def get_project(self, pf_project_id: uuid.UUID):
+        try:
+            response = self.retrieve(pk=pf_project_id)
+        except HTTPError as exc:
+            secho_error_and_exit(f"Failed to get a project.\n{decode_http_err(exc)}")
+
+        return response.json()
+
+
+class ExperimentClientService(ClientService):
     def list_jobs_in_experiment(self, experiment_id: T) -> List[dict]:
         try:
-            response = self.experiment_jobs(experiment_id)
+            response = self.list(f'{experiment_id}/job/')
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to fetch jobs in the experiment.\n{decode_http_err(exc)}")
         return response.json()['results']
@@ -258,10 +342,10 @@ class ExperimentClientService(ClientService):
         return response.json()
 
 
-class GroupExperimentClientService(ClientService, GroupRequestMixin):
+class ProjectExperimentClientService(ClientService, ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
-        self.initialize_group()
-        super().__init__(template, group_id=self.group_id, **kwargs)
+        self.initialize_project()
+        super().__init__(template, project_id=self.project_id, **kwargs)
 
     def list_experiments(self):
         try:
@@ -282,9 +366,9 @@ class GroupExperimentClientService(ClientService, GroupRequestMixin):
 
     def create_experiment(self, name: str) -> dict:
         try:
-            response = self.create(data={'name': name})
+            response = self.post(data={'name': name})
         except HTTPError as exc:
-            secho_error_and_exit(f"Failed to create new experiment.\n{decode_http_err(exc)}")
+            secho_error_and_exit(f"Failed to post new experiment.\n{decode_http_err(exc)}")
         return response.json()
 
 
@@ -312,52 +396,24 @@ class JobClientService(ClientService):
                 workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
                 with zip_dir(workspace_dir, workspace_zip) as zip_file:
                     files = {'workspace_zip': ('workspace.zip', zip_file)}
-                    response = self.create(data={"data": json.dumps(config)}, files=files)
+                    response = self.post(data={"data": json.dumps(config)}, files=files)
             else:
-                response = self.create(json=config)
+                response = self.post(json=config)
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to run job.\n{decode_http_err(exc)}")
         return response.json()
 
-    @auto_token_refresh
-    def cancel(self, job_id: int) -> Response:
-        url_template = copy.deepcopy(self.url_template)
-        url_template.attach_pattern('$job_id/cancel/')
-        return requests.post(
-            url_template.render(job_id=job_id, **self.url_kwargs),
-            headers=get_auth_header(),
-        )
-
     def cancel_job(self, job_id: int) -> None:
         try:
-            response = self.cancel(job_id)
+            response = self.post(path=f"{job_id}/cancel/")
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to cancel job ({job_id}).\n{decode_http_err(exc)}")
 
-    @auto_token_refresh
-    def terminate(self, job_id: int) -> Response:
-        url_template = copy.deepcopy(self.url_template)
-        url_template.attach_pattern('$job_id/terminate/')
-        return requests.post(
-            url_template.render(job_id=job_id, **self.url_kwargs),
-            headers=get_auth_header(),
-        )
-
     def terminate_job(self, job_id: int) -> None:
         try:
-            response = self.terminate(job_id)
+            response = self.post(path=f"{job_id}/terminate/")
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to terminate job ({job_id}).\n{decode_http_err(exc)}")
-
-    @auto_token_refresh
-    def text_logs(self, job_id: int, request_data: dict) -> Response:
-        url_template = copy.deepcopy(self.url_template)
-        url_template.attach_pattern('$job_id/text_log/')
-        return requests.get(
-            url_template.render(job_id=job_id, **self.url_kwargs),
-            headers=get_auth_header(),
-            params=request_data
-        )
 
     def get_text_logs(self,
                       job_id: int,
@@ -379,7 +435,7 @@ class JobClientService(ClientService):
             request_data['node_ranks'] = ",".join([str(machine) for machine in machines])
 
         try:
-            response = self.text_logs(job_id, request_data)
+            response = self.list(path=f'{job_id}/text_log/')
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to fetch text logs.\n{decode_http_err(exc)}")
         logs = response.json()['results']
@@ -472,14 +528,14 @@ class JobArtifactClientService(ClientService):
         return response.json()
 
 
-class GroupJobClientService(ClientService, GroupRequestMixin):
+class ProjectJobClientService(ClientService, ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
-        self.initialize_group()
-        super().__init__(template, group_id=self.group_id, **kwargs)
+        self.initialize_project()
+        super().__init__(template, project_id=self.project_id, **kwargs)
 
     def list_jobs(self) -> dict:
         try:
-            response = self.list(params={"group_id": self.group_id})
+            response = self.list()
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to list jobs in your group.\n{decode_http_err(exc)}")
         return response.json()['results']
@@ -560,16 +616,6 @@ class DataClientService(ClientService):
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to delete datastore ({datastore_id}).\n{decode_http_err(exc)}")
 
-    @auto_token_refresh
-    def upload(self, datastore_id: T, request_data: dict) -> Response:
-        url_template = copy.deepcopy(self.url_template)
-        url_template.attach_pattern('$datastore_id/upload/')
-        return requests.post(
-            url_template.render(datastore_id=datastore_id, **self.url_kwargs),
-            headers=get_auth_header(),
-            json=request_data
-        )
-
     def get_upload_urls(self, datastore_id: T, src_path: Path, expand: bool) -> List[Dict[str, str]]:
         if src_path.is_file():
             paths = [str(src_path.name)]
@@ -580,16 +626,16 @@ class DataClientService(ClientService):
         if len(paths) == 0:
             secho_error_and_exit(f"No file exists in this path ({src_path})")
         try:
-            response = self.upload(datastore_id, {'paths': paths})
+            response = self.post(path=f'{datastore_id}/upload/', json={'paths': paths})
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to get presigned URLs.\n{decode_http_err(exc)}")
         return response.json()
 
 
-class GroupDataClientService(ClientService, GroupRequestMixin):
+class ProjectDataClientService(ClientService, ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
-        self.initialize_group()
-        super().__init__(template, group_id=self.group_id, **kwargs)
+        self.initialize_project()
+        super().__init__(template, project_id=self.project_id, **kwargs)
 
     def list_datastores(self) -> dict:
         try:
@@ -628,32 +674,16 @@ class GroupDataClientService(ClientService, GroupRequestMixin):
             "active": active,
         }
         try:
-            response = self.create(json=request_data)
+            response = self.post(json=request_data)
         except HTTPError as exc:
-            secho_error_and_exit(f"Failed to create a new datastore.\n{decode_http_err(exc)}")
+            secho_error_and_exit(f"Failed to post a new datastore.\n{decode_http_err(exc)}")
         return response.json()
 
 
-class GroupVMClientService(ClientService, GroupRequestMixin):
+class ProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
-        self.initialize_group()
-        super().__init__(template, group_id=self.group_id, **kwargs)
-
-    def get_id_by_name(self, name: str) -> Optional[T]:
-        try:
-            response = self.list()
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to get VM info.\n{decode_http_err(exc)}")
-        for vm_config in response.json():
-            if vm_config['vm_config_type']['vm_instance_type']['code'] == name:
-                return vm_config['id']
-        return None
-
-
-class GroupVMQuotaClientService(ClientService, GroupRequestMixin):
-    def __init__(self, template: Template, **kwargs):
-        self.initialize_group()
-        super().__init__(template, group_id=self.group_id, **kwargs)
+        self.initialize_project()
+        super().__init__(template, project_id=self.project_id, **kwargs)
 
     def list_vm_quotas(self,
                        vendor: Optional[CloudType] = None,
@@ -674,19 +704,9 @@ class GroupVMQuotaClientService(ClientService, GroupRequestMixin):
 
 
 class VMConfigClientService(ClientService):
-    @auto_token_refresh
-    def vm_lock(self, vm_config_id: T, lock_type: LockType) -> Response:
-        url_template = copy.deepcopy(self.url_template)
-        url_template.attach_pattern('$vm_config_id/vm_lock/')
-        return requests.get(
-            url_template.render(vm_config_id=vm_config_id),
-            params={'lock_type': lock_type},
-            headers=get_auth_header()
-        )
-
     def list_vm_locks(self, vm_config_id: T, lock_type: LockType) -> List[dict]:
         try:
-            response = self.vm_lock(vm_config_id, lock_type)
+            response = self.list(path=f'{vm_config_id}/vm_lock/', params={'lock_type': lock_type})
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to inspect locked VMs.\n{decode_http_err(exc)}")
         return response.json()
@@ -714,39 +734,19 @@ class GroupVMConfigClientService(ClientService, GroupRequestMixin):
             id_map[vm_config['vm_config_type']['vm_instance_type']['code']] = vm_config['id']
         return id_map
 
+    def get_id_by_name(self, name: str) -> Optional[T]:
+        for vm_config in self.list_vm_config():
+            if vm_config['vm_config_type']['vm_instance_type']['code'] == name:
+                return vm_config['id']
+        return None
+
 
 class CredentialClientService(ClientService):
-    def list_credentials(self, cred_type: CredType) -> List[dict]:
-        type_name = cred_type_map[cred_type]
-        try:
-            response = self.list(params={"type": type_name})
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to credential for {cred_type}.\n{decode_http_err(exc)}")
-        return response.json()
-
     def get_credential(self, credential_id: T) -> dict:
         try:
             response = self.retrieve(credential_id)
         except HTTPError as exc:
             secho_error_and_exit(f"Credential ({credential_id}) is not found.\n{decode_http_err(exc)}")
-        return response.json()
-
-    def create_credential(self,
-                          cred_type: CredType,
-                          name: str,
-                          type_version: int,
-                          value: dict) -> dict:
-        type_name = cred_type_map[cred_type]
-        request_data = {
-            "type": type_name,
-            "name": name,
-            "type_version": type_version,
-            "value": value
-        }
-        try:
-            response = self.create(json=request_data)
-        except HTTPError as exc:
-            secho_error_and_exit(f"Failed to creat user credential.\n{decode_http_err(exc)}")
         return response.json()
 
     def update_credential(self,
@@ -775,10 +775,10 @@ class CredentialClientService(ClientService):
             secho_error_and_exit(f"Failed to delete credential ({credential_id}).\n{decode_http_err(exc)}")
 
 
-class GroupCredentialClientService(ClientService, GroupRequestMixin):
+class ProjectCredentialClientService(ClientService, ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
-        self.initialize_group()
-        super().__init__(template, group_id=self.group_id, **kwargs)
+        self.initialize_project()
+        super().__init__(template, project_id=self.project_id, **kwargs)
 
     def list_credentials(self, cred_type: CredType) -> List[dict]:
         type_name = cred_type_map[cred_type]
@@ -801,7 +801,7 @@ class GroupCredentialClientService(ClientService, GroupRequestMixin):
             "value": value
         }
         try:
-            response = self.create(json=request_data)
+            response = self.post(json=request_data)
         except HTTPError as exc:
             secho_error_and_exit(f"Failed to creat user credential.\n{decode_http_err(exc)}")
         return response.json()
@@ -896,8 +896,9 @@ class CheckpointClientService(ClientService):
         return response.json()['files']
 
 
-class GroupCheckpointClientService(ClientService, ProjectRequestMixin):
+class GroupProjectCheckpointClientService(ClientService, GroupRequestMixin, ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
         self.initialize_project()
         super().__init__(
             template,
@@ -953,9 +954,9 @@ class GroupCheckpointClientService(ClientService, ProjectRequestMixin):
         }
 
         try:
-            response = self.create(json=request_data)
+            response = self.post(json=request_data)
         except HTTPError as exc:
-            secho_error_and_exit(f"Failed to create checkpoint.\n{decode_http_err(exc)}")
+            secho_error_and_exit(f"Failed to post checkpoint.\n{decode_http_err(exc)}")
         return response.json() 
 
 
@@ -969,9 +970,9 @@ class ServeClientService(ClientService):
     
     def create_serve(self, config = dict) -> dict:
         try:
-            response = self.create(json=config)
+            response = self.post(json=config)
         except HTTPError as exc:
-            secho_error_and_exit(f"Failed to create new serve.\n{decode_http_err(exc)}")
+            secho_error_and_exit(f"Failed to post new serve.\n{decode_http_err(exc)}")
         return response.json()
 
     def list_serves(self) -> dict:
@@ -989,25 +990,27 @@ class ServeClientService(ClientService):
 
 
 client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
-    ServiceType.USER: (UserClientService, Template(get_auth_uri('pf_user/$pf_user_id/'))),
-    ServiceType.PROJECT: (UserClientService, Template(get_auth_uri('pf_project/$pf_project_id/'))),
-    ServiceType.GROUP: (UserClientService, Template(get_auth_uri('pf_group/$pf_group_id/'))),
+    ServiceType.USER: (UserClientService, Template(get_auth_uri('pf_user'))),
+    ServiceType.USER_GROUP: (UserGroupClientService, Template(get_auth_uri('pf_user/$pf_user_id/pf_group'))),
+    ServiceType.USER_GROUP_PROJECT: (UserGroupProjectClientService, Template(get_auth_uri('pf_user/$pf_user_id/pf_group/$pf_group_id/pf_project'))),  # pylint: disable=line-too-long
+    ServiceType.PROJECT: (ProjectClientService, Template(get_auth_uri('pf_project'))),
+    ServiceType.GROUP: (GroupClientService, Template(get_auth_uri('pf_group'))),
+    ServiceType.GROUP_PROJECT: (GroupProjectClientService, Template(get_auth_uri('pf_group/$pf_group_id/pf_project'))),
     ServiceType.EXPERIMENT: (ExperimentClientService, Template(get_uri('experiment/'))),
-    ServiceType.PROJECT_EXPERIMENT: (GroupExperimentClientService, Template(get_uri('project/$project_id/experiment/'))),  # pylint: disable=line-too-long
+    ServiceType.PROJECT_EXPERIMENT: (ProjectExperimentClientService, Template(get_uri('project/$project_id/experiment/'))),  # pylint: disable=line-too-long
     ServiceType.JOB: (JobClientService, Template(get_uri('job/'))),
     ServiceType.JOB_CHECKPOINT: (JobCheckpointClientService, Template(get_uri('job/$job_id/checkpoint/'))),
     ServiceType.JOB_ARTIFACT: (JobArtifactClientService, Template(get_uri('job/$job_id/artifact/'))),
-    ServiceType.PROJECT_JOB: (GroupJobClientService, Template(get_uri('project/$project_id/job/'))),
+    ServiceType.PROJECT_JOB: (ProjectJobClientService, Template(get_uri('project/$project_id/job/'))),
     ServiceType.JOB_TEMPLATE: (JobTemplateClientService, Template(get_uri('job_template/'))),
-    ServiceType.CREDENTIAL: (CredentialClientService, Template(get_uri('credential/'))),
-    ServiceType.PROJECT_CREDENTIAL: (GroupCredentialClientService, Template(get_auth_uri('pf_project/$project_id/credential/'))),  # pylint: disable=line-too-long
+    ServiceType.CREDENTIAL: (CredentialClientService, Template(get_auth_uri('credential'))),
+    ServiceType.PROJECT_CREDENTIAL: (ProjectCredentialClientService, Template(get_auth_uri('pf_project/$project_id/credential'))),  # pylint: disable=line-too-long
     ServiceType.CREDENTIAL_TYPE: (CredentialTypeClientService, Template(get_uri('credential_type/'))),
     ServiceType.DATA: (DataClientService, Template(get_uri('datastore/'))),
-    ServiceType.PROJECT_DATA: (GroupDataClientService, Template(get_uri('project/$project_id/datastore/'))),
-    ServiceType.GROUP_VM: (GroupVMClientService, Template(get_uri('group/$group_id/vm_config/'))),
-    ServiceType.PROJECT_VM_QUOTA: (GroupVMQuotaClientService, Template(get_uri('project/$project_id/vm_quota/'))),
+    ServiceType.PROJECT_DATA: (ProjectDataClientService, Template(get_uri('project/$project_id/datastore/'))),
+    ServiceType.PROJECT_VM_QUOTA: (ProjectVMQuotaClientService, Template(get_uri('project/$project_id/vm_quota/'))),
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_mr_uri('models/'))),
-    ServiceType.PROJECT_CHECKPOINT: (GroupCheckpointClientService, Template(get_mr_uri('orgs/$group_id/prjs/$project_id/models/'))),  # pylint: disable=line-too-long
+    ServiceType.GROUP_PROJECT_CHECKPOINT: (GroupProjectCheckpointClientService, Template(get_mr_uri('orgs/$group_id/prjs/$project_id/models/'))),  # pylint: disable=line-too-long
     ServiceType.VM_CONFIG: (VMConfigClientService, Template(get_uri('vm_config/'))),
     ServiceType.GROUP_VM_CONFIG: (GroupVMConfigClientService, Template(get_uri('group/$group_id/vm_config/'))),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri('job/'))),
@@ -1019,7 +1022,7 @@ _ClientService = TypeVar('_ClientService', bound=ClientService)
 
 
 def build_client(request_type: ServiceType, **kwargs) -> _ClientService:
-    """Factory function to create client service.
+    """Factory function to post client service.
 
     Args:
         request_type (RequestAPI):

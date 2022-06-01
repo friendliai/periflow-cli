@@ -27,12 +27,18 @@ from pfcli.service import (
 )
 
 # Variables
+periflow_directory = Path.home() / ".periflow"
 periflow_api_server = "https://api-dev.friendli.ai/api/"
 periflow_ws_server = "wss://api-ws-dev.friendli.ai/ws/"
 periflow_discuss_url = "https://discuss-staging.friendli.ai/"
 periflow_mr_server = "https://pfmodelregistry-dev.friendli.ai/"
 periflow_serve_server = "http://0.0.0.0:8000/"
 periflow_auth_server = "https://pfauth-dev.friendli.ai/"
+
+
+def get_periflow_directory() -> Path:
+    periflow_directory.mkdir(exist_ok=True)
+    return periflow_directory
 
 
 def datetime_to_pretty_str(past: Optional[datetime], long_list: bool = False):
@@ -188,7 +194,7 @@ def storage_path_to_local_path(storage_path: str, source_path: Path, expand: boo
 def upload_files(url_dicts: List[Dict[str, str]], source_path: Path, expand: bool) -> None:
     local_paths = [ storage_path_to_local_path(url_info['path'], source_path, expand) for url_info in url_dicts ]
     total_size = _get_total_file_size(local_paths)
-    upload_urls = [ url_info['upload_url'] for url_info in url_dicts ] 
+    upload_urls = [ url_info['upload_url'] for url_info in url_dicts ]
 
     with tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024) as t:
         with ThreadPoolExecutor() as executor:
@@ -284,8 +290,14 @@ def decode_http_err(exc: HTTPError) -> str:
             error_str = "Not Found: The requested resource is not found. Please check it again. " \
                         f"If you cannot find out why this error occurs, please visit {periflow_discuss_url}."
         else:
-            raw_error = exc.response.json()
-            error_str = f"Error Code: {raw_error['code']}\nDetail: {raw_error['detail']}"
+            response = exc.response
+            detail_json = response.json()
+            if 'detail' in detail_json:
+                error_str = f"Error Code: {response.status_code}\nDetail: {detail_json['detail']}"
+            elif 'error_description' in detail_json:
+                error_str = f"Error Code: {response.status_code}\nDetail: {detail_json['error_description']}"
+            else:
+                error_str = f"Error Code: {response.status_code}"
     except ValueError:
         error_str = exc.response.content
 

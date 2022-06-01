@@ -137,11 +137,15 @@ class PanelFormatter(ListFormatter):
     """
     subtitle: Optional[str] = None
 
-    def render(self, data: List[dict], show_detail: bool = False) -> None:
+    def render(self, data: Union[List[dict], dict], show_detail: bool = False) -> None:
+        if not isinstance(data, list):
+            data = [data]
         self._build_panel(data, show_detail)
         self._console.print(self._panel)
 
-    def get_renderable(self, data: List[dict], show_detail: bool = False) -> Panel:
+    def get_renderable(self, data: Union[List[dict], dict], show_detail: bool = False) -> Panel:
+        if not isinstance(data, list):
+            data = [data]
         self._build_panel(data, show_detail)
         return self._panel
 

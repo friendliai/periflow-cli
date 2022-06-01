@@ -7,7 +7,12 @@ from typing import Optional
 import typer
 
 from pfcli.service import CloudType, ServiceType
-from pfcli.service.client import GroupVMConfigClientService, GroupVMQuotaClientService, VMConfigClientService, build_client
+from pfcli.service.client import (
+    GroupVMConfigClientService,
+    ProjectVMQuotaClientService,
+    VMConfigClientService,
+    build_client
+)
 from pfcli.service.formatter import TableFormatter
 from pfcli.utils import validate_cloud_region
 
@@ -57,7 +62,7 @@ def list(
     if cloud is not None and region is not None:
         validate_cloud_region(cloud, region)
 
-    vm_quota_client: GroupVMQuotaClientService = build_client(ServiceType.GROUP_VM_QUOTA)
+    vm_quota_client: ProjectVMQuotaClientService = build_client(ServiceType.PROJECT_VM_QUOTA)
     vm_config_client: VMConfigClientService = build_client(ServiceType.VM_CONFIG)
     group_vm_config_client: GroupVMConfigClientService = build_client(ServiceType.GROUP_VM_CONFIG)
 

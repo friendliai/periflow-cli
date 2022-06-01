@@ -3,19 +3,16 @@
 """PeriFlow Auth Tools"""
 
 import functools
-import os
 import uuid
 from enum import Enum
-from pathlib import Path
 from typing import Callable, Union
 
 import requests
 
-from pfcli.utils import decode_http_err, get_uri, secho_error_and_exit
+from pfcli.utils import decode_http_err, get_auth_uri, get_periflow_directory, get_uri, secho_error_and_exit
 
-credential_path = Path(os.environ["HOME"], ".periflow")
-access_token_path = credential_path / "access_token"
-refresh_token_path = credential_path / "refresh_token"
+access_token_path = get_periflow_directory() / "access_token"
+refresh_token_path = get_periflow_directory() / "refresh_token"
 
 
 class TokenType(str, Enum):
@@ -40,10 +37,6 @@ def get_token(token_type: TokenType) -> Union[str, None]:
 
 
 def update_token(token_type: TokenType, token: str) -> None:
-    try:
-        credential_path.mkdir(exist_ok=True)
-    except (FileNotFoundError, FileExistsError) as e:
-        secho_error_and_exit(f"Cannot store credential info... {e}")
     if token_type == TokenType.ACCESS:
         access_token_path.write_text(token)
     elif token_type == TokenType.REFRESH:
@@ -57,7 +50,7 @@ def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable[..., 
         if r.status_code == 401 or r.status_code == 403:
             refresh_token = get_token(TokenType.REFRESH)
             if refresh_token is not None:
-                refresh_r = requests.post(get_uri("token/refresh/"), data={"refresh": refresh_token})
+                refresh_r = requests.post(get_uri("token/refresh/"), data={"refresh_token": refresh_token})
                 try:
                     refresh_r.raise_for_status()
                 except requests.HTTPError:
@@ -80,22 +73,3 @@ def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable[..., 
             r.raise_for_status()
         return r
     return inner
-
-
-@auto_token_refresh
-def _userinfo() -> requests.Response:
-    return requests.get(get_auth_uri("oauth2/userinfo"),
-                        headers=get_auth_header())
-
-
-def get_current_userinfo() -> dict:
-    try:
-        response = _userinfo()
-    except requests.HTTPError as exc:
-        secho_error_and_exit(f"Failed to get userinfo.\n{decode_http_err(exc)}")
-    return response.json()
-
-
-def get_current_user_id() -> uuid.UUID:
-    userinfo = get_current_userinfo()
-    return uuid.UUID(userinfo['sub'].split('|')[1])
