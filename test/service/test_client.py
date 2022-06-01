@@ -338,13 +338,13 @@ def test_project_experiment_client_list_experiments(requests_mock: requests_mock
                                                     project_experiment_client: ProjectExperimentClientService):
     # Success
     requests_mock.get(
-        project_experiment_client.url_template.render(project_id=project_experiment_client.project_id),
+        project_experiment_client.url_template.render(**project_experiment_client.url_kwargs),
         json=[{'id': 0, 'name': 'exp-0'}, {'id': 1, 'name': 'exp-1'}]
     )
     assert project_experiment_client.list_experiments() == [{'id': 0, 'name': 'exp-0'}, {'id': 1, 'name': 'exp-1'}]
 
     # Failed due to HTTP error
-    requests_mock.get(project_experiment_client.url_template.render(project_id=project_experiment_client.project_id), status_code=404)
+    requests_mock.get(project_experiment_client.url_template.render(**project_experiment_client.url_kwargs), status_code=404)
     with pytest.raises(typer.Exit):
         project_experiment_client.list_experiments()
 
@@ -354,7 +354,7 @@ def test_project_experiment_client_get_id_by_name(requests_mock: requests_mock.M
                                                   project_experiment_client: ProjectExperimentClientService):
     # Success
     requests_mock.get(
-        project_experiment_client.url_template.render(project_id=project_experiment_client.project_id),
+        project_experiment_client.url_template.render(**project_experiment_client.url_kwargs),
         json=[{'id': 0, 'name': 'exp-0'}, {'id': 1, 'name': 'exp-1'}]
     )
     assert project_experiment_client.get_id_by_name('exp-0') == 0
@@ -362,7 +362,7 @@ def test_project_experiment_client_get_id_by_name(requests_mock: requests_mock.M
     assert project_experiment_client.get_id_by_name('exp-2') is None
 
     # Failed due to HTTP error
-    requests_mock.get(project_experiment_client.url_template.render(project_id=project_experiment_client.project_id), status_code=404)
+    requests_mock.get(project_experiment_client.url_template.render(**project_experiment_client.url_kwargs), status_code=404)
     with pytest.raises(typer.Exit):
         project_experiment_client.get_id_by_name('exp-3')
 
@@ -372,13 +372,13 @@ def test_project_experiment_client_create_experiment(requests_mock: requests_moc
                                                      project_experiment_client: ProjectExperimentClientService):
     # Success
     requests_mock.post(
-        project_experiment_client.url_template.render(project_id=project_experiment_client.project_id),
+        project_experiment_client.url_template.render(**project_experiment_client.url_kwargs),
         json={'id': 0, 'name': 'exp-0'}
     )
     assert project_experiment_client.create_experiment('exp-0') == {'id': 0, 'name': 'exp-0'}
 
     # Failed due to HTTP error
-    requests_mock.post(project_experiment_client.url_template.render(project_id=project_experiment_client.project_id), status_code=400)
+    requests_mock.post(project_experiment_client.url_template.render(**project_experiment_client.url_kwargs), status_code=400)
     with pytest.raises(typer.Exit):
         project_experiment_client.create_experiment('exp-0')
 
@@ -707,13 +707,13 @@ def test_project_job_client_list_jobs(requests_mock: requests_mock.Mocker,
                                       project_job_client: ProjectJobClientService):
     # Success
     requests_mock.get(
-        project_job_client.url_template.render(project_id=project_job_client.project_id),
+        project_job_client.url_template.render(**project_job_client.url_kwargs),
         json={'results': [{'id': 0}, {'id': 1}]}
     )
     assert project_job_client.list_jobs() == [{'id' : 0}, {'id': 1}]
 
     # Failed due to HTTP error
-    requests_mock.get(project_job_client.url_template.render(project_id=project_job_client.project_id), status_code=404)
+    requests_mock.get(project_job_client.url_template.render(**project_job_client.url_kwargs), status_code=404)
     with pytest.raises(typer.Exit):
         project_job_client.list_jobs()
 
@@ -912,13 +912,13 @@ def test_project_data_client_list_datastores(requests_mock: requests_mock.Mocker
                                              project_data_client: ProjectDataClientService):
     # Success
     requests_mock.get(
-        project_data_client.url_template.render(project_id=project_data_client.project_id),
+        project_data_client.url_template.render(**project_data_client.url_kwargs),
         json=[{'id': 0, 'name': 'wikitext'}, {'id': 1, 'name': 'imagenet'}]
     )
     assert project_data_client.list_datastores() == [{'id': 0, 'name': 'wikitext'}, {'id': 1, 'name': 'imagenet'}]
 
     # Failed due to HTTP error
-    requests_mock.get(project_data_client.url_template.render(project_id=project_data_client.project_id), status_code=404)
+    requests_mock.get(project_data_client.url_template.render(**project_data_client.url_kwargs), status_code=404)
     with pytest.raises(typer.Exit):
         project_data_client.list_datastores()
 
@@ -928,7 +928,7 @@ def test_project_data_client_get_id_by_name(requests_mock: requests_mock.Mocker,
                                             project_data_client: ProjectDataClientService):
     # Success
     requests_mock.get(
-        project_data_client.url_template.render(project_id=project_data_client.project_id),
+        project_data_client.url_template.render(**project_data_client.url_kwargs),
         json=[{'id': 0, 'name': 'wikitext'}, {'id': 1, 'name': 'imagenet'}]
     )
     assert project_data_client.get_id_by_name('wikitext') == 0
@@ -936,7 +936,7 @@ def test_project_data_client_get_id_by_name(requests_mock: requests_mock.Mocker,
     assert project_data_client.get_id_by_name('openwebtext') is None
 
     # Failed due to HTTP error
-    requests_mock.get(project_data_client.url_template.render(project_id=project_data_client.project_id), status_code=404)
+    requests_mock.get(project_data_client.url_template.render(**project_data_client.url_kwargs), status_code=404)
     with pytest.raises(typer.Exit):
         project_data_client.get_id_by_name('glue')
 
@@ -946,7 +946,7 @@ def test_project_data_client_create_datastore(requests_mock: requests_mock.Mocke
                                               project_data_client: ProjectDataClientService):
     # Success
     requests_mock.post(
-        project_data_client.url_template.render(project_id=project_data_client.project_id),
+        project_data_client.url_template.render(**project_data_client.url_kwargs),
         json={'id': 0, 'name': 'cifar100'}
     )
     assert project_data_client.create_datastore(
@@ -974,7 +974,7 @@ def test_project_data_client_create_datastore(requests_mock: requests_mock.Mocke
         )
 
     # Failed due to HTTP error
-    requests_mock.post(project_data_client.url_template.render(project_id=project_data_client.project_id), status_code=400)
+    requests_mock.post(project_data_client.url_template.render(**project_data_client.url_kwargs), status_code=400)
     with pytest.raises(typer.Exit):
         project_data_client.create_datastore(
             name='cifar100',
@@ -1027,7 +1027,7 @@ def test_group_vm_config_client_get_id_by_name(requests_mock: requests_mock.Mock
     ]
 
     # Success
-    requests_mock.get(group_vm_config_client.url_template.render(group_id=group_vm_config_client.group_id), json=example_data)
+    requests_mock.get(group_vm_config_client.url_template.render(**group_vm_config_client.url_kwargs), json=example_data)
     assert group_vm_config_client.get_id_by_name('azure-v100') == 0
     assert group_vm_config_client.get_id_by_name('aws-a100') == 1
     assert group_vm_config_client.get_id_by_name('gcp-k80') is None
@@ -1683,7 +1683,7 @@ def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
     }
 
     # Success
-    url = group_project_checkpoint_client.url_template.render(group_id="00000000-0000-0000-0000-000000000000", project_id="11111111-1111-1111-1111-111111111111")
+    url = group_project_checkpoint_client.url_template.render(**group_project_checkpoint_client.url_kwargs)
     requests_mock.get(url, json=data)
     assert group_project_checkpoint_client.list_checkpoints(CheckpointCategory.USER_PROVIDED) == data['results']
     assert requests_mock.request_history[-1].query == 'category=USER'
@@ -1720,8 +1720,7 @@ def test_group_checkpoint_create_checkpoints(requests_mock: requests_mock.Mocker
     # Success
     # TODO: change after PFA integration
     url = group_project_checkpoint_client.url_template.render(
-        group_id="00000000-0000-0000-0000-000000000000",
-        project_id="11111111-1111-1111-1111-111111111111"
+        **group_project_checkpoint_client.url_kwargs
     )
     requests_mock.post(url, json=data)
     assert group_project_checkpoint_client.create_checkpoint(
