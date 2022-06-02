@@ -1942,7 +1942,7 @@ def test_serve_client_delete_serve(requests_mock: requests_mock.Mocker,
         serve_client.delete_serve(0)
     except typer.Exit:
         raise pytest.fail("serve client test failed.")
-    
+
     requests_mock.delete(url_template.render(serve_id=0), status_code=404)
     with pytest.raises(typer.Exit):
         serve_client.delete_serve(0)
