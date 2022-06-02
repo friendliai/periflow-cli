@@ -299,6 +299,6 @@ def decode_http_err(exc: HTTPError) -> str:
             else:
                 error_str = f"Error Code: {response.status_code}"
     except ValueError:
-        error_str = exc.response.content
+        error_str = exc.response.content.decode()
 
     return error_str

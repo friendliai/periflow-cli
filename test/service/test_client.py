@@ -543,7 +543,7 @@ def test_job_client_get_text_logs(requests_mock: requests_mock.Mocker, job_clien
 async def test_job_ws_client(job_ws_client: JobWebSocketClientService):
     ws_mock = AsyncMock(WebSocketClientProtocol)
     with patch(
-        'pfcli.service.client.get_token', return_value='ACCESS_TOKEN'
+        'pfcli.service.client.job.get_token', return_value='ACCESS_TOKEN'
     ) as get_token_mock, patch(
         'websockets.connect', 
     ) as ws_connect_mock:
@@ -612,7 +612,7 @@ async def test_job_ws_client(job_ws_client: JobWebSocketClientService):
 async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
     ws_mock = AsyncMock(WebSocketClientProtocol)
     with patch(
-        'pfcli.service.client.get_token', return_value='ACCESS_TOKEN'
+        'pfcli.service.auth.get_token', return_value='ACCESS_TOKEN'
     ) as get_token_mock, patch(
         'websockets.connect', 
     ) as ws_connect_mock:

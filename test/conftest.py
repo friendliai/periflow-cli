@@ -16,7 +16,7 @@ def patch_auto_token_refresh(requests_mock: requests_mock.Mocker):
 
 @pytest.fixture
 def user_project_group_context():
-    with patch('pfcli.service.client.UserRequestMixin.get_current_user_id',
+    with patch('pfcli.service.client.base.UserRequestMixin.get_current_user_id',
                return_value=uuid.UUID('22222222-2222-2222-2222-222222222222')), \
             patch('pfcli.context.get_current_group_id',
                   return_value=uuid.UUID('00000000-0000-0000-0000-000000000000')), \
