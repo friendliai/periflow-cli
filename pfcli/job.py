@@ -237,6 +237,7 @@ def run(
     refine_config(config, vm_name, num_devices, experiment_name, job_name)
 
     if workspace_dir is not None:
+        workspace_dir = workspace_dir.resolve()  # ensure absolute path
         if not workspace_dir.exists():
             secho_error_and_exit(f"Specified workspace does not exist...")
         if not workspace_dir.is_dir():
