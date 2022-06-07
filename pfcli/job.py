@@ -135,7 +135,7 @@ def refine_config(config: dict,
     if config["job_setting"]["type"] == "custom" and "workspace" not in config["job_setting"]:
         config["job_setting"]["workspace"] = {"mount_path": "/workspace"}
 
-    experiment_client: ProjectExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
+    experiment_client: ProjectExperimentClientService = build_client(ServiceType.PROJECT_EXPERIMENT)
     data_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
     vm_client: GroupVMConfigClientService = build_client(ServiceType.VM_CONFIG)
     job_template_client: JobTemplateClientService = build_client(ServiceType.JOB_TEMPLATE)

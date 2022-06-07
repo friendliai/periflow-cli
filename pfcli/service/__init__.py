@@ -60,11 +60,13 @@ class StorageType(str, Enum):
     GCS = "gcs"
     FAI = "fai"
 
+
 class ModelFormCategory(str, Enum):
     MEGATRON = "MEGATRON"
     ORCA = "ORCA"
     HF = "HF"
     ETC = "ETC"
+
 
 class GpuType(str, Enum):
     T4 = "t4"

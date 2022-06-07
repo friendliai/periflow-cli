@@ -388,12 +388,10 @@ class DataConfigService(InteractiveConfigMixin):
     files: Optional[List[dict]] = field(default_factory=list)
 
     def _list_available_credentials(self, vendor_type: StorageType) -> List[dict]:
-        user_cred_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
-        group_cred_client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
+        cred_type: CredType = CredType(vendor_type.value)
+        project_cred_client: ProjectCredentialClientService = build_client(ServiceType.PROJECT_CREDENTIAL)
 
-        creds = []
-        creds.extend(user_cred_client.list_credentials(cred_type=vendor_type))
-        creds.extend(group_cred_client.list_credentials(cred_type=vendor_type))
+        creds = project_cred_client.list_credentials(cred_type=cred_type)
 
         return creds
 
