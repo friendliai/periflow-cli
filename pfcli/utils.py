@@ -145,7 +145,8 @@ def validate_cloud_region(vendor: CloudType, region: str):
 
 def get_workspace_files(dir_path: Path) -> List[Path]:
     ignore_file = dir_path / ".pfignore"
-    all_files = set(x for x in dir_path.rglob("*") if x.is_file())
+    all_files = set(x for x in dir_path.rglob("*") if x.is_file() and x != ignore_file)
+
     if not ignore_file.exists():
         return list(all_files)
 
