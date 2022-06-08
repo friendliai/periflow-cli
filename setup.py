@@ -43,6 +43,7 @@ COMMON_DEPS = [
     "tqdm>=4.64.0",
     "azure-mgmt-storage>=19.0.*",
     "azure-storage-blob>=12.9.*",
+    "pathspec>=0.9.0",
 ]
 
 TEST_DEPS = [

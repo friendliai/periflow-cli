@@ -38,8 +38,8 @@ from pfcli.service.auth import (
 )
 from pfcli.utils import (
     decode_http_err,
-    get_path_size,
     get_uri,
+    get_workspace_files,
     get_wss_uri,
     secho_error_and_exit,
     validate_storage_region,
@@ -293,11 +293,13 @@ class JobClientService(ClientService):
     def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
         try:
             if workspace_dir is not None:
-                workspace_size = get_path_size(workspace_dir)
+                workspace_dir = workspace_dir.resolve()
+                workspace_files = get_workspace_files(workspace_dir)
+                workspace_size = sum(f.stat().st_size for f in workspace_files)
                 if workspace_size <= 0 or workspace_size > 100 * 1024 * 1024:
                     secho_error_and_exit(f"Workspace directory size ({decimal(workspace_size)}) should be 0 < size <= 100MB.")
                 workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
-                with zip_dir(workspace_dir, workspace_zip) as zip_file:
+                with zip_dir(workspace_dir, workspace_files, workspace_zip) as zip_file:
                     files = {'workspace_zip': ('workspace.zip', zip_file)}
                     response = self.create(data={"data": json.dumps(config)}, files=files)
             else:
