@@ -13,6 +13,7 @@ from subprocess import CalledProcessError, check_call
 from typing import Optional, List, Dict
 from urllib.parse import urljoin
 
+import pathspec
 import typer
 import requests
 from requests.exceptions import HTTPError
@@ -124,11 +125,11 @@ def datetime_to_simple_string(dt: datetime) -> str:
 
 
 @contextmanager
-def zip_dir(dir_path: Path, zip_path: Path):
+def zip_dir(base_path: Path, target_files: List[Path], zip_path: Path):
     typer.secho("Preparing workspace directory...", fg=typer.colors.MAGENTA)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zip_file:
-        for e in dir_path.rglob("*"):
-            zip_file.write(e, e.relative_to(dir_path.parent))
+        for file in target_files:
+            zip_file.write(file, file.relative_to(base_path.parent))
     typer.secho("Uploading workspace directory...", fg=typer.colors.MAGENTA)
     try:
         yield zip_path.open("rb")
@@ -164,8 +165,18 @@ def validate_cloud_region(vendor: CloudType, region: str):
         )
 
 
-def get_path_size(path: Path) -> int:
-    return sum(f.stat().st_size for f in path.glob('**/*') if f.is_file())
+def get_workspace_files(dir_path: Path) -> List[Path]:
+    ignore_file = dir_path / ".pfignore"
+    all_files = set(x for x in dir_path.rglob("*") if x.is_file() and x != ignore_file)
+
+    if not ignore_file.exists():
+        return list(all_files)
+
+    with open(ignore_file, "r", encoding="utf-8") as f:
+        ignore_patterns = f.read()
+    spec = pathspec.PathSpec.from_lines(pathspec.patterns.GitWildMatchPattern, ignore_patterns.splitlines())
+    matched_files = set(dir_path / x for x in spec.match_tree_files(dir_path))
+    return list(all_files.difference(matched_files))
 
 
 def _upload_file(file_path: str, url: str, ctx: tqdm):
