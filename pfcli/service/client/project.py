@@ -3,13 +3,17 @@
 """PeriFlow ProjectClient Service"""
 
 
+import json
 import uuid
+from pathlib import Path
 from string import Template
 from typing import List, Optional
 
-from pfcli.service import CloudType, CredType, StorageType, cred_type_map, storage_type_map
+from rich.filesize import decimal
+
+from pfcli.service import CloudType, CredType, LockType, StorageType, cred_type_map, storage_type_map
 from pfcli.service.client.base import ClientService, ProjectRequestMixin, T, safe_request
-from pfcli.utils import validate_storage_region
+from pfcli.utils import get_workspace_files, secho_error_and_exit, validate_storage_region, zip_dir
 
 
 class ProjectClientService(ClientService):
@@ -51,6 +55,26 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
     def list_jobs(self) -> dict:
         response = safe_request(self.list, prefix="Failed to list jobs in your group.")()
         return response.json()['results']
+
+    def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
+        job_request = safe_request(self.post, prefix="Failed to run job.")
+        if workspace_dir is not None:
+            workspace_dir = workspace_dir.resolve()
+            workspace_files = get_workspace_files(workspace_dir)
+            workspace_size = sum(f.stat().st_size for f in workspace_files)
+            if workspace_size <= 0 or workspace_size > 100 * 1024 * 1024:
+                secho_error_and_exit(
+                    f"Workspace directory size ({decimal(workspace_size)}) should be 0 < size <= 100MB."
+                )
+            workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
+            with zip_dir(workspace_dir, workspace_files, workspace_zip) as zip_file:
+                files = {'workspace_zip': ('workspace.zip', zip_file)}
+                response = job_request(
+                    data={"data": json.dumps(config)}, files=files
+                )
+        else:
+            response = job_request(json=config)
+        return response.json()
 
 
 class ProjectDataClientService(ClientService, ProjectRequestMixin):
@@ -145,3 +169,20 @@ class ProjectCredentialClientService(ClientService, ProjectRequestMixin):
             json=request_data
         )
         return response.json()
+
+
+class ProjectVMConfigClientService(ClientService, ProjectRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_project()
+        super().__init__(template, project_id=self.project_id, **kwargs)
+
+    def list_vm_locks(self, vm_config_id: T, lock_type: LockType) -> List[dict]:
+        response = safe_request(self.list, prefix="Failed to inspect locked VMs.")(
+            path=f"{vm_config_id}/vm_lock/",
+            params={"lock_type": lock_type}
+        )
+        return response.json()
+
+    def get_active_vm_count(self, vm_config_id: T) -> int:
+        vm_locks = self.list_vm_locks(vm_config_id, LockType.ACTIVE)
+        return len(vm_locks)

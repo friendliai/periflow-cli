@@ -28,6 +28,7 @@ from pfcli.service.client.project import (
     ProjectDataClientService,
     ProjectExperimentClientService,
     ProjectJobClientService,
+    ProjectVMConfigClientService,
     ProjectVMQuotaClientService
 )
 from pfcli.service.client.serve import ServeClientService
@@ -36,7 +37,6 @@ from pfcli.service.client.user import (
     UserGroupClientService,
     UserGroupProjectClientService
 )
-from pfcli.service.client.vm import VMConfigClientService
 from pfcli.utils import get_auth_uri, get_mr_uri, get_pfs_uri, get_uri, get_wss_uri
 
 client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
@@ -61,7 +61,7 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.PROJECT_VM_QUOTA: (ProjectVMQuotaClientService, Template(get_uri('project/$project_id/vm_quota/'))),
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_mr_uri('models/'))),
     ServiceType.GROUP_PROJECT_CHECKPOINT: (GroupProjectCheckpointClientService, Template(get_mr_uri('orgs/$group_id/prjs/$project_id/models/'))),  # pylint: disable=line-too-long
-    ServiceType.VM_CONFIG: (VMConfigClientService, Template(get_uri('vm_config/'))),
+    ServiceType.PROJECT_VM_CONFIG: (ProjectVMConfigClientService, Template(get_uri('project/$project_id/vm_config/'))),
     ServiceType.GROUP_VM_CONFIG: (GroupVMConfigClientService, Template(get_uri('group/$group_id/vm_config/'))),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri('job/'))),
     ServiceType.SERVE: (ServeClientService, Template(get_pfs_uri('deployment/'))),

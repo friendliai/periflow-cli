@@ -5,18 +5,16 @@
 
 import json
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import Iterator, List, Optional
 
 import websockets
-from rich.filesize import decimal
 from websockets.client import WebSocketClientProtocol
 from websockets.exceptions import ConnectionClosed
 
 from pfcli.service import LogType
 from pfcli.service.auth import TokenType, get_token
 from pfcli.service.client.base import ClientService, safe_request
-from pfcli.utils import get_path_size, secho_error_and_exit, zip_dir
+from pfcli.utils import secho_error_and_exit
 
 
 class JobClientService(ClientService):
@@ -28,24 +26,6 @@ class JobClientService(ClientService):
         response = safe_request(self.retrieve, prefix="Failed to list jobs.")(
             pk=job_id
         )
-        return response.json()
-
-    def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
-        job_request = safe_request(self.post, prefix="Failed to run job.")
-        if workspace_dir is not None:
-            workspace_size = get_path_size(workspace_dir)
-            if workspace_size <= 0 or workspace_size > 100 * 1024 * 1024:
-                secho_error_and_exit(
-                    f"Workspace directory size ({decimal(workspace_size)}) should be 0 < size <= 100MB."
-                )
-            workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
-            with zip_dir(workspace_dir, workspace_zip) as zip_file:
-                files = {'workspace_zip': ('workspace.zip', zip_file)}
-                response = job_request(
-                    data={"data": json.dumps(config)}, files=files
-                )
-        else:
-            response = job_request(json=config)
         return response.json()
 
     def cancel_job(self, job_id: int) -> None:

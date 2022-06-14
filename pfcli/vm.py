@@ -2,6 +2,7 @@
 
 """PeriFlow VM CLI"""
 
+from pfcli.service.client.project import ProjectVMConfigClientService
 from typing import Optional
 
 import typer
@@ -10,7 +11,6 @@ from pfcli.service import CloudType, ServiceType
 from pfcli.service.client import (
     GroupVMConfigClientService,
     ProjectVMQuotaClientService,
-    VMConfigClientService,
     build_client
 )
 from pfcli.service.formatter import TableFormatter
@@ -26,10 +26,10 @@ app = typer.Typer(
 formatter = TableFormatter(
     name="VM Instances",
     fields=[
-        'vm_instance_type.code',
-        'vm_instance_type.vendor',
-        'vm_instance_type.region',
-        'vm_instance_type.device_type',
+        'vm_config_type.code',
+        'vm_config_type.vm_instance_type.vendor',
+        'vm_config_type.vm_instance_type.region',
+        'vm_config_type.vm_instance_type.device_type',
         'quota'
     ],
     headers=['VM', 'Cloud', 'Region', 'Device', 'Quota (Available / Total)']
@@ -63,13 +63,13 @@ def list(
         validate_cloud_region(cloud, region)
 
     vm_quota_client: ProjectVMQuotaClientService = build_client(ServiceType.PROJECT_VM_QUOTA)
-    vm_config_client: VMConfigClientService = build_client(ServiceType.VM_CONFIG)
+    vm_config_client: ProjectVMConfigClientService = build_client(ServiceType.PROJECT_VM_CONFIG)
     group_vm_config_client: GroupVMConfigClientService = build_client(ServiceType.GROUP_VM_CONFIG)
 
     vm_dict_list = vm_quota_client.list_vm_quotas(vendor=cloud, region=region, device_type=device_type)
     vm_id_map = group_vm_config_client.get_vm_config_id_map()
     for vm_dict in vm_dict_list:
-        vm_instance_name = vm_dict['vm_instance_type']['code']
+        vm_instance_name = vm_dict['vm_config_type']['code']
         active_vm_count = vm_config_client.get_active_vm_count(vm_id_map[vm_instance_name])
         vm_dict['quota'] = f"{vm_dict['quota'] - active_vm_count} / {vm_dict['quota']}"
 

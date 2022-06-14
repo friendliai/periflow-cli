@@ -2,6 +2,7 @@
 
 """Test ProjectClient Service"""
 
+from copy import deepcopy
 
 import pytest
 import requests_mock
@@ -14,6 +15,7 @@ from pfcli.service.client.project import (
     ProjectDataClientService,
     ProjectExperimentClientService,
     ProjectJobClientService,
+    ProjectVMConfigClientService,
     ProjectVMQuotaClientService
 )
 
@@ -41,6 +43,11 @@ def project_data_client(user_project_group_context) -> ProjectDataClientService:
 @pytest.fixture
 def project_vm_quota_client(user_project_group_context) -> ProjectVMQuotaClientService:
     return build_client(ServiceType.PROJECT_VM_QUOTA)
+
+
+@pytest.fixture
+def project_vm_config_client(user_project_group_context) -> ProjectVMConfigClientService:
+    return build_client(ServiceType.PROJECT_VM_CONFIG)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
@@ -362,3 +369,26 @@ def test_project_credential_client_service(requests_mock: requests_mock.Mocker,
     requests_mock.get(project_credential_client.url_template.render(**project_credential_client.url_kwargs), status_code=400)
     with pytest.raises(typer.Exit):
         project_credential_client.list_credentials(CredType.SLACK)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_project_vm_config_client_get_active_vm_count(requests_mock: requests_mock.Mocker,
+                                                      project_vm_config_client: ProjectVMConfigClientService):
+    # Success
+    url_template = deepcopy(project_vm_config_client.url_template)
+    url_template.attach_pattern('$vm_config_id/vm_lock/')
+    requests_mock.get(
+        url_template.render(**project_vm_config_client.url_kwargs, vm_config_id=0),
+        json=[
+            {'lock_type': 'active', 'vm_config_id': 0, 'job_id': 0},
+            {'lock_type': 'active', 'vm_config_id': 0, 'job_id': 0},
+            {'lock_type': 'active', 'vm_config_id': 0, 'job_id': 1},
+            {'lock_type': 'active', 'vm_config_id': 0, 'job_id': 2},
+        ]
+    )
+    assert project_vm_config_client.get_active_vm_count(0) == 4
+
+    # Failed due to HTTP error
+    requests_mock.get(url_template.render(**project_vm_config_client.url_kwargs, vm_config_id=0), status_code=404)
+    with pytest.raises(typer.Exit):
+        project_vm_config_client.get_active_vm_count(0)

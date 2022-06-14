@@ -137,7 +137,7 @@ def refine_config(config: dict,
 
     experiment_client: ProjectExperimentClientService = build_client(ServiceType.PROJECT_EXPERIMENT)
     data_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
-    vm_client: GroupVMConfigClientService = build_client(ServiceType.VM_CONFIG)
+    vm_client: GroupVMConfigClientService = build_client(ServiceType.GROUP_VM_CONFIG)
     job_template_client: JobTemplateClientService = build_client(ServiceType.JOB_TEMPLATE)
 
     experiment_name = experiment_name or config["experiment"]
@@ -243,7 +243,7 @@ def run(
         if not workspace_dir.is_dir():
             secho_error_and_exit(f"Specified workspace is not directory...")
 
-    client: JobClientService = build_client(ServiceType.JOB)
+    client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
     job_data = client.run_job(config, workspace_dir)
 
     typer.secho(
@@ -439,9 +439,6 @@ def _format_log_string(log_record: dict,
                 line = node_rank_str + line
             if show_time:
                 line = timestamp_str + line
-
-            if node_rank == -1:
-                line = line + "\n"
             yield line
 
 

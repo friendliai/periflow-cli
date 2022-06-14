@@ -48,13 +48,18 @@ class GroupProjectClientService(ClientService, GroupRequestMixin):
     def list_project(self):
         get_response_dict = safe_request(self.list, prefix="Failed to list projects.")
 
-        response_dict = get_response_dict()
+        response_dict = get_response_dict().json()
         projects = response_dict['results']
         next_cursor = response_dict['next_cursor']
         while next_cursor is not None:
             response_dict = get_response_dict(
                 params={"cursor": next_cursor}
-            )
+            ).json()
+
+            # TODO (taebum): delete
+            if any(x in projects for x in response_dict['results']):
+                break
+
             projects.extend(response_dict['results'])
             next_cursor = response_dict['next_cursor']
 
