@@ -4,7 +4,6 @@
 
 import asyncio
 import re
-import sys
 from pathlib import Path
 from typing import Generator, Optional, List, Tuple
 from dateutil import parser
@@ -116,9 +115,6 @@ artifact_table = TableFormatter(
     fields=['id', 'name', 'path', 'mtime', 'mime_type'],
     headers=['ID', 'Name', 'Path', 'Mtime', 'Media Type']
 )
-
-
-JOB_FINISHED = "Job completed successfully."
 
 
 def refine_config(config: dict,
@@ -440,7 +436,7 @@ def _format_log_string(log_record: dict,
         if line in ('\n', '\r'):
             yield line, job_finished
         else:
-            job_finished = (line == JOB_FINISHED and node_rank == -1)
+            job_finished = (line == "Job completed successfully." and node_rank == -1)
             if show_machine_id:
                 line = node_rank_str + line
             if show_time:

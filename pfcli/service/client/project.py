@@ -17,7 +17,7 @@ from pfcli.utils import get_workspace_files, secho_error_and_exit, validate_stor
 
 
 class ProjectClientService(ClientService):
-    def get_project(self, pf_project_id: uuid.UUID):
+    def get_project(self, pf_project_id: uuid.UUID) -> dict:
         response = safe_request(self.retrieve, prefix="Failed to get a project.")(
             pk=pf_project_id
         )
@@ -29,7 +29,7 @@ class ProjectExperimentClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_experiments(self):
+    def list_experiments(self) -> List[dict]:
         response = safe_request(self.list, prefix="Failed to list experiments.")()
         return response.json()
 
@@ -52,7 +52,7 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_jobs(self) -> dict:
+    def list_jobs(self) -> List[dict]:
         response = safe_request(self.list, prefix="Failed to list jobs in your group.")()
         return response.json()['results']
 
@@ -82,7 +82,7 @@ class ProjectDataClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_datastores(self) -> dict:
+    def list_datastores(self) -> List[dict]:
         response = safe_request(self.list, prefix="Failed to list dataset info.")()
         return response.json()
 

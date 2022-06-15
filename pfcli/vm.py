@@ -2,7 +2,6 @@
 
 """PeriFlow VM CLI"""
 
-from pfcli.service.client.project import ProjectVMConfigClientService
 from typing import Optional
 
 import typer
@@ -13,6 +12,7 @@ from pfcli.service.client import (
     ProjectVMQuotaClientService,
     build_client
 )
+from pfcli.service.client.project import ProjectVMConfigClientService
 from pfcli.service.formatter import TableFormatter
 from pfcli.utils import validate_cloud_region
 

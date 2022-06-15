@@ -2,8 +2,8 @@
 
 """PeriFlow UserClient Service"""
 
-
 from string import Template
+from typing import List
 
 from pfcli.service.client.base import ClientService, GroupRequestMixin, UserRequestMixin, safe_request
 
@@ -40,7 +40,7 @@ class UserGroupProjectClientService(ClientService, UserRequestMixin, GroupReques
         self.initialize_group()
         super().__init__(template, pf_user_id=self.user_id, pf_group_id=self.group_id, **kwargs)
 
-    def list_project(self):
+    def list_projects(self) -> List[dict]:
         get_response_dict = safe_request(self.list, prefix="Failed to list projects.")
 
         response_dict = get_response_dict().json()

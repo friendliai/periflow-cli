@@ -62,7 +62,7 @@ def list(
     else:
         client = build_client(ServiceType.USER_GROUP_PROJECT)
 
-    projects = client.list_project()
+    projects = client.list_projects()
 
     if tail is not None or head is not None:
         target_project_list = []
@@ -104,7 +104,7 @@ def switch(
     )
 ):
     client: GroupProjectClientService = build_client(ServiceType.GROUP_PROJECT)
-    projects = client.list_project()
+    projects = client.list_projects()
 
     project_id = None
     for project in projects:

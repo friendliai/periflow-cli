@@ -2,7 +2,6 @@
 
 """PeriFlow GroupClient Service"""
 
-
 import json
 import uuid
 from string import Template
@@ -21,13 +20,13 @@ from pfcli.utils import validate_storage_region
 
 
 class GroupClientService(ClientService):
-    def create_group(self, name: str):
+    def create_group(self, name: str) -> dict:
         response = safe_request(self.post, prefix="Failed to post an organization.")(
             data=json.dumps({"name": name, "hosting_type": "hosted"})
         )
         return response.json()
 
-    def get_group(self, pf_group_id: uuid.UUID):
+    def get_group(self, pf_group_id: uuid.UUID) -> dict:
         response = safe_request(self.retrieve, prefix="Failed to get an organization.")(
             pk=pf_group_id
         )
@@ -39,13 +38,13 @@ class GroupProjectClientService(ClientService, GroupRequestMixin):
         self.initialize_group()
         super().__init__(template, pf_group_id=self.group_id, **kwargs)
 
-    def create_project(self, name: str):
+    def create_project(self, name: str) -> dict:
         response = safe_request(self.post, prefix="Failed to post a project.")(
             data=json.dumps({"name": name})
         )
         return response.json()
 
-    def list_project(self):
+    def list_projects(self) -> List[dict]:
         get_response_dict = safe_request(self.list, prefix="Failed to list projects.")
 
         response_dict = get_response_dict().json()
@@ -71,18 +70,18 @@ class GroupVMConfigClientService(ClientService, GroupRequestMixin):
         self.initialize_group()
         super().__init__(template, group_id=self.group_id, **kwargs)
 
-    def list_vm_config(self) -> List[dict]:
+    def list_vm_configs(self) -> List[dict]:
         response = safe_request(self.list, prefix="Failed to list available VM list.")()
         return response.json()
 
     def get_vm_config_id_map(self) -> Dict[str, T]:
         id_map = {}
-        for vm_config in self.list_vm_config():
+        for vm_config in self.list_vm_configs():
             id_map[vm_config['vm_config_type']['vm_instance_type']['code']] = vm_config['id']
         return id_map
 
     def get_id_by_name(self, name: str) -> Optional[T]:
-        for vm_config in self.list_vm_config():
+        for vm_config in self.list_vm_configs():
             if vm_config['vm_config_type']['vm_instance_type']['code'] == name:
                 return vm_config['id']
         return None
@@ -100,7 +99,7 @@ class GroupProjectCheckpointClientService(ClientService, UserRequestMixin, Group
             **kwargs,
         )
 
-    def list_checkpoints(self, category: Optional[CheckpointCategory]) -> dict:
+    def list_checkpoints(self, category: Optional[CheckpointCategory]) -> List[dict]:
         request_data = {}
         if category is not None:
             request_data['category'] = category.value

@@ -334,18 +334,18 @@ def test_job_artifact_client_get_download_urls(requests_mock: requests_mock.Mock
     assert isinstance(job_artifact_client, JobArtifactClientService)
 
     url_template = job_artifact_client.url_template.copy()
-    url_template.attach_pattern("download_zip/")
+    url_template.attach_pattern("1/download/")
     # Success
     requests_mock.get(
         url_template.render(job_id=1),
         json=[{'url': 'https://hello.artifact.com'}]
     )
-    assert job_artifact_client.get_artifact_download_urls() == [{'url' : 'https://hello.artifact.com'}]
+    assert job_artifact_client.get_artifact_download_url(1) == [{'url' : 'https://hello.artifact.com'}]
 
     # Failed due to HTTP error
     requests_mock.get(url_template.render(job_id=1), status_code=404)
     with pytest.raises(typer.Exit):
-        job_artifact_client.get_artifact_download_urls()
+        job_artifact_client.get_artifact_download_url(1)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')

@@ -21,7 +21,7 @@ class CredentialClientService(ClientService):
                           *,
                           name: Optional[str] = None,
                           type_version: Optional[str] = None,
-                          value: Optional[dict]= None) -> dict:
+                          value: Optional[dict] = None) -> dict:
         request_data = {}
         if name is not None:
             request_data['name'] = name
@@ -35,7 +35,7 @@ class CredentialClientService(ClientService):
         )
         return response.json()
 
-    def delete_credential(self, credential_id) -> None:
+    def delete_credential(self, credential_id: T) -> None:
         safe_request(self.delete, prefix="Failed to delete credential")(
             pk=credential_id
         )

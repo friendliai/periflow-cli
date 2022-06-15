@@ -2,6 +2,7 @@
 
 """PeriFlow ServeClient Service"""
 
+from typing import List
 
 from pfcli.service.client.base import ClientService, T, safe_request
 
@@ -19,7 +20,7 @@ class ServeClientService(ClientService):
         )
         return response.json()
 
-    def list_serves(self) -> dict:
+    def list_serves(self) -> List[dict]:
         response = safe_request(self.list, prefix="Failed to list serves.")()
         return response.json()
 

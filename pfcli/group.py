@@ -1,6 +1,7 @@
 # Copyright (C) 2022 FriendliAI
 
 """PeriFlow Group (Organization) CLI"""
+
 import typer
 
 from pfcli.context import get_current_group_id, set_current_group_id

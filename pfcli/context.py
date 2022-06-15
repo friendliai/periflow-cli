@@ -2,7 +2,6 @@
 
 """Context (Organization / Project) managing"""
 
-
 import uuid
 
 from pfcli.utils import get_periflow_directory, secho_error_and_exit

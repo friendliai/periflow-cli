@@ -2,7 +2,6 @@
 
 """PeriFlow JobClient Service"""
 
-
 import json
 import requests
 from contextlib import asynccontextmanager
@@ -20,7 +19,7 @@ from pfcli.utils import secho_error_and_exit
 
 
 class JobClientService(ClientService):
-    def list_jobs(self) -> dict:
+    def list_jobs(self) -> List[dict]:
         response = safe_request(self.list, prefix="Failed to list jobs.")()
         return response.json()['results']
 
@@ -135,13 +134,13 @@ class JobWebSocketClientService(ClientService):
 
 
 class JobCheckpointClientService(ClientService):
-    def list_checkpoints(self) -> dict:
+    def list_checkpoints(self) -> List[dict]:
         response = safe_request(self.list, prefix="Failed to list checkpoints.")()
         return response.json()
 
 
 class JobArtifactClientService(ClientService):
-    def list_artifacts(self) -> dict:
+    def list_artifacts(self) -> List[dict]:
         response = safe_request(self.list, prefix="Failed to list artifacts.")()
         return response.json()
 

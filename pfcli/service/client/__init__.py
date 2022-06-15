@@ -4,7 +4,7 @@ from string import Template
 from typing import Dict, Tuple, Type, TypeVar
 
 from pfcli.service import ServiceType
-from pfcli.service.client.base import ClientService, URLTemplate
+from pfcli.service.client.base import ClientService
 from pfcli.service.client.checkpoint import CheckpointClientService
 from pfcli.service.client.credential import CredentialClientService, CredentialTypeClientService
 from pfcli.service.client.data import DataClientService

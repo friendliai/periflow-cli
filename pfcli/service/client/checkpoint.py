@@ -2,9 +2,10 @@
 
 """PeriFlow CheckpointClient Service"""
 
+from typing import List, Optional
+
 import requests
 from requests.models import Response
-from typing import List, Optional
 
 from pfcli.service import StorageType
 from pfcli.service.auth import auto_token_refresh, get_auth_header
