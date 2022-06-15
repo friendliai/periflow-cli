@@ -455,12 +455,13 @@ async def monitor_logs(job_id: int,
                        show_machine_id: bool):
     ws_client: JobWebSocketClientService = build_client(ServiceType.JOB_WS)
 
+    job_finished = False
     async with ws_client.open_connection(job_id, log_types, machines):
         async for response in ws_client:
             for line, job_finished in _format_log_string(response, show_time, show_machine_id):
                 typer.echo(line, nl=False)
-                if job_finished:
-                    return
+            if job_finished:
+                return
 
 
 # TODO: Implement since/until if necessary
