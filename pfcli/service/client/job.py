@@ -4,15 +4,17 @@
 
 
 import json
+import requests
 from contextlib import asynccontextmanager
 from typing import Iterator, List, Optional
+from requests.models import Response
 
 import websockets
 from websockets.client import WebSocketClientProtocol
 from websockets.exceptions import ConnectionClosed
 
 from pfcli.service import LogType
-from pfcli.service.auth import TokenType, get_token
+from pfcli.service.auth import TokenType, auto_token_refresh, get_auth_header, get_token
 from pfcli.service.client.base import ClientService, safe_request
 from pfcli.utils import secho_error_and_exit
 
@@ -141,6 +143,19 @@ class JobCheckpointClientService(ClientService):
 class JobArtifactClientService(ClientService):
     def list_artifacts(self) -> dict:
         response = safe_request(self.list, prefix="Failed to list artifacts.")()
+        return response.json()
+
+    @auto_token_refresh
+    def download_zip(self) -> Response:
+        url_template = self.url_template.copy()
+        url_template.attach_pattern("download_zip/")
+        return requests.get(
+            url_template.render(**self.url_kwargs),
+            headers=get_auth_header()
+        )
+
+    def get_artifact_download_urls(self) -> dict:
+        response = safe_request(self.download_zip, prefix="Failed to get artifact download url")()
         return response.json()
 
 

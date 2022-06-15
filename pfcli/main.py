@@ -8,6 +8,7 @@ from requests import HTTPError
 import typer
 
 from pfcli import (
+    artifact,
     checkpoint,
     credential,
     datastore,
@@ -39,6 +40,7 @@ app.add_typer(experiment.app, name="experiment", help="Manage experiments")
 app.add_typer(serve.app, name="serve", help="Manage serves")
 app.add_typer(project.app, name="project", help="Manage projects")
 app.add_typer(group.app, name="org", help="Manage organizations")
+app.add_typer(artifact.app, name="artifact", help="Manager artifacts")
 
 
 user_panel_formatter = PanelFormatter(

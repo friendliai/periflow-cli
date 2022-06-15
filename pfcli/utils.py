@@ -229,6 +229,8 @@ def get_file_info(storage_path: str, source_path: Path, expand: bool) -> dict:
 
 def get_content_size(url: str) -> int:
     response = requests.get(url, stream=True)
+    if response.status_code != 200:
+        secho_error_and_exit("Failed to download (invalid url)")
     return int(response.headers['Content-Length'])
 
 
