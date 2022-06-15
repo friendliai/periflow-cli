@@ -146,16 +146,16 @@ class JobArtifactClientService(ClientService):
         return response.json()
 
     @auto_token_refresh
-    def download_zip(self) -> Response:
+    def download(self, artifact_id: int) -> Response:
         url_template = self.url_template.copy()
-        url_template.attach_pattern("download_zip/")
+        url_template.attach_pattern(f"{artifact_id}/download/")
         return requests.get(
             url_template.render(**self.url_kwargs),
             headers=get_auth_header()
         )
 
-    def get_artifact_download_urls(self) -> dict:
-        response = safe_request(self.download_zip, prefix="Failed to get artifact download url")()
+    def get_artifact_download_url(self, artifact_id: int) -> dict:
+        response = safe_request(self.download, prefix="Failed to get artifact download url")(artifact_id)
         return response.json()
 
 

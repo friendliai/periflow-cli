@@ -27,22 +27,26 @@ def download(
         ...,
         help="ID of a job to download artifact"
     ),
-    save_path: Optional[Path] = typer.Option(
+    save_directory: Optional[Path] = typer.Option(
         None,
         '--destination',
         '-d',
-        help='Destination path to save artifact zip file.'
+        help='Destination path to save artifact files.'
     )
 ):
     """download artifact
     """
-    if save_path is not None and save_path.exists():
-        secho_error_and_exit(f"{save_path.name} already exist!")
+    if save_directory is not None and not save_directory.is_dir():
+        secho_error_and_exit(f"{save_directory.name} already exist, but not a directory!")
 
-    if save_path is None:
-        save_path = Path(os.getcwd()) / f"{job_id}-artifacts.zip"
+    save_directory = save_directory or Path(os.getcwd())
 
     client: JobArtifactClientService = build_client(ServiceType.JOB_ARTIFACT, job_id=job_id)
-    response = client.get_artifact_download_urls()
-    url = response["url"]
-    download_file(url, out=str(save_path))
+    all_artifacts = client.list_artifacts()
+    for i, artifact in enumerate(all_artifacts):
+        artifact_id = artifact['id']
+        response = client.get_artifact_download_url(artifact_id)
+        url = response["url"]
+        name = artifact["name"]
+        typer.secho(f"Downloading files {i + 1}/{len(all_artifacts)}...")
+        download_file(url, out=str(save_directory / name))
