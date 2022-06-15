@@ -98,6 +98,7 @@ def main(
 
         datastore['vendor'] = storage_type_map_inv[datastore['vendor']].value
         panel_formatter.render([datastore], show_detail=True)
+        exit(0)
 
 
 @app.command()
