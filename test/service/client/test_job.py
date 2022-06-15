@@ -5,8 +5,6 @@
 
 import json
 from copy import deepcopy
-from pathlib import Path
-from tempfile import TemporaryDirectory
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -83,46 +81,6 @@ def test_job_client_get_job(requests_mock: requests_mock.Mocker, job_client: Job
     requests_mock.get(job_client.url_template.render(1), status_code=404)
     with pytest.raises(typer.Exit):
         job_client.get_job(1)
-
-
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_job_client_run_job(requests_mock: requests_mock.Mocker, job_client: JobClientService):
-    assert isinstance(job_client, JobClientService)
-
-    # Success wo workspace dir
-    requests_mock.post(
-        job_client.url_template.render(),
-        json={'id': 1}
-    )
-    assert job_client.run_job({'k': 'v'}, None) == {'id': 1}
-
-    # Success w workspace dir
-    with TemporaryDirectory() as dir:
-        ws_dir = Path(dir)
-        with open(ws_dir / 'large_file', 'wb') as f:
-            f.seek(500 * 1024)  # 500KB
-            f.write(b'0')
-        assert job_client.run_job({'k': 'v'}, ws_dir) == {'id': 1}
-
-    # Failed due to large workspace dir exceeding the size limit
-    with TemporaryDirectory() as dir:
-        ws_dir = Path(dir)
-        with open(ws_dir / 'large_file', 'wb') as f:
-            f.seek(2 * 1024 * 1024 * 1024)  # 2GB
-            f.write(b'0')
-        with pytest.raises(typer.Exit):
-            job_client.run_job({'k': 'v'}, ws_dir)
-
-    # Failed due to empty workspace dir
-    with TemporaryDirectory() as dir:
-        ws_dir = Path(dir)
-        with pytest.raises(typer.Exit):
-            job_client.run_job({'k': 'v'}, ws_dir)
-
-    # Failed due to HTTP error
-    requests_mock.post(job_client.url_template.render(), status_code=500)
-    with pytest.raises(typer.Exit):
-        job_client.run_job({'k': 'v'}, None)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
