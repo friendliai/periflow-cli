@@ -13,7 +13,7 @@ from pfcli.utils import secho_error_and_exit, validate_storage_region
 
 class DataClientService(ClientService):
     def get_datastore(self, datastore_id: T) -> dict:
-        response = safe_request(self.retrieve, prefix=f"Datastore ({datastore_id}) is not found.")(
+        response = safe_request(self.retrieve, err_prefix=f"Datastore ({datastore_id}) is not found.")(
             pk=datastore_id
         )
         return response.json()
@@ -54,14 +54,14 @@ class DataClientService(ClientService):
             request_data['files'] = files
         if active is not None:
             request_data['active'] = active
-        response = safe_request(self.partial_update, prefix="Failed to update datastore.")(
+        response = safe_request(self.partial_update, err_prefix="Failed to update datastore.")(
             pk=datastore_id,
             json=request_data
         )
         return response.json()
 
     def delete_datastore(self, datastore_id: T) -> None:
-        safe_request(self.delete, prefix="Failed to delete datastore")(
+        safe_request(self.delete, err_prefix="Failed to delete datastore")(
             pk=datastore_id
         )
 
@@ -75,7 +75,7 @@ class DataClientService(ClientService):
         if len(paths) == 0:
             secho_error_and_exit(f"No file exists in this path ({src_path})")
 
-        response = safe_request(self.post, prefix="Failed to get presigned URLs.")(
+        response = safe_request(self.post, err_prefix="Failed to get presigned URLs.")(
             path=f"{datastore_id}/upload/",
             json={"paths": paths}
         )

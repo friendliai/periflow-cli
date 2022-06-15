@@ -20,22 +20,22 @@ from pfcli.utils import secho_error_and_exit
 
 class JobClientService(ClientService):
     def list_jobs(self) -> List[dict]:
-        response = safe_request(self.list, prefix="Failed to list jobs.")()
+        response = safe_request(self.list, err_prefix="Failed to list jobs.")()
         return response.json()['results']
 
     def get_job(self, job_id: int) -> dict:
-        response = safe_request(self.retrieve, prefix="Failed to list jobs.")(
+        response = safe_request(self.retrieve, err_prefix="Failed to list jobs.")(
             pk=job_id
         )
         return response.json()
 
     def cancel_job(self, job_id: int) -> None:
-        safe_request(self.post, prefix=f"Failed to cancel job ({job_id}).")(
+        safe_request(self.post, err_prefix=f"Failed to cancel job ({job_id}).")(
             path=f"{job_id}/cancel/"
         )
 
     def terminate_job(self, job_id: int) -> None:
-        safe_request(self.post, prefix=f"Failed to terminate job ({job_id}).")(
+        safe_request(self.post, err_prefix=f"Failed to terminate job ({job_id}).")(
             path=f"{job_id}/terminate/"
         )
 
@@ -58,7 +58,7 @@ class JobClientService(ClientService):
         if machines is not None:
             request_data['node_ranks'] = ",".join([str(machine) for machine in machines])
 
-        response = safe_request(self.list, prefix="Failed to fetch text logs.")(
+        response = safe_request(self.list, err_prefix="Failed to fetch text logs.")(
             path=f"{job_id}/text_log/"
         )
         logs = response.json()['results']
@@ -135,13 +135,13 @@ class JobWebSocketClientService(ClientService):
 
 class JobCheckpointClientService(ClientService):
     def list_checkpoints(self) -> List[dict]:
-        response = safe_request(self.list, prefix="Failed to list checkpoints.")()
+        response = safe_request(self.list, err_prefix="Failed to list checkpoints.")()
         return response.json()
 
 
 class JobArtifactClientService(ClientService):
     def list_artifacts(self) -> List[dict]:
-        response = safe_request(self.list, prefix="Failed to list artifacts.")()
+        response = safe_request(self.list, err_prefix="Failed to list artifacts.")()
         return response.json()
 
     @auto_token_refresh
@@ -154,17 +154,17 @@ class JobArtifactClientService(ClientService):
         )
 
     def get_artifact_download_url(self, artifact_id: int) -> dict:
-        response = safe_request(self.download, prefix="Failed to get artifact download url")(artifact_id)
+        response = safe_request(self.download, err_prefix="Failed to get artifact download url")(artifact_id)
         return response.json()
 
 
 class JobTemplateClientService(ClientService):
     def list_job_template_names(self) -> List[str]:
-        response = safe_request(self.list, prefix="Failed to list job template names.")()
+        response = safe_request(self.list, err_prefix="Failed to list job template names.")()
         return [ template['name'] for template in response.json() ]
 
     def get_job_template_by_name(self, name: str) -> Optional[dict]:
-        response = safe_request(self.list, prefix="Failed to list job template names.")()
+        response = safe_request(self.list, err_prefix="Failed to list job template names.")()
         for template in response.json():
             if template['name'] == name:
                 return template

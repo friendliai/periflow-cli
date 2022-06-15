@@ -21,19 +21,19 @@ from pfcli.utils import decode_http_err, get_auth_uri, secho_error_and_exit
 T = TypeVar('T', bound=Union[int, str, uuid.UUID])
 
 
-def safe_request(func: Optional[Callable[..., Response]] = None, *, prefix: str = "") -> Callable[..., Response]:
-    if prefix:
-        prefix = prefix.rstrip() + "\n"
+def safe_request(func: Optional[Callable[..., Response]] = None, *, err_prefix: str = "") -> Callable[..., Response]:
+    if err_prefix:
+        err_prefix = err_prefix.rstrip() + "\n"
 
     if func is None:
-        return partial(safe_request, prefix=prefix)
+        return partial(safe_request, err_prefix=err_prefix)
 
     @wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except requests.HTTPError as exc:
-            secho_error_and_exit(prefix + decode_http_err(exc))
+            secho_error_and_exit(err_prefix + decode_http_err(exc))
 
     return wrapper
 
@@ -145,7 +145,7 @@ class UserRequestMixin:
         return requests.get(get_auth_uri("oauth2/userinfo"), headers=get_auth_header())
 
     def get_current_userinfo(self) -> dict:
-        response = safe_request(self._userinfo, prefix="Failed to get userinfo.")()
+        response = safe_request(self._userinfo, err_prefix="Failed to get userinfo.")()
         return response.json()
 
     def get_current_user_id(self) -> uuid.UUID:

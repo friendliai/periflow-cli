@@ -11,7 +11,7 @@ from pfcli.service.client.base import ClientService, T, safe_request
 
 class CredentialClientService(ClientService):
     def get_credential(self, credential_id: T) -> dict:
-        response = safe_request(self.retrieve, prefix="Credential is not found.")(
+        response = safe_request(self.retrieve, err_prefix="Credential is not found.")(
             pk=credential_id
         )
         return response.json()
@@ -29,21 +29,21 @@ class CredentialClientService(ClientService):
             request_data['type_version'] = type_version
         if value is not None:
             request_data['value'] = value
-        response = safe_request(self.partial_update, prefix="Failed to updated credential")(
+        response = safe_request(self.partial_update, err_prefix="Failed to updated credential")(
             pk=credential_id,
             json=request_data
         )
         return response.json()
 
     def delete_credential(self, credential_id: T) -> None:
-        safe_request(self.delete, prefix="Failed to delete credential")(
+        safe_request(self.delete, err_prefix="Failed to delete credential")(
             pk=credential_id
         )
 
 class CredentialTypeClientService(ClientService):
     def get_schema_by_type(self, cred_type: CredType) -> Optional[dict]:
         type_name = cred_type_map[cred_type]
-        response = safe_request(self.list, prefix="Failed to get credential schema.")()
+        response = safe_request(self.list, err_prefix="Failed to get credential schema.")()
         for cred_type_json in response.json():
             if cred_type_json['type_name'] == type_name:
                 return cred_type_json['versions'][-1]['schema']     # use the latest version

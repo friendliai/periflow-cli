@@ -14,7 +14,7 @@ from pfcli.service.client.base import ClientService, T, safe_request
 
 class CheckpointClientService(ClientService):
     def get_checkpoint(self, checkpoint_id: T) -> dict:
-        response = safe_request(self.retrieve, prefix="Failed to get info of checkpoint")(
+        response = safe_request(self.retrieve, err_prefix="Failed to get info of checkpoint")(
             pk=checkpoint_id
         )
         return response.json()
@@ -51,21 +51,21 @@ class CheckpointClientService(ClientService):
         if job_setting_config is not None:
             request_data['job_setting_json'] = job_setting_config
 
-        response = safe_request(self.partial_update, prefix="Cannot update checkpoint.")(
+        response = safe_request(self.partial_update, err_prefix="Cannot update checkpoint.")(
             pk=checkpoint_id,
             json=request_data
         )
         return response.json()
 
     def delete_checkpoint(self, checkpoint_id: T) -> None:
-        response = safe_request(self.delete, prefix="Failed to delete checkpoint.")(
+        response = safe_request(self.delete, err_prefix="Failed to delete checkpoint.")(
             pk=checkpoint_id
         )
         return response
 
     @auto_token_refresh
     def download(self, checkpoint_id: T) -> Response:
-        response = safe_request(self.retrieve, prefix="Failed to get info of checkpoint.")(
+        response = safe_request(self.retrieve, err_prefix="Failed to get info of checkpoint.")(
             pk=checkpoint_id
         )
         model_form_id = response.json()['forms'][0]['id']
@@ -78,7 +78,7 @@ class CheckpointClientService(ClientService):
         )
 
     def get_checkpoint_download_urls(self, checkpoint_id: T) -> List[dict]:
-        response = safe_request(self.download, prefix="Failed to get download URLs of checkpoint files.")(
+        response = safe_request(self.download, err_prefix="Failed to get download URLs of checkpoint files.")(
             checkpoint_id=checkpoint_id
         )
         return response.json()['files']

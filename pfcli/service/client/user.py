@@ -14,7 +14,7 @@ class UserClientService(ClientService, UserRequestMixin):
         super().__init__(template, **kwargs)
 
     def change_password(self, old_password: str, new_password: str) -> None:
-        safe_request(self.update, prefix="Failed to change password.")(
+        safe_request(self.update, err_prefix="Failed to change password.")(
             pk=self.user_id,
             path="password",
             json={
@@ -30,7 +30,7 @@ class UserGroupClientService(ClientService, UserRequestMixin):
         super().__init__(template, pf_user_id=self.user_id, **kwargs)
 
     def get_group_info(self) -> list:
-        response = safe_request(self.list, prefix="Failed to get my group info.")()
+        response = safe_request(self.list, err_prefix="Failed to get my group info.")()
         return response.json()
 
 
@@ -41,7 +41,7 @@ class UserGroupProjectClientService(ClientService, UserRequestMixin, GroupReques
         super().__init__(template, pf_user_id=self.user_id, pf_group_id=self.group_id, **kwargs)
 
     def list_projects(self) -> List[dict]:
-        get_response_dict = safe_request(self.list, prefix="Failed to list projects.")
+        get_response_dict = safe_request(self.list, err_prefix="Failed to list projects.")
 
         response_dict = get_response_dict().json()
         projects = response_dict['results']
