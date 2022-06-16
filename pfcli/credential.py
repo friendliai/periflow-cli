@@ -7,7 +7,7 @@ import json
 import typer
 
 from pfcli.service import ServiceType, CredType, cred_type_map_inv
-from pfcli.service.client import CredentialClientService, GroupCredentialClientService, build_client
+from pfcli.service.client import CredentialClientService, ProjectCredentialClientService, build_client
 from pfcli.service.config import CredentialConfigService
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import secho_error_and_exit
@@ -69,11 +69,7 @@ def main(
     configurator.start_interaction()
     name, cred_type, value = configurator.render()
 
-    is_group_shared = typer.confirm("Do you want to shared the credential with your group members?", default=True)
-    if is_group_shared:
-        client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
-    else:
-        client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+    client: ProjectCredentialClientService = build_client(ServiceType.PROJECT_CREDENTIAL)
 
     cred = client.create_credential(cred_type, name, 1, value)
     cred['type'] = cred_type_map_inv[cred['type']].value
@@ -99,19 +95,10 @@ def docker(
         ...,
         help="Docker password."
     ),
-    group: bool = typer.Option(
-        False,
-        '--group',
-        '-g',
-        help="Share the credential with my group members."
-    )
 ):
     """Create a credential for Docker.
     """
-    if group:
-        client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
-    else:
-        client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+    client: ProjectCredentialClientService = build_client(ServiceType.PROJECT_CREDENTIAL)
     value = {
         'username': username,
         'password': password
@@ -141,19 +128,10 @@ def s3(
         ...,
         help=f"[AWS] Default region name. Please see {S3_DOC_LINK}."
     ),
-    group: bool = typer.Option(
-        False,
-        '--group',
-        '-g',
-        help="Share the credential with my group members."
-    )
 ):
     """Create a credential for AWS S3.
     """
-    if group:
-        client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
-    else:
-        client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+    client: ProjectCredentialClientService = build_client(ServiceType.PROJECT_CREDENTIAL)
     value = {
         'aws_access_key_id': aws_access_key_id,
         'aws_secret_access_key': aws_secret_access_key,
@@ -180,19 +158,10 @@ def azure_blob(
         ...,
         help=f"[Azure] Azure Blob storage account access key. Please see {AZURE_BLOB_DOC_LINK}."
     ),
-    group: bool = typer.Option(
-        False,
-        '--group',
-        '-g',
-        help="Share the credential with my group members."
-    )
 ):
     """Create a credential for Azure Blob storage.
     """
-    if group:
-        client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
-    else:
-        client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+    client: ProjectCredentialClientService = build_client(ServiceType.PROJECT_CREDENTIAL)
     value = {
         'storage_account_name': storage_account_name,
         'storage_account_key': storage_account_key,
@@ -214,20 +183,10 @@ def gcs(
         ...,
         help=f"[GCP] Path to GCP Service Account Key JSON file. Please see {GCP_DOC_LINK}."
     ),
-    group: bool = typer.Option(
-        False,
-        '--group',
-        '-g',
-        help="Share the credential with my group members."
-    )
 ):
     """Create a credential for Google Cloud Storage.
     """
-    if group:
-        client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
-    else:
-        client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
-
+    client: ProjectCredentialClientService = build_client(ServiceType.PROJECT_CREDENTIAL)
     try:
         value = json.load(service_account_key_file)
     except json.JSONDecodeError as exc:
@@ -250,19 +209,10 @@ def slack(
         ...,
         help=f"Slack API Token. Please see {SLACK_DOC_LINK}."
     ),
-    group: bool = typer.Option(
-        False,
-        '--group',
-        '-g',
-        help="Share the credential with my group members."
-    )
 ):
     """Create a credential for Slack.
     """
-    if group:
-        client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
-    else:
-        client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+    client: ProjectCredentialClientService = build_client(ServiceType.PROJECT_CREDENTIAL)
     value = {
         'token': token
     }
@@ -283,19 +233,11 @@ def wandb(
         ...,
         help=f"Weights & Biases API Key. You can get the key from {WANDB_API_KEY_LINK}."
     ),
-    group: bool = typer.Option(
-        False,
-        '--group',
-        '-g',
-        help="Share the credential with my group members."
-    )
 ):
     """Create a credential for Weights & Biases.
     """
-    if group:
-        client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
-    else:
-        client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+    client: ProjectCredentialClientService = build_client(ServiceType.PROJECT_CREDENTIAL)
+
     value = {
         'token': api_key
     }
@@ -312,19 +254,10 @@ def list(
         '-t',
         help="Type of credentials to list."
     ),
-    group: bool = typer.Option(
-        False,
-        '--group',
-        '-g',
-        help="List group-shared credentials"
-    )
 ):
     """List credentials.
     """
-    if group:
-        client: GroupCredentialClientService = build_client(ServiceType.GROUP_CREDENTIAL)
-    else:
-        client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+    client: ProjectCredentialClientService = build_client(ServiceType.PROJECT_CREDENTIAL)
     creds = client.list_credentials(cred_type)
     for cred in creds:
         cred['type'] = cred_type_map_inv[cred['type']].value

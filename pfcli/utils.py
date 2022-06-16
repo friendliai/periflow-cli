@@ -9,9 +9,11 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from dateutil.tz import tzlocal
 from pathlib import Path
-from typing import Optional, List, Dict
 from subprocess import CalledProcessError, check_call
+from typing import Optional, List, Dict
+from urllib.parse import urljoin
 
+import pathspec
 import typer
 import requests
 from requests.exceptions import HTTPError
@@ -26,11 +28,18 @@ from pfcli.service import (
 )
 
 # Variables
+periflow_directory = Path.home() / ".periflow"
 periflow_api_server = "https://api-dev.friendli.ai/api/"
 periflow_ws_server = "wss://api-ws-dev.friendli.ai/ws/"
 periflow_discuss_url = "https://discuss-staging.friendli.ai/"
 periflow_mr_server = "https://pfmodelregistry-dev.friendli.ai/"
 periflow_serve_server = "http://0.0.0.0:8000/"
+periflow_auth_server = "https://pfauth-dev.friendli.ai/"
+
+
+def get_periflow_directory() -> Path:
+    periflow_directory.mkdir(exist_ok=True)
+    return periflow_directory
 
 
 def datetime_to_pretty_str(past: Optional[datetime], long_list: bool = False):
@@ -78,19 +87,24 @@ def timedelta_to_pretty_str(start: datetime, finish: datetime, long_list: bool =
             return f'{delta.days + round(delta.seconds / (3600 * 24))} days'
 
 
-def get_uri(path: str):
-    return periflow_api_server + path
+def get_auth_uri(path: str) -> str:
+    return urljoin(periflow_auth_server, path)
 
 
-def get_wss_uri(path: str):
-    return periflow_ws_server + path
+def get_uri(path: str) -> str:
+    return urljoin(periflow_api_server, path)
 
-def get_pfs_uri(path: str):
-    return periflow_serve_server + path
+
+def get_wss_uri(path: str) -> str:
+    return urljoin(periflow_ws_server, path)
+
+
+def get_pfs_uri(path: str) -> str:
+    return urljoin(periflow_serve_server, path)
 
 
 def get_mr_uri(path: str) -> str:
-    return periflow_mr_server + path
+    return urljoin(periflow_mr_server, path)
 
 
 def secho_error_and_exit(text: str, color: str = typer.colors.RED):
@@ -111,11 +125,11 @@ def datetime_to_simple_string(dt: datetime) -> str:
 
 
 @contextmanager
-def zip_dir(dir_path: Path, zip_path: Path):
+def zip_dir(base_path: Path, target_files: List[Path], zip_path: Path):
     typer.secho("Preparing workspace directory...", fg=typer.colors.MAGENTA)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zip_file:
-        for e in dir_path.rglob("*"):
-            zip_file.write(e, e.relative_to(dir_path.parent))
+        for file in target_files:
+            zip_file.write(file, file.relative_to(base_path.parent))
     typer.secho("Uploading workspace directory...", fg=typer.colors.MAGENTA)
     try:
         yield zip_path.open("rb")
@@ -151,8 +165,18 @@ def validate_cloud_region(vendor: CloudType, region: str):
         )
 
 
-def get_path_size(path: Path) -> int:
-    return sum(f.stat().st_size for f in path.glob('**/*') if f.is_file())
+def get_workspace_files(dir_path: Path) -> List[Path]:
+    ignore_file = dir_path / ".pfignore"
+    all_files = set(x for x in dir_path.rglob("*") if x.is_file() and x != ignore_file)
+
+    if not ignore_file.exists():
+        return list(all_files)
+
+    with open(ignore_file, "r", encoding="utf-8") as f:
+        ignore_patterns = f.read()
+    spec = pathspec.PathSpec.from_lines(pathspec.patterns.GitWildMatchPattern, ignore_patterns.splitlines())
+    matched_files = set(dir_path / x for x in spec.match_tree_files(dir_path))
+    return list(all_files.difference(matched_files))
 
 
 def _upload_file(file_path: str, url: str, ctx: tqdm):
@@ -181,7 +205,7 @@ def storage_path_to_local_path(storage_path: str, source_path: Path, expand: boo
 def upload_files(url_dicts: List[Dict[str, str]], source_path: Path, expand: bool) -> None:
     local_paths = [ storage_path_to_local_path(url_info['path'], source_path, expand) for url_info in url_dicts ]
     total_size = _get_total_file_size(local_paths)
-    upload_urls = [ url_info['upload_url'] for url_info in url_dicts ] 
+    upload_urls = [ url_info['upload_url'] for url_info in url_dicts ]
 
     with tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024) as t:
         with ThreadPoolExecutor() as executor:
@@ -205,6 +229,8 @@ def get_file_info(storage_path: str, source_path: Path, expand: bool) -> dict:
 
 def get_content_size(url: str) -> int:
     response = requests.get(url, stream=True)
+    if response.status_code != 200:
+        secho_error_and_exit("Failed to download (invalid url)")
     return int(response.headers['Content-Length'])
 
 
@@ -277,9 +303,15 @@ def decode_http_err(exc: HTTPError) -> str:
             error_str = "Not Found: The requested resource is not found. Please check it again. " \
                         f"If you cannot find out why this error occurs, please visit {periflow_discuss_url}."
         else:
-            raw_error = exc.response.json()
-            error_str = f"Error Code: {raw_error['code']}\nDetail: {raw_error['detail']}"
+            response = exc.response
+            detail_json = response.json()
+            if 'detail' in detail_json:
+                error_str = f"Error Code: {response.status_code}\nDetail: {detail_json['detail']}"
+            elif 'error_description' in detail_json:
+                error_str = f"Error Code: {response.status_code}\nDetail: {detail_json['error_description']}"
+            else:
+                error_str = f"Error Code: {response.status_code}"
     except ValueError:
-        error_str = exc.response.content
+        error_str = exc.response.content.decode()
 
     return error_str

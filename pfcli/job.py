@@ -2,10 +2,10 @@
 
 """PeriFlow Job"""
 
-import re
 import asyncio
+import re
 from pathlib import Path
-from typing import Optional, List
+from typing import Generator, Optional, List, Tuple
 from dateutil import parser
 from dateutil.parser import parse
 from datetime import datetime
@@ -18,10 +18,10 @@ from click import Choice
 
 from pfcli.service import JobType, ServiceType, storage_type_map_inv
 from pfcli.service.client import (
-    GroupDataClientService,
-    GroupExperimentClientService,
-    GroupJobClientService,
-    GroupVMClientService,
+    ProjectDataClientService,
+    ProjectExperimentClientService,
+    ProjectJobClientService,
+    GroupVMConfigClientService,
     JobArtifactClientService,
     JobCheckpointClientService,
     JobClientService,
@@ -135,9 +135,9 @@ def refine_config(config: dict,
     if config["job_setting"]["type"] == "custom" and "workspace" not in config["job_setting"]:
         config["job_setting"]["workspace"] = {"mount_path": "/workspace"}
 
-    experiment_client: GroupExperimentClientService = build_client(ServiceType.GROUP_EXPERIMENT)
-    data_client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
-    vm_client: GroupVMClientService = build_client(ServiceType.GROUP_VM)
+    experiment_client: ProjectExperimentClientService = build_client(ServiceType.PROJECT_EXPERIMENT)
+    data_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
+    vm_client: GroupVMConfigClientService = build_client(ServiceType.GROUP_VM_CONFIG)
     job_template_client: JobTemplateClientService = build_client(ServiceType.JOB_TEMPLATE)
 
     experiment_name = experiment_name or config["experiment"]
@@ -237,12 +237,13 @@ def run(
     refine_config(config, vm_name, num_devices, experiment_name, job_name)
 
     if workspace_dir is not None:
+        workspace_dir = workspace_dir.resolve()  # ensure absolute path
         if not workspace_dir.exists():
             secho_error_and_exit(f"Specified workspace does not exist...")
         if not workspace_dir.is_dir():
             secho_error_and_exit(f"Specified workspace is not directory...")
 
-    client: JobClientService = build_client(ServiceType.JOB)
+    client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
     job_data = client.run_job(config, workspace_dir)
 
     typer.secho(
@@ -263,17 +264,17 @@ def list(
         "--head",
         help="The number of job list to view at the head"
     ),
-    show_group_job: bool = typer.Option(
+    show_project_job: bool = typer.Option(
         False,
-        "--group",
-        "-g",
-        help="Show all jobs in my group including jobs launched by other users"
+        "--project",
+        "-p",
+        help="Show all jobs in my project including jobs launched by other users"
     )
 ):
     """List all jobs.
     """
-    if show_group_job:
-        client: GroupJobClientService = build_client(ServiceType.GROUP_JOB)
+    if show_project_job:
+        client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
     else:
         client: JobClientService = build_client(ServiceType.JOB)
     jobs = client.list_jobs()
@@ -419,7 +420,7 @@ def _split_machine_ids(value: Optional[str]) -> Optional[List[int]]:
 def _format_log_string(log_record: dict,
                        show_time: bool,
                        show_machine_id: bool,
-                       use_style: bool = True):
+                       use_style: bool = True) -> Generator[Tuple[str, bool], None, None]:
     timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(log_record['timestamp'])))} "
     node_rank = log_record['node_rank']
     node_rank_str = "📈 PF " if node_rank == -1 else f"💻 #{node_rank} "
@@ -430,18 +431,17 @@ def _format_log_string(log_record: dict,
 
     lines = [x for x in re.split(r'(\n|\r)', log_record['content']) if x]
 
+    job_finished = False
     for line in lines:
         if line in ('\n', '\r'):
-            yield line
+            yield line, job_finished
         else:
+            job_finished = (line == "Job completed successfully." and node_rank == -1)
             if show_machine_id:
                 line = node_rank_str + line
             if show_time:
                 line = timestamp_str + line
-
-            if node_rank == -1:
-                line = line + "\n"
-            yield line
+            yield line, job_finished
 
 
 async def monitor_logs(job_id: int,
@@ -451,10 +451,13 @@ async def monitor_logs(job_id: int,
                        show_machine_id: bool):
     ws_client: JobWebSocketClientService = build_client(ServiceType.JOB_WS)
 
+    job_finished = False
     async with ws_client.open_connection(job_id, log_types, machines):
         async for response in ws_client:
-            for line in _format_log_string(response, show_time, show_machine_id):
+            for line, job_finished in _format_log_string(response, show_time, show_machine_id):
                 typer.echo(line, nl=False)
+            if job_finished:
+                return
 
 
 # TODO: Implement since/until if necessary
@@ -527,17 +530,18 @@ def log(
     client: JobClientService = build_client(ServiceType.JOB)
     logs = client.get_text_logs(job_id, num_records, head, None, machines, content)
 
+    job_finished = False
     if export_path is not None:
         with export_path.open("w") as export_file:
             for record in logs:
-                for line in _format_log_string(record, show_time, show_machine_id, use_style=False):
+                for line, _ in _format_log_string(record, show_time, show_machine_id, use_style=False):
                     export_file.write(line)
     else:
         for record in logs:
-            for line in _format_log_string(record, show_time, show_machine_id):
+            for line, job_finished in _format_log_string(record, show_time, show_machine_id):
                 typer.echo(line, nl=False)
 
-    if follow:
+    if not job_finished and follow and export_path is None:
         try:
             # Subscribe job log
             asyncio.run(

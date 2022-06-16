@@ -21,7 +21,7 @@ from pfcli.service import (
 from pfcli.service.client import (
     CredentialClientService,
     DataClientService,
-    GroupDataClientService,
+    ProjectDataClientService,
     build_client,
 )
 from pfcli.service.cloud import build_storage_helper
@@ -91,21 +91,21 @@ def main(
         configurator = build_data_configurator(job_type)
         name, cloud, region, storage_name, credential_id, metadata, files = configurator.render()
 
-        client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
+        client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
         datastore = client.create_datastore(name, cloud, region, storage_name, credential_id, metadata, files, True)
 
         typer.secho("Datastore created successfully!", fg=typer.colors.BLUE)
 
-    datastore['vendor'] = storage_type_map_inv[datastore['vendor']].value
-    panel_formatter.render([datastore], show_detail=True)
-    exit(0)
+        datastore['vendor'] = storage_type_map_inv[datastore['vendor']].value
+        panel_formatter.render([datastore], show_detail=True)
+        exit(0)
 
 
 @app.command()
 def list():
     """List datasets in datastore.
     """
-    client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
+    client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
     datastores = client.list_datastores()
     for datastore in datastores:
         datastore['vendor'] = storage_type_map_inv[datastore['vendor']].value
@@ -121,10 +121,10 @@ def view(
 ):
     """View the detail of a dataset.
     """
-    group_client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
+    project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
     client: DataClientService = build_client(ServiceType.DATA)
 
-    datastore_id = group_client.get_id_by_name(name)
+    datastore_id = project_client.get_id_by_name(name)
     datastore = client.get_datastore(datastore_id)
     datastore['vendor'] = storage_type_map_inv[datastore['vendor']].value
     panel_formatter.render([datastore], show_detail=True)
@@ -202,7 +202,7 @@ def create(
         except yaml.YAMLError as exc:
             secho_error_and_exit(f"Error occurred while parsing metadata file... {exc}")
 
-    client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
+    client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
     datastore = client.create_datastore(name, cloud, region, storage_name, credential_id, metadata, files, True)
     datastore['vendor'] = storage_type_map_inv[datastore['vendor']].value
 
@@ -238,11 +238,11 @@ def upload(
     The created dataset will have "fai" cloud type.
     """
     client: DataClientService = build_client(ServiceType.DATA)
-    group_client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
+    project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
     expand = source_path.endswith('/')
-    source_path = Path(source_path)
+    source_path: Path = Path(source_path)
 
-    datastore_id = group_client.get_id_by_name(name)
+    datastore_id = project_client.get_id_by_name(name)
     if datastore_id is not None:
         secho_error_and_exit(f"The datastore with the same name ({name}) already exists.")
 
@@ -254,7 +254,7 @@ def upload(
         except yaml.YAMLError as exc:
             secho_error_and_exit(f"Error occurred while parsing metadata file... {exc}")
 
-    datastore = group_client.create_datastore(name, StorageType.FAI, '', '', None, metadata, [], False)
+    datastore = project_client.create_datastore(name, StorageType.FAI, '', '', None, metadata, [], False)
     typer.secho(f"Datastore ({name}) is created successfully.", fg=typer.colors.BLUE)
     datastore_id = datastore['id']
 
@@ -304,8 +304,8 @@ def edit(
 ):
     """Edit metadata of dataset.
     """
-    group_client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
-    datastore_id = group_client.get_id_by_name(name)
+    project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
+    datastore_id = project_client.get_id_by_name(name)
 
     metadata = None
     if metadata_file is not None:
@@ -354,9 +354,9 @@ def delete(
             raise typer.Abort()
 
     client: DataClientService = build_client(ServiceType.DATA)
-    group_client: GroupDataClientService = build_client(ServiceType.GROUP_DATA)
+    project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
 
-    datastore_id = group_client.get_id_by_name(name)
+    datastore_id = project_client.get_id_by_name(name)
     if datastore_id is None:
         secho_error_and_exit(f"Datastore ({name}) is not found.")
 
