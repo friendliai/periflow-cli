@@ -10,13 +10,14 @@ from datetime import datetime, timedelta, timezone
 from dateutil.tz import tzlocal
 from pathlib import Path
 from subprocess import CalledProcessError, check_call
-from typing import Optional, List, Dict
+from typing import Callable, Optional, List, Dict
 from urllib.parse import urljoin
 
 import pathspec
 import typer
 import requests
 from requests.exceptions import HTTPError
+from requests.models import Response
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
 
@@ -315,3 +316,33 @@ def decode_http_err(exc: HTTPError) -> str:
         error_str = exc.response.content.decode()
 
     return error_str
+
+
+def paginated_get(response_getter: Callable[..., Response], **params) -> List[dict]:
+    """Pagination listing
+    """
+    response_dict = response_getter(params={**params}).json()
+    items = response_dict["results"]
+    next_cursor = response_dict["next_cursor"]
+
+    while next_cursor is not None:
+        response_dict = response_getter(
+            params={
+                **params,
+                "cursor": next_cursor
+            }
+        ).json()
+
+        # TODO (taebum): delete when time granulaity fixed
+        # After deleting, we can change this function to yield List[dict]
+        new_item_added = False
+        for x in response_dict["results"]:
+            if x not in items:
+                items.append(x)
+                new_item_added = True
+        if not new_item_added:
+            break
+
+        next_cursor = response_dict["next_cursor"]
+
+    return items

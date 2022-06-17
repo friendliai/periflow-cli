@@ -15,13 +15,12 @@ from websockets.exceptions import ConnectionClosed
 from pfcli.service import LogType
 from pfcli.service.auth import TokenType, auto_token_refresh, get_auth_header, get_token
 from pfcli.service.client.base import ClientService, safe_request
-from pfcli.utils import secho_error_and_exit
+from pfcli.utils import paginated_get, secho_error_and_exit
 
 
 class JobClientService(ClientService):
     def list_jobs(self) -> List[dict]:
-        response = safe_request(self.list, err_prefix="Failed to list jobs.")()
-        return response.json()['results']
+        return paginated_get(safe_request(self.list, err_prefix="Failed to list jobs."))
 
     def get_job(self, job_id: int) -> dict:
         response = safe_request(self.retrieve, err_prefix="Failed to list jobs.")(

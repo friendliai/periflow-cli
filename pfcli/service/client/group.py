@@ -16,7 +16,7 @@ from pfcli.service.client.base import (
     UserRequestMixin,
     safe_request
 )
-from pfcli.utils import validate_storage_region
+from pfcli.utils import paginated_get, validate_storage_region
 
 
 class GroupClientService(ClientService):
@@ -46,23 +46,7 @@ class GroupProjectClientService(ClientService, GroupRequestMixin):
 
     def list_projects(self) -> List[dict]:
         get_response_dict = safe_request(self.list, err_prefix="Failed to list projects.")
-
-        response_dict = get_response_dict().json()
-        projects = response_dict['results']
-        next_cursor = response_dict['next_cursor']
-        while next_cursor is not None:
-            response_dict = get_response_dict(
-                params={"cursor": next_cursor}
-            ).json()
-
-            # TODO (taebum): delete
-            if any(x in projects for x in response_dict['results']):
-                break
-
-            projects.extend(response_dict['results'])
-            next_cursor = response_dict['next_cursor']
-
-        return projects
+        return paginated_get(get_response_dict)
 
 
 class GroupVMConfigClientService(ClientService, GroupRequestMixin):
@@ -104,11 +88,8 @@ class GroupProjectCheckpointClientService(ClientService, UserRequestMixin, Group
         if category is not None:
             request_data['category'] = category.value
 
-        # TODO (AC): Add pagination
-        response = safe_request(self.list, err_prefix="Cannot list checkpoints in your group.")(
-            params=request_data
-        )
-        return response.json()['results']
+        get_response_dict = safe_request(self.list, err_prefix="Failed to list checkpoints.")
+        return paginated_get(get_response_dict, **request_data)
 
     def create_checkpoint(self,
                           name: str,

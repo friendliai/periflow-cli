@@ -56,7 +56,7 @@ def test_job_client_list_jobs(requests_mock: requests_mock.Mocker, job_client: J
     # Success
     requests_mock.get(
         job_client.url_template.render(),
-        json={'results': [{'id': 1}, {'id': 2}]}
+        json={'results': [{'id': 1}, {'id': 2}], 'next_cursor': None}
     )
     assert job_client.list_jobs() == [{'id': 1}, {'id': 2}]
 

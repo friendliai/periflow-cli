@@ -6,6 +6,7 @@ from string import Template
 from typing import List
 
 from pfcli.service.client.base import ClientService, GroupRequestMixin, UserRequestMixin, safe_request
+from pfcli.utils import paginated_get
 
 
 class UserClientService(ClientService, UserRequestMixin):
@@ -42,20 +43,4 @@ class UserGroupProjectClientService(ClientService, UserRequestMixin, GroupReques
 
     def list_projects(self) -> List[dict]:
         get_response_dict = safe_request(self.list, err_prefix="Failed to list projects.")
-
-        response_dict = get_response_dict().json()
-        projects = response_dict['results']
-        next_cursor = response_dict['next_cursor']
-        while next_cursor is not None:
-            response_dict = get_response_dict(
-                params={"cursor": next_cursor}
-            ).json()
-
-            # TODO (taebum): delete
-            if any(x in projects for x in response_dict['results']):
-                break
-
-            projects.extend(response_dict['results'])
-            next_cursor = response_dict['next_cursor']
-
-        return projects
+        return paginated_get(get_response_dict)

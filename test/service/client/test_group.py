@@ -138,21 +138,26 @@ def test_group_checkpoint_list_checkpoints(requests_mock: requests_mock.Mocker,
             "created_at": "2022-04-19T09:03:47.352Z",
         }
 
-    data = {
+    job_data = {
         "results": [
-            build_response_item("USER", "aws", "us-east-1"),
             build_response_item("JOB", "aws", "us-east-2"),
         ],
-        "next_cursor": "NEXT_CURSOR",
+        "next_cursor": None,
+    }
+
+    user_data = {
+        "results": [
+            build_response_item("USER", "aws", "us-east-1"),
+        ],
+        "next_cursor": None,
     }
 
     # Success
     url = group_project_checkpoint_client.url_template.render(**group_project_checkpoint_client.url_kwargs)
-    requests_mock.get(url, json=data)
-    assert group_project_checkpoint_client.list_checkpoints(CheckpointCategory.USER_PROVIDED) == data['results']
-    assert requests_mock.request_history[-1].query == 'category=USER'
-    assert group_project_checkpoint_client.list_checkpoints(CheckpointCategory.JOB_GENERATED) == data['results']
-    assert requests_mock.request_history[-1].query == 'category=JOB'
+    requests_mock.get(url, json=user_data)
+    assert group_project_checkpoint_client.list_checkpoints(CheckpointCategory.USER_PROVIDED) == user_data['results']
+    requests_mock.get(url, json=job_data)
+    assert group_project_checkpoint_client.list_checkpoints(CheckpointCategory.JOB_GENERATED) == job_data['results']
 
     # Failed due to HTTP error
     requests_mock.get(url, status_code=400)
