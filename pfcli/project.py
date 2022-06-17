@@ -2,11 +2,12 @@
 
 """PeriFlow Project CLI"""
 
-from typing import Optional, Union
+import uuid
+from typing import List, Optional, Union
 
 import typer
 
-from pfcli.context import get_current_project_id, set_current_project_id
+from pfcli.context import get_current_project_id, set_current_project_id, project_context_path
 from pfcli.service import ServiceType
 from pfcli.service.client import (
     GroupProjectClientService,
@@ -33,6 +34,13 @@ project_panel_formatter = PanelFormatter(
     fields=['pf_group_id', 'id', 'name'],
     headers=['Organization ID', 'Project ID', 'Name']
 )
+
+
+def _find_project_id(projects: List[dict], project_name: str) -> uuid.UUID:
+    for project in projects:
+        if project['name'] == project_name:
+            return uuid.UUID(project['id'])
+    secho_error_and_exit(f"No project exists with name {project_name}.")
 
 
 @app.command()
@@ -80,7 +88,7 @@ def list(
 def create(
     name: str = typer.Argument(
         ...,
-        help='Name of organization to create'
+        help='Name of project to create'
     )
 ):
     client: GroupProjectClientService = build_client(ServiceType.GROUP_PROJECT)
@@ -92,6 +100,8 @@ def create(
 def current():
     client: ProjectClientService = build_client(ServiceType.PROJECT)
     project_id = get_current_project_id()
+    if project_id is None:
+        secho_error_and_exit("working project is not set")
     project = client.get_project(project_id)
     project_panel_formatter.render(project)
 
@@ -100,20 +110,27 @@ def current():
 def switch(
     name: str = typer.Argument(
         ...,
-        help='Name of organization to switch',
+        help='Name of project to switch',
     )
 ):
-    client: GroupProjectClientService = build_client(ServiceType.GROUP_PROJECT)
-    projects = client.list_projects()
+    user_group_project_client: UserGroupProjectClientService = build_client(ServiceType.USER_GROUP_PROJECT)
 
-    project_id = None
-    for project in projects:
-        if project['name'] == name:
-            project_id = project['id']
-            break
-
-    if project_id is None:
-        secho_error_and_exit(f"No project exists with name {name}.")
-
+    project_id = _find_project_id(user_group_project_client.list_projects(), name)
     set_current_project_id(project_id)
     typer.secho(f"Project switched to {name}.", fg=typer.colors.BLUE)
+
+
+@app.command(help="delete project")
+def delete(
+    name: str = typer.Argument(
+        ...,
+        help="Name of project to delete",
+    )
+):
+    project_client: ProjectClientService = build_client(ServiceType.PROJECT)
+    user_group_project_client: UserGroupProjectClientService = build_client(ServiceType.USER_GROUP_PROJECT)
+    project_id = _find_project_id(user_group_project_client.list_projects(), name)
+    project_client.delete_project(pf_project_id=project_id)
+    if project_id == get_current_project_id():
+        project_context_path.unlink()
+    typer.secho(f"Project {name} deleted.", fg=typer.colors.BLUE)

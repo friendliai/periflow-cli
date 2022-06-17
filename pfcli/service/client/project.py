@@ -23,6 +23,11 @@ class ProjectClientService(ClientService):
         )
         return response.json()
 
+    def delete_project(self, pf_project_id: uuid.UUID) -> None:
+        safe_request(self.delete, err_prefix="Failed to delete a project.")(
+            pk=pf_project_id
+        )
+
 
 class ProjectExperimentClientService(ClientService, ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):

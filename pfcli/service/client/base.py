@@ -160,11 +160,17 @@ class GroupRequestMixin:
     group_id: uuid.UUID
 
     def initialize_group(self):
-        self.group_id = get_current_group_id()
+        group_id = get_current_group_id()
+        if group_id is None:
+            secho_error_and_exit("Organization is not set.")
+        self.group_id = group_id
 
 
 class ProjectRequestMixin:
     project_id: uuid.UUID
 
     def initialize_project(self):
-        self.project_id = get_current_project_id()
+        project_id = get_current_project_id()
+        if project_id is None:
+            secho_error_and_exit("Project is not set.")
+        self.project_id = project_id

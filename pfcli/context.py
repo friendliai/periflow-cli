@@ -3,17 +3,18 @@
 """Context (Organization / Project) managing"""
 
 import uuid
+from typing import Optional
 
-from pfcli.utils import get_periflow_directory, secho_error_and_exit
+from pfcli.utils import get_periflow_directory
 
 
 org_context_path = get_periflow_directory() / "organization"
 project_context_path = get_periflow_directory() / "project"
 
 
-def get_current_group_id() -> uuid.UUID:
+def get_current_group_id() -> Optional[uuid.UUID]:
     if not org_context_path.exists():
-        secho_error_and_exit("working organization is not set")
+        return None
 
     with open(org_context_path, "r", encoding="utf-8") as f:
         group_id = uuid.UUID(f.read())
@@ -25,9 +26,9 @@ def set_current_group_id(pf_group_id: uuid.UUID):
         f.write(str(pf_group_id))
 
 
-def get_current_project_id() -> uuid.UUID:
+def get_current_project_id() -> Optional[uuid.UUID]:
     if not project_context_path.exists():
-        secho_error_and_exit("working project is not set")
+        return None
 
     with open(project_context_path, "r", encoding="utf-8") as f:
         project_id = uuid.UUID(f.read())
