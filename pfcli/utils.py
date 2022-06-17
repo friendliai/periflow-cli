@@ -332,17 +332,7 @@ def paginated_get(response_getter: Callable[..., Response], **params) -> List[di
                 "cursor": next_cursor
             }
         ).json()
-
-        # TODO (taebum): delete when time granulaity fixed
-        # After deleting, we can change this function to yield List[dict]
-        new_item_added = False
-        for x in response_dict["results"]:
-            if x not in items:
-                items.append(x)
-                new_item_added = True
-        if not new_item_added:
-            break
-
+        items.extend(response_dict["results"])
         next_cursor = response_dict["next_cursor"]
 
     return items
