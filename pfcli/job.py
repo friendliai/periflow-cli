@@ -5,7 +5,7 @@
 import asyncio
 import re
 from pathlib import Path
-from typing import Generator, Optional, List, Tuple
+from typing import Dict, Generator, Optional, List, Tuple
 from dateutil import parser
 from dateutil.parser import parse
 from datetime import datetime
@@ -29,6 +29,7 @@ from pfcli.service.client import (
     JobWebSocketClientService,
     build_client,
 )
+from pfcli.service.client.project import ProjectClientService
 from pfcli.service.config import build_job_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import (
@@ -60,6 +61,7 @@ job_table = TableFormatter(
     name="Jobs",
     fields=[
         'id',
+        'project',
         'name',
         'status',
         'vm_config.vm_config_type.vm_instance_type.name',
@@ -69,7 +71,7 @@ job_table = TableFormatter(
         'started_at',
         'duration',
     ],
-    headers=['ID', 'Name', 'Status', 'VM', 'Device', 'Device Cnt', 'Data', 'Start', 'Duration'],
+    headers=['ID', 'Project', 'Name', 'Status', 'VM', 'Device', 'Device Cnt', 'Data', 'Start', 'Duration'],
 )
 job_table.apply_styling("ID", style="bold")
 job_table.add_substitution_rule("waiting", "[bold]waiting")
@@ -278,6 +280,8 @@ def list(
     else:
         client: JobClientService = build_client(ServiceType.JOB)
     jobs = client.list_jobs()
+    project_client: ProjectClientService = build_client(ServiceType.PROJECT)
+    project_name_cache: Dict[str, str] = {}
 
     for job in jobs:
         started_at = job.get("started_at")
@@ -294,6 +298,14 @@ def list(
             duration = timedelta_to_pretty_str(start_time, curr_time)
         else:
             duration = None
+
+        project_id = job.get("project_id")
+        if project_id is not None:
+            if project_id in project_name_cache:
+                job['project'] = project_name_cache[project_id]
+            else:
+                job['project'] = project_client.get_project(pf_project_id=project_id)['name']
+                project_name_cache[project_id] = job['project']
         job['started_at'] = start
         job['duration'] = duration
         job['data_name'] = job["data_store"]['name'] if job["data_store"] is not None else None
