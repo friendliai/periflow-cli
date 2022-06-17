@@ -345,7 +345,7 @@ def view(
 
     job = job_client.get_job(job_id)
     job_checkpoints = job_checkpoint_client.list_checkpoints()
-    job_artifacts = job_artifact_client.list_artifacts() 
+    job_artifacts = job_artifact_client.list_artifacts()
 
     started_at = job.get("started_at")
     finished_at = job.get("finished_at")
@@ -541,7 +541,7 @@ def log(
             for line, job_finished in _format_log_string(record, show_time, show_machine_id):
                 typer.echo(line, nl=False)
 
-    if not job_finished and follow and export_path is None:
+    if not job_finished and follow:
         try:
             # Subscribe job log
             asyncio.run(
