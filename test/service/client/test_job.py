@@ -138,7 +138,8 @@ def test_job_client_get_text_logs(requests_mock: requests_mock.Mocker, job_clien
                 'type': 'stdout',
                 'node_rank': 0
             }
-        ]
+        ],
+        'next_cursor': None
     }
 
     # Success

@@ -318,15 +318,16 @@ def decode_http_err(exc: HTTPError) -> str:
     return error_str
 
 
-def paginated_get(response_getter: Callable[..., Response], **params) -> List[dict]:
+def paginated_get(response_getter: Callable[..., Response], path: Optional[str] = None, **params) -> List[dict]:
     """Pagination listing
     """
-    response_dict = response_getter(params={**params}).json()
+    response_dict = response_getter(path=path, params={**params}).json()
     items = response_dict["results"]
     next_cursor = response_dict["next_cursor"]
 
     while next_cursor is not None:
         response_dict = response_getter(
+            path=path,
             params={
                 **params,
                 "cursor": next_cursor

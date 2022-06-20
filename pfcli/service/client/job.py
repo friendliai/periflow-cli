@@ -57,10 +57,11 @@ class JobClientService(ClientService):
         if machines is not None:
             request_data['node_ranks'] = ",".join([str(machine) for machine in machines])
 
-        response = safe_request(self.list, err_prefix="Failed to fetch text logs.")(
-            path=f"{job_id}/text_log/"
+        logs = paginated_get(
+            safe_request(self.list, err_prefix="Failed to fetch text logs."),
+            path=f"{job_id}/text_log/",
+            **request_data
         )
-        logs = response.json()['results']
         if not head:
             logs.reverse()
 
