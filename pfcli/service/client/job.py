@@ -22,6 +22,11 @@ class JobClientService(ClientService):
     def list_jobs(self) -> List[dict]:
         return paginated_get(safe_request(self.list, err_prefix="Failed to list jobs."))
 
+    def delete_job(self, job_id: int) -> None:
+        safe_request(self.delete, err_prefix=f"Failed to delete job ({job_id}).")(
+            pk=job_id
+        )
+
     def get_job(self, job_id: int) -> dict:
         response = safe_request(self.retrieve, err_prefix="Failed to list jobs.")(
             pk=job_id

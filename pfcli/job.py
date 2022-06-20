@@ -343,6 +343,25 @@ def stop(
 
 
 @app.command()
+def delete(
+    job_id: int = typer.Argument(
+        ...,
+        help="ID of job to delete"
+    ),
+):
+    """Delete a job.
+    """
+    do_delete = typer.confirm("Are your sure to delete job?")
+    if not do_delete:
+        raise typer.Abort()
+
+    client: JobClientService = build_client(ServiceType.JOB)
+    client.delete_job(job_id)
+
+    typer.secho(f"Job ({job_id}) deleted successfully!", fg=typer.colors.BLUE)
+
+
+@app.command()
 def view(
     job_id: int = typer.Argument(
         ...,
