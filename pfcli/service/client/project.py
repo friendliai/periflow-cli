@@ -13,7 +13,7 @@ from rich.filesize import decimal
 
 from pfcli.service import CloudType, CredType, LockType, StorageType, cred_type_map, storage_type_map
 from pfcli.service.client.base import ClientService, ProjectRequestMixin, T, safe_request
-from pfcli.utils import get_workspace_files, secho_error_and_exit, validate_storage_region, zip_dir
+from pfcli.utils import get_workspace_files, paginated_get, secho_error_and_exit, validate_storage_region, zip_dir
 
 
 class ProjectClientService(ClientService):
@@ -22,6 +22,11 @@ class ProjectClientService(ClientService):
             pk=pf_project_id
         )
         return response.json()
+
+    def delete_project(self, pf_project_id: uuid.UUID) -> None:
+        safe_request(self.delete, err_prefix="Failed to delete a project.")(
+            pk=pf_project_id
+        )
 
 
 class ProjectExperimentClientService(ClientService, ProjectRequestMixin):
@@ -53,8 +58,7 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
         super().__init__(template, project_id=self.project_id, **kwargs)
 
     def list_jobs(self) -> List[dict]:
-        response = safe_request(self.list, err_prefix="Failed to list jobs in your group.")()
-        return response.json()['results']
+        return paginated_get(safe_request(self.list, err_prefix="Failed to list jobs in project."))
 
     def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
         job_request = safe_request(self.post, err_prefix="Failed to run job.")

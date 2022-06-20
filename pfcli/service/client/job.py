@@ -15,13 +15,17 @@ from websockets.exceptions import ConnectionClosed
 from pfcli.service import LogType
 from pfcli.service.auth import TokenType, auto_token_refresh, get_auth_header, get_token
 from pfcli.service.client.base import ClientService, safe_request
-from pfcli.utils import secho_error_and_exit
+from pfcli.utils import paginated_get, secho_error_and_exit
 
 
 class JobClientService(ClientService):
     def list_jobs(self) -> List[dict]:
-        response = safe_request(self.list, err_prefix="Failed to list jobs.")()
-        return response.json()['results']
+        return paginated_get(safe_request(self.list, err_prefix="Failed to list jobs."))
+
+    def delete_job(self, job_id: int) -> None:
+        safe_request(self.delete, err_prefix=f"Failed to delete job ({job_id}).")(
+            pk=job_id
+        )
 
     def get_job(self, job_id: int) -> dict:
         response = safe_request(self.retrieve, err_prefix="Failed to list jobs.")(
@@ -58,10 +62,11 @@ class JobClientService(ClientService):
         if machines is not None:
             request_data['node_ranks'] = ",".join([str(machine) for machine in machines])
 
-        response = safe_request(self.list, err_prefix="Failed to fetch text logs.")(
-            path=f"{job_id}/text_log/"
+        logs = paginated_get(
+            safe_request(self.list, err_prefix="Failed to fetch text logs."),
+            path=f"{job_id}/text_log/",
+            **request_data
         )
-        logs = response.json()['results']
         if not head:
             logs.reverse()
 

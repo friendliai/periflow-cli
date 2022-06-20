@@ -108,7 +108,7 @@ def test_project_job_client_list_jobs(requests_mock: requests_mock.Mocker,
     # Success
     requests_mock.get(
         project_job_client.url_template.render(**project_job_client.url_kwargs),
-        json={'results': [{'id': 0}, {'id': 1}]}
+        json={'results': [{'id': 0}, {'id': 1}], 'next_cursor': None}
     )
     assert project_job_client.list_jobs() == [{'id' : 0}, {'id': 1}]
 
