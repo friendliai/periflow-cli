@@ -137,11 +137,11 @@ class ProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
         response = safe_request(self.list, err_prefix="Failed to list VM quota info.")()
         vm_dict_list = response.json()
         if vendor is not None:
-            vm_dict_list = list(filter(lambda info: info['vm_instance_type']['vendor'] == vendor, vm_dict_list))
+            vm_dict_list = list(filter(lambda info: info['vm_config_type']['vm_instance_type']['vendor'] == vendor, vm_dict_list))
         if region is not None:
-            vm_dict_list = list(filter(lambda info: info['vm_instance_type']['region'] == region, vm_dict_list))
+            vm_dict_list = list(filter(lambda info: info['vm_config_type']['vm_instance_type']['region'] == region, vm_dict_list))
         if device_type is not None:
-            vm_dict_list = list(filter(lambda info: info['vm_instance_type']['device_type'] == device_type, vm_dict_list))
+            vm_dict_list = list(filter(lambda info: info['vm_config_type']['vm_instance_type']['device_type'] == device_type, vm_dict_list))
         return vm_dict_list
 
 
