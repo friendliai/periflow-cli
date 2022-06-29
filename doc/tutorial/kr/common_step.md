@@ -6,25 +6,57 @@ PeriFlow를 사용하시는 여러분들을 환영합니다. 본 튜토리얼에
 
 본격적인 튜토리얼에 앞서 다음과 같은 PeriFlow의 용어/개념들을 알고 계시면 좋습니다.
 
-- Organization: 여러 유저들이 속한 그룹을 의미합니다. 그룹 내의 유저들은 Dataset, Checkpoint 같은 자원들을 공유할 수도 있습니다.
-- Job: 학습의 스케줄링 단위 입니다. 로컬에서 `python main.py ...`와 같이 학습 프로세스를 실행하는 것이 PeriFlow에선 Job 하나에 해당 합니다.
-- Experiment: 여러 Job들의 묶음으로, Job에 붙이는 태그의 개념에 해당합니다. 같은 종류의 Job은 같은 Experiment에 묶어서 보다 편하게 Job을 관리할 수 있습니다.
-- Datastore/Dataset: Datastore는 Job에 사용될 여러 Dataset들의 집합입니다.
-- Checkpoint: 모델 학습의 결과물로 생긴 모델 가중치 체크포인트입니다. 학습 과정의 특정 스텝에서 Checkpoint 하나가 생성될 수 있습니다.
-- Credential: 유저의 개인 클라우드 저장소, Slack 등에 접근하기 위해 필요한 secret 입니다..
+<p align="center">
+  <img src="../../assets/group_hierarchy.png" width="70%" alt="system">
+</p>
+
+- **Organization**: PeriFlow의 최상위 그룹 단위입니다. 조직 내에 멤버들을 초대하여 개발 및 실험 과정을 협업할 수 있습니다. 사용자는 동시에 여러 개의 Organization에 속할 수 있습니다.
+- **Project**: Organization 내의 서브 그룹의 단위입니다. Organization 내에서 용도에 따라 여러 개의 Project를 생성하고 각 Project 마다 필요한 멤버들을 추가할 수 있습니다. Project 내에서는 Job, Dataset, Checkpoint, Credential 등의 모든 자원이 공유됩니다. 사용자는 동시에 여러 개의 Project에 속할 수 있습니다.
+- **Job**: 학습 작업의 실행/스케줄링 단위 입니다. `python main.py ...`와 같은 명령어를 사용하여 학습 프로세스를 실행하는 것이 PeriFlow에선 Job 하나에 해당 합니다.
+- **Experiment**: 여러 Job들의 묶음으로, Job에 붙이는 태그에 해당합니다. 같은 종류의 Job은 같은 Experiment에 묶어서 보다 편하게 Job을 관리할 수 있습니다.
+- **Datastore/Dataset**: Datastore는 Job에 사용될 여러 Dataset들의 집합입니다.
+- **Checkpoint**: 모델 학습의 결과물로 생긴 모델 가중치 체크포인트입니다. 학습 과정의 특정 스텝에서 Checkpoint 하나가 생성될 수 있습니다.
+- **Credential**: 유저의 개인 클라우드 저장소, Slack 등에 접근하기 위해 필요한 secret 입니다.
 
 ## Requirements
 
-- `pip install periflow-cli`를 통해 컴퓨터에 `periflow-cli` 패키지를 설치해두어야 합니다.
+- `pip install periflow-cli`를 통해 컴퓨터에 `periflow-cli` 패키지를 설치해야 합니다.
 
 ## 사용 방법 설명
 
-1. [로그인](#login)
-2. [Credential 생성](#crdential-생성)
-3. [Dataset 생성](#dataset-생성)
-4. [Job 실행](#job-실행)
-5. [Job 모니터링](#job-모니터링)
-6. [Checkpoint 다운로드](#checkpoint-다운로드)
+1. [회원가입](#sign-up)
+2. [Organization 관리](#group-management)
+3. [Project 관리](#project-management)
+4. [로그인](#login)
+5. [Credential 생성](#crdential-생성)
+6. [Dataset 생성](#dataset-생성)
+7. [Job 실행](#job-실행)
+8. [Job 모니터링](#job-모니터링)
+9. [Checkpoint 다운로드](#checkpoint-다운로드)
+
+### Sign-Up
+
+PeriFlow에 사용자 계정을 생성하고, Organization 및 Project를 생성하여 여러 멤버들과 함께 작업이 가능합니다.
+
+```sh
+pf signup
+```
+
+### Organization 관리
+
+#### Organization 생성
+
+#### Organization 초대
+
+```sh
+pf org craete
+```
+
+### Project 관리
+
+#### Project 생성
+
+#### Project 초대
 
 ### Login
 
@@ -32,6 +64,19 @@ PeriFlow를 사용하기 위해서 우선 로그인을 해야합니다. `pf logi
 
 ```sh
 pf login
+```
+
+로그인 이후엔 현재 나의 "작업 context"를 설정할 수 있습니다. 여기에서 "작업 context"란 현재 내가 작업을 할 Organization 및 Project가 무엇인지에 해당합니다.
+아래 커맨드를 사용하여 작업할 Organization을 지정할 수 있습니다. Organization들의 리스트를 보려면 `pf org list` 커맨드를 사용하시면 됩니다.
+
+```sh
+pf org switch [ORGANIZATION_NAME]
+```
+
+또한 아래 커맨드를 사용하여 작업할 Project를 지정할 수 있습니다. 이 때 현재 선택된 Organization 내의 Project만 선택이 가능합니다. Project들의 리스트를 보려면 `pf project list` 커맨드를 사용하시면 됩니다.
+
+```sh
+pf project switch [PROJECT_NAME]
 ```
 
 ### Crdential 생성
@@ -43,7 +88,6 @@ PeriFlow를 본격적으로 사용하기에 앞서 필요한 credential들을 �
 - [Azure Blob Storage](#azure-blob-storage)
 - [Google Cloud Storage](#google-cloud-storage)
 - [Weights & Biases](#weights--biases)
-- Slack
 
 본인에게 필요한 Credential이 있다면 아래의 설명을 참고하여 생성을 합니다.
 
