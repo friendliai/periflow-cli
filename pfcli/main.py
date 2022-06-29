@@ -23,7 +23,7 @@ from pfcli.service import ServiceType
 from pfcli.service.auth import TokenType, update_token
 from pfcli.service.client import UserClientService, build_client
 from pfcli.service.formatter import PanelFormatter
-from pfcli.utils import get_uri, secho_error_and_exit
+from pfcli.utils import get_auth_uri, get_uri, secho_error_and_exit
 
 app = typer.Typer(
     help="Welcome to PeriFlow 🤗",
@@ -48,6 +48,25 @@ user_panel_formatter = PanelFormatter(
     fields=['name', 'username', 'email'],
     headers=["Name", "Username", "Email"]
 )
+
+@app.command(help="Sign up to PerfiFlow")
+def signup(
+    username: str = typer.Option(..., prompt="Enter Username"),
+    name: str = typer.Option(..., prompt="Enter Name"),
+    email: str = typer.Option(..., prompt="Enter Email"),
+    password: str = typer.Option(..., prompt="Enter Password", hide_input=True)
+):
+    r = requests.post(
+        get_auth_uri("pf_user/self_signup"),
+        json={"username": username, "name": name, "email": email, "password": password}
+    )
+    try:
+        r.raise_for_status()
+        typer.echo(f"\n\nWe just sent a verification code over to {email}")
+    except HTTPError:
+        secho_error_and_exit("Signup failed... Please check your submissions.")
+
+    typer.run(_validate)
 
 
 @app.command(help="Show who am I")
@@ -94,3 +113,13 @@ def passwd(
     client.change_password(old_password, new_password)
 
     typer.secho("Password is changed successfully!", fg=typer.colors.BLUE)
+
+
+def _validate(_, token: str = typer.Option(..., prompt="Enter Code")):
+    r = requests.post(get_auth_uri("pf_user/self_signup/confirm"), json={"email_token": token})
+    try:
+        r.raise_for_status()
+        typer.echo("\n\nVerified!")
+        typer.echo("Sign up success! Please sign in.")
+    except HTTPError:
+        secho_error_and_exit("Invalid code... Please Try again.")

@@ -32,6 +32,27 @@ class GroupClientService(ClientService):
         )
         return response.json()
 
+    def invite_to_group(self, pf_group_id: uuid.UUID, email: str) -> None:
+        safe_request(self.post, err_prefix="Failed to send invitation")(
+            path=f"{pf_group_id}/invite",
+            json={
+                "email": email,
+                "msg": ""
+            }
+        )
+
+    def verify(self, token: str) -> None:
+        safe_request(self.post, err_prefix="Invalid code... Please Try again.")(
+            path="invite/confirm",
+            json={
+                "email_token": token
+            }
+        )
+
+    def get_user(self, pf_group_id: str, username: str) -> dict:
+        get_response_dict = safe_request(self.list, err_prefix="Failed to get user in organization")
+        return paginated_get(get_response_dict, path=f"{pf_group_id}/pf_user", **{ "search": username })
+
 
 class GroupProjectClientService(ClientService, GroupRequestMixin):
     def __init__(self, template: Template, **kwargs):

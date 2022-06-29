@@ -24,6 +24,41 @@ class UserClientService(ClientService, UserRequestMixin):
             }
         )
 
+    # Group
+    def set_group_privilege(self, pf_group_id: str, pf_user_id: str, privilege_level: str) -> None:
+        safe_request(self.partial_update, err_prefix="Failed to update privilege level in group")(
+            pk=pf_user_id,
+            path=f"pf_group/{pf_group_id}/privilege_level",
+            json={
+                "privilege_level": privilege_level
+            }
+        )
+
+    # Project
+    def get_project_membership(self, pf_project_id):
+        response = safe_request(self.retrieve, err_prefix="Failed identify member in project")(
+            pk=self.user_id,
+            path=f"pf_project/{pf_project_id}",
+        )
+        return response.json()
+
+    def add_to_project(self, pf_user_id: str, pf_project_id: str, access_level: str):
+        safe_request(self.post, err_prefix="Failed to add user to project")(
+            path=f"{pf_user_id}/pf_project/{pf_project_id}",
+            json={
+                "access_level": access_level
+            }
+        )
+
+    def set_project_privilege(self, pf_user_id: str, pf_project_id: str, access_level: str):
+        safe_request(self.partial_update, err_prefix="Failed to update privilege level in project")(
+            pk=pf_user_id,
+            path=f"pf_project/{pf_project_id}/access_level",
+            json={
+                "access_level": access_level
+            }
+        )
+
 
 class UserGroupClientService(ClientService, UserRequestMixin):
     def __init__(self, template: Template, **kwargs):
