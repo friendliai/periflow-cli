@@ -67,7 +67,8 @@ def summary(
 ):
     "Summarize the billing information for the given time range"
     client: BillingSummaryClientService = build_client(ServiceType.BILLING_SUMMARY)
-    summaries = client.get_summary(group_id=organization_id, project_id=project_id)
+    summaries = client.get_summary(year=year,
+                                   group_id=organization_id, project_id=project_id)
     table_formatter.render(summaries)
 
     price_sum = reduce((lambda x, y: x["price"] + y["price"]), summaries)

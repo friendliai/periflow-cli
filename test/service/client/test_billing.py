@@ -34,9 +34,9 @@ def test_billing_summary_client_get_summary(requests_mock: requests_mock.Mocker,
             "price": 1.557
         }
     ])
-    assert billing_summary_client.get_summary(group_id=uuid.uuid4())
+    assert billing_summary_client.get_summary(year=2022, month=6, group_id=uuid.uuid4())
 
     # Failed due to HTTP error
     requests_mock.get(url_template.render(), status_code=404)
     with pytest.raises(typer.Exit):
-        assert billing_summary_client.get_summary(group_id=uuid.uuid4())
+        assert billing_summary_client.get_summary(year=2022, month=6, group_id=uuid.uuid4())
