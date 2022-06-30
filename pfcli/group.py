@@ -42,6 +42,7 @@ org_panel_formatter = PanelFormatter(
     headers=['ID', 'Name', 'Statue']
 )
 
+
 class GroupAccessLevel(str, Enum):
     OWNER = 'owner'
     MEMBER = 'member'

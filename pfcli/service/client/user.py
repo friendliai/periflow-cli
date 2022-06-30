@@ -29,7 +29,6 @@ class UserClientService(ClientService, UserRequestMixin):
         self.initialize_user()
         super().__init__(template, **kwargs)
 
-
     def change_password(self, old_password: str, new_password: str) -> None:
         safe_request(self.update, err_prefix="Failed to change password.")(
             pk=self.user_id,
