@@ -38,9 +38,9 @@ table_formatter = TableFormatter(
 )
 
 panel_formatter = PanelFormatter(
-    name="Billing",
-    fields = ['vm_name', 'price'],
-    headers = ['VM Name', 'Amount used in USD']
+    name="Total",
+    fields = ['price'],
+    headers = ['Total amount used in USD']
 )
 
 @app.command(help="summarize billing information")
@@ -88,5 +88,5 @@ def summary(
 
     price_sum = reduce((lambda acc, x: acc + x), price_by_vmname.values(), 0.)
 
-    total_price = [{"vm_name": "Total", "price": round(price_sum, 2)}]
+    total_price = [{"price": round(price_sum, 2)}]
     panel_formatter.render(total_price)
