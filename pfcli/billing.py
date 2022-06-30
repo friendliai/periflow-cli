@@ -33,7 +33,7 @@ app.add_typer(template_app, name="template", help="Manager job templates.")
 
 table_formatter = TableFormatter(
     name="Billing",
-    fields = ['instance.attributes.vm_name', 'price'],
+    fields = ['vm_name', 'price'],
     headers = ['VM Name', 'Amount used in USD']
 )
 
@@ -83,10 +83,10 @@ def summary(
 
     for price_info in prices:
         price_by_vmname[price_info['instance']['attributes']['vm_name']] += price_info['price']
-    table_formatter.render([{"VM Name": vm_name, "price": round(price, 2)}\
-            for vm_name,price in price_by_vmname.items()])
+    table_formatter.render([{"vm_name": vm_name, "price": round(price, 2)}
+                            for vm_name,price in price_by_vmname.items()])
 
     price_sum = reduce((lambda acc, x: acc + x), price_by_vmname.values(), 0.)
 
-    total_price = [{"name": "Total", "price": round(price_sum, 2)}]
+    total_price = [{"vm_name": "Total", "price": round(price_sum, 2)}]
     panel_formatter.render(total_price)
