@@ -39,30 +39,24 @@ panel_formatter = PanelFormatter(
 
 @app.command(help="summarize billing information")
 def summary(
-    organization_id: Optional[str] = typer.Argument(
+    year: int = typer.Argument(
+        ...
+    ),
+    month: int = typer.Argument(
+        ...
+    ),
+    day: Optional[int] = typer.Argument(
+        None
+    ),
+    organization_id: Optional[str] = typer.Option(
         None,
         '--organization',
         '-o'
     ),
-    project_id: Optional[str] = typer.Argument(
+    project_id: Optional[str] = typer.Option(
         None,
         '--project',
         '-p'
-    ),
-    year: Optional[int] = typer.Argument(
-        None,
-        '--year',
-        '-y'
-    ),
-    month: Optional[int] = typer.Argument(
-        None,
-        '--month',
-        '-m'
-    ),
-    day: Optional[int] = typer.Argument(
-        None,
-        '--day',
-        '-d'
     )
 ):
     "Summarize the billing information for the given time range"
