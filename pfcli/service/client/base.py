@@ -139,7 +139,6 @@ class ClientService:
     def bare_post(self, path: Optional[str] = None, **kwargs) -> Response:
         return requests.post(
             self.url_template.render(path=path, **self.url_kwargs),
-            headers=get_auth_header(),
             **kwargs
         )
 

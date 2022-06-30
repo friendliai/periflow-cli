@@ -12,14 +12,13 @@ from pfcli.utils import paginated_get
 class UserSignUpService(ClientService):
     def sign_up(self, username: str, name: str, email: str, password: str) -> dict:
         r = safe_request(self.bare_post, err_prefix="Failed to signup")(
-            path="self_signup",
             json={"username": username, "name": name, "email": email, "password": password}
         )
         return r.json()
 
     def verify(self, token: str) -> None:
         safe_request(self.bare_post, err_prefix="Failed to verify")(
-            path="self_signup/confirm",
+            path="confirm",
             json={"email_token": token}
         )
 
