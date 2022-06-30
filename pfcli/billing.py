@@ -81,7 +81,7 @@ def summary(
 
     price_by_vmname = defaultdict(float)
     for price_info in prices:
-        price_by_vmname[price_info['attributes']['vm_name']] += price_info['price']
+        price_by_vmname[price_info['instance']['attributes']['vm_name']] += price_info['price']
     table_formatter.render([{"VM Name": agg_price_info.key, "price": round(agg_price_info.value, 2)} for agg_price_info in price_by_vmname])
 
     price_sum = reduce((lambda acc, x: acc + x), price_by_vmname.values(), 0.)
