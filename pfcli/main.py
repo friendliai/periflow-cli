@@ -61,9 +61,7 @@ def signup(
         secho_error_and_exit("Passwords did not match.")
 
     client: UserSignUpService = build_client(ServiceType.SIGNUP)
-    result = client.sign_up(username, name, email, password)
-    if "error_description" in result:
-        secho_error_and_exit(f'\n\nSignup failed... {result["error_description"]}')
+    client.sign_up(username, name, email, password)
 
     typer.echo(f"\n\nWe just sent a verification code over to {email}")
     typer.run(_verify)

@@ -137,10 +137,12 @@ class ClientService:
         )
     
     def bare_post(self, path: Optional[str] = None, **kwargs) -> Response:
-        return requests.post(
+        r = requests.post(
             self.url_template.render(path=path, **self.url_kwargs),
             **kwargs
         )
+        r.raise_for_status()
+        return r
 
 
 class UserRequestMixin:
