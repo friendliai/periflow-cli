@@ -36,11 +36,13 @@ from pfcli.service.client.serve import ServeClientService
 from pfcli.service.client.user import (
     UserClientService,
     UserGroupClientService,
-    UserGroupProjectClientService
+    UserGroupProjectClientService,
+    UserSignUpService
 )
 from pfcli.utils import get_auth_uri, get_meter_uri, get_mr_uri, get_pfs_uri, get_uri, get_wss_uri
 
 client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
+    ServiceType.SIGNUP: (UserSignUpService, Template(get_auth_uri('pf_user/self_signup'))),
     ServiceType.USER: (UserClientService, Template(get_auth_uri('pf_user'))),
     ServiceType.USER_GROUP: (UserGroupClientService, Template(get_auth_uri('pf_user/$pf_user_id/pf_group'))),
     ServiceType.USER_GROUP_PROJECT: (UserGroupProjectClientService, Template(get_auth_uri('pf_user/$pf_user_id/pf_group/$pf_group_id/pf_project'))),  # pylint: disable=line-too-long

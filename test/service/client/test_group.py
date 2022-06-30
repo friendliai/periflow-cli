@@ -2,14 +2,21 @@
 
 """Test GroupClient Service"""
 
+from copy import deepcopy
+from tokenize import group
+import uuid
+
 import pytest
 import requests_mock
 import typer
 
 from pfcli.service import CheckpointCategory, ModelFormCategory, ServiceType, StorageType
 from pfcli.service.client import build_client
-from pfcli.service.client.group import GroupProjectCheckpointClientService, GroupVMConfigClientService
+from pfcli.service.client.group import GroupClientService, GroupProjectCheckpointClientService, GroupVMConfigClientService
 
+@pytest.fixture
+def group_client(user_project_group_context) -> GroupClientService:
+    return build_client(ServiceType.GROUP)
 
 @pytest.fixture
 def group_vm_config_client(user_project_group_context) -> GroupVMConfigClientService:
@@ -18,6 +25,93 @@ def group_vm_config_client(user_project_group_context) -> GroupVMConfigClientSer
 @pytest.fixture
 def group_project_checkpoint_client(user_project_group_context) -> GroupProjectCheckpointClientService:
     return build_client(ServiceType.GROUP_PROJECT_CHECKPOINT)
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_group_client_create_group(requests_mock: requests_mock.Mocker,
+                                   group_client: GroupClientService):
+    group_data = {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "pf_group_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "name": "test",
+        "created_at": "0001-01-01T00:00:00",
+        "updated_at": "0001-01-01T00:00:00"
+    }
+
+    # Success
+    requests_mock.post(
+        group_client.url_template.render(), 
+        json=group_data
+    )
+    assert group_client.create_group("test") == group_data
+
+    # Failed due to HTTP error
+    requests_mock.post(group_client.url_template.render(), status_code=404)
+    with pytest.raises(typer.Exit):
+        group_client.create_group("name")
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_group_client_get_group(requests_mock: requests_mock.Mocker,
+                                group_client: GroupClientService):
+    group_id = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+    group_data = {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "name": "string",
+        "status": "staged",
+        "hosting_type": "hosted",
+        "created_at": "0001-01-01T00:00:00",
+        "updated_at": "0001-01-01T00:00:00"
+    }
+
+    # Success
+    requests_mock.get(
+        group_client.url_template.render(group_id), 
+        json=group_data
+    )
+    assert group_client.get_group(uuid.UUID(group_id)) == group_data
+
+    # Failed due to HTTP error
+    requests_mock.get(group_client.url_template.render(group_id), status_code=404)
+    with pytest.raises(typer.Exit):
+        group_client.get_group(uuid.UUID(group_id))
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_group_client_invite_to_group(requests_mock: requests_mock.Mocker,
+                                      group_client: GroupClientService):
+    group_id = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+
+    # Success
+    url_template = deepcopy(group_client.url_template)
+    url_template.attach_pattern('$pf_group_id/invite')
+    requests_mock.post(url_template.render(pf_group_id=group_id), status_code=204)
+    try:
+        group_client.invite_to_group(group_id, "test@test.com")
+    except typer.Exit:
+        raise pytest.fail("Test invite to group failed.")
+        
+    # Failed due to HTTP error
+    requests_mock.post(url_template.render(pf_group_id=group_id), status_code=404)
+    with pytest.raises(typer.Exit):
+        group_client.invite_to_group(group_id, "test@test.com")
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_group_client_accept_invite(requests_mock: requests_mock.Mocker,
+                                    group_client: GroupClientService):
+    token = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+    # Success
+    requests_mock.post(group_client.url_template.render('invite/confirm'), status_code=204)
+    try:
+        group_client.accept_invite(token)
+    except typer.Exit:
+        raise pytest.fail("Test accept invite failed.")
+        
+    # Failed due to HTTP error
+    requests_mock.post(group_client.url_template.render('invite/confirm'), status_code=404)
+    with pytest.raises(typer.Exit):
+        group_client.accept_invite(token)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
