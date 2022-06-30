@@ -6,9 +6,9 @@ from pfcli.service.client.base import ClientService, T, safe_request
 from pfcli.utils import paginated_get
 
 
-class BillingSummaryClientService(ClientService):
+class BillingClientService(ClientService):
 
-    def get_summary(self,
+    def list_prices(self,
                     year: int,
                     month: int,
                     day: int = None,

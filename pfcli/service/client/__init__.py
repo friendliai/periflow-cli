@@ -5,7 +5,7 @@ from typing import Dict, Tuple, Type, TypeVar
 
 from pfcli.service import ServiceType
 from pfcli.service.client.base import ClientService
-from pfcli.service.client.billing import BillingSummaryClientService
+from pfcli.service.client.billing import BillingClientService
 from pfcli.service.client.checkpoint import CheckpointClientService
 from pfcli.service.client.credential import CredentialClientService, CredentialTypeClientService
 from pfcli.service.client.data import DataClientService
@@ -66,7 +66,7 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.GROUP_VM_CONFIG: (GroupVMConfigClientService, Template(get_uri('group/$group_id/vm_config/'))),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri('job/'))),
     ServiceType.SERVE: (ServeClientService, Template(get_pfs_uri('deployment/'))),
-    ServiceType.BILLING_SUMMARY: (BillingSummaryClientService, Template(get_meter_uri('training/instances/price/')))
+    ServiceType.BILLING_SUMMARY: (BillingClientService, Template(get_meter_uri('training/instances/price/')))
 }
 
 

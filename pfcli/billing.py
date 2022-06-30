@@ -1,5 +1,6 @@
 # Copyright (C) 2021 FriendliAI
 
+from collections import defaultdict
 from functools import reduce
 from typing import Optional
 from uuid import UUID
@@ -9,7 +10,7 @@ import typer
 
 from pfcli.service import ServiceType
 from pfcli.service.client import build_client
-from pfcli.service.client.billing import BillingSummaryClientService
+from pfcli.service.client.billing import BillingClientService
 from pfcli.context import get_current_group_id, get_current_project_id
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import secho_error_and_exit
@@ -60,7 +61,7 @@ def summary(
     )
 ):
     "Summarize the billing information for the given time range"
-    client: BillingSummaryClientService = build_client(ServiceType.BILLING_SUMMARY)
+    client: BillingClientService = build_client(ServiceType.BILLING_SUMMARY)
     group_id = None
     project_id = None
     if not view_organization:
@@ -72,14 +73,18 @@ def summary(
         if group_id is None:
             secho_error_and_exit("Organization is not set!")
 
-    summaries = client.get_summary(year=year,
-                                   month=month,
-                                   day=day,
-                                   group_id=group_id,
-                                   project_id=project_id)
-    table_formatter.render(summaries)
+    prices = client.list_prices(year=year,
+                                month=month,
+                                day=day,
+                                group_id=group_id,
+                                project_id=project_id)
 
-    price_sum = reduce((lambda acc, x: acc + x["price"]), summaries, 0.)
+    price_by_vmname = defaultdict(float)
+    for price_info in prices:
+        price_by_vmname[price_info['attributes']['vm_name']] += price_info['price']
+    table_formatter.render([{"VM Name": agg_price_info.key, "price": round(agg_price_info.value, 2)} for agg_price_info in price_by_vmname])
 
-    total_price = [{"name": "Total", "price": price_sum}]
+    price_sum = reduce((lambda acc, x: acc + x), price_by_vmname.values(), 0.)
+
+    total_price = [{"name": "Total", "price": round(price_sum, 2)}]
     panel_formatter.render(total_price)
