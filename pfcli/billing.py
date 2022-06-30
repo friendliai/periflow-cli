@@ -1,14 +1,17 @@
+# Copyright (C) 2021 FriendliAI
+
 from functools import reduce
 from typing import Optional
-from datetime import datetime
+from uuid import UUID
 
-import typer
 import tabulate
+import typer
+
 from pfcli.service import ServiceType
 from pfcli.service.client import build_client
-
 from pfcli.service.client.billing import BillingSummaryClientService
 from pfcli.service.formatter import PanelFormatter, TableFormatter
+
 
 tabulate.PRESERVE_WHITESPACE = True
 
@@ -48,12 +51,12 @@ def summary(
     day: Optional[int] = typer.Argument(
         None
     ),
-    organization_id: Optional[str] = typer.Option(
+    organization_id: Optional[UUID] = typer.Option(
         None,
         '--organization',
         '-o'
     ),
-    project_id: Optional[str] = typer.Option(
+    project_id: Optional[UUID] = typer.Option(
         None,
         '--project',
         '-p'

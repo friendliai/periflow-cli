@@ -1,3 +1,5 @@
+# Copyright (C) 2021 FriendliAI
+
 import uuid
 from copy import deepcopy
 
