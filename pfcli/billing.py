@@ -66,11 +66,11 @@ def summary(
     if not view_organization:
         project_id = get_current_project_id()
         if project_id is None:
-            secho_error_and_exit("'project_id' is not set!")
+            secho_error_and_exit("Project is not set!")
     else:
         group_id = get_current_group_id()
         if group_id is None:
-            secho_error_and_exit("'group_id is not set!")
+            secho_error_and_exit("Organization is not set!")
 
     summaries = client.get_summary(year=year,
                                    month=month,

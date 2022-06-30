@@ -25,17 +25,20 @@ def test_billing_summary_client_get_summary(requests_mock: requests_mock.Mocker,
     url_template = deepcopy(billing_summary_client.url_template)
 
     # Success
-    requests_mock.get(url_template.render(), json=[
-        {
-            "instance": {
-                "id": "some_id",
-                "attributes": {
-                    "vm_name": "vm_1"
-                }
-            },
-            "price": 1.557
-        }
-    ])
+    requests_mock.get(url_template.render(), json={
+        "results": [
+            {
+                "instance": {
+                    "id": "some_id",
+                    "attributes": {
+                        "vm_name": "vm_1"
+                    }
+                },
+                "price": 1.557
+            }
+        ],
+        "next_cursor": None
+    })
     assert billing_summary_client.get_summary(year=2022, month=6, group_id=uuid.uuid4())
 
     # Failed due to HTTP error
