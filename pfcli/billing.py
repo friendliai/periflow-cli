@@ -10,7 +10,9 @@ import typer
 from pfcli.service import ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.billing import BillingSummaryClientService
+from pfcli.context import get_current_group_id, get_current_project_id
 from pfcli.service.formatter import PanelFormatter, TableFormatter
+from pfcli.utils import secho_error_and_exit
 
 
 tabulate.PRESERVE_WHITESPACE = True
@@ -51,23 +53,29 @@ def summary(
     day: Optional[int] = typer.Argument(
         None
     ),
-    organization_id: Optional[UUID] = typer.Option(
-        None,
+    view_organization: bool = typer.Option(
+        False,
         '--organization',
         '-o'
-    ),
-    project_id: Optional[UUID] = typer.Option(
-        None,
-        '--project',
-        '-p'
     )
 ):
     "Summarize the billing information for the given time range"
     client: BillingSummaryClientService = build_client(ServiceType.BILLING_SUMMARY)
+    group_id = None
+    project_id = None
+    if not view_organization:
+        project_id = get_current_project_id()
+        if project_id is None:
+            secho_error_and_exit("'project_id' is not set!")
+    else:
+        group_id = get_current_group_id()
+        if group_id is None:
+            secho_error_and_exit("'group_id is not set!")
+
     summaries = client.get_summary(year=year,
                                    month=month,
                                    day=day,
-                                   group_id=organization_id,
+                                   group_id=group_id,
                                    project_id=project_id)
     table_formatter.render(summaries)
 
