@@ -9,6 +9,7 @@ import typer
 
 from pfcli import (
     artifact,
+    billing,
     checkpoint,
     credential,
     datastore,
@@ -41,6 +42,7 @@ app.add_typer(serve.app, name="serve", help="Manage serves")
 app.add_typer(project.app, name="project", help="Manage projects")
 app.add_typer(group.app, name="org", help="Manage organizations")
 app.add_typer(artifact.app, name="artifact", help="Manager artifacts")
+app.add_typer(billing.app, name="billing", help="Manage billing")
 
 
 user_panel_formatter = PanelFormatter(

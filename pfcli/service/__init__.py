@@ -30,6 +30,7 @@ class ServiceType(str, Enum):
     GROUP_PROJECT_CHECKPOINT = "GROUP_PROJECT_CHECKPOINT"
     JOB_WS = "JOB_WS"
     SERVE = "SERVE"
+    BILLING_SUMMARY = "BILLING_SUMMARY"
 
 
 class JobType(str, Enum):
