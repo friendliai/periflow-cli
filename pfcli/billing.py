@@ -79,7 +79,7 @@ def summary(
                                    project_id=project_id)
     table_formatter.render(summaries)
 
-    price_sum = reduce((lambda x, y: x["price"] + y["price"]), summaries)
+    price_sum = reduce((lambda acc, x: acc + x["price"]), summaries, 0.)
 
     total_price = [{"name": "Total", "price": price_sum}]
     panel_formatter.render(total_price)
