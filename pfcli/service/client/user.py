@@ -9,10 +9,26 @@ from pfcli.service.client.base import ClientService, GroupRequestMixin, UserRequ
 from pfcli.utils import paginated_get
 
 
+class UserSignUpService(ClientService):
+    def sign_up(self, username: str, name: str, email: str, password: str) -> dict:
+        r = safe_request(self.bare_post, err_prefix="Failed to signup")(
+            path="self_signup",
+            json={"username": username, "name": name, "email": email, "password": password}
+        )
+        return r.json()
+
+    def verify(self, token: str) -> None:
+        safe_request(self.bare_post, err_prefix="Failed to verify")(
+            path="self_signup/confirm",
+            json={"email_token": token}
+        )
+
+
 class UserClientService(ClientService, UserRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_user()
         super().__init__(template, **kwargs)
+
 
     def change_password(self, old_password: str, new_password: str) -> None:
         safe_request(self.update, err_prefix="Failed to change password.")(
@@ -35,14 +51,14 @@ class UserClientService(ClientService, UserRequestMixin):
         )
 
     # Project
-    def get_project_membership(self, pf_project_id):
+    def get_project_membership(self, pf_project_id) -> dict:
         response = safe_request(self.retrieve, err_prefix="Failed identify member in project")(
             pk=self.user_id,
             path=f"pf_project/{pf_project_id}",
         )
         return response.json()
 
-    def add_to_project(self, pf_user_id: str, pf_project_id: str, access_level: str):
+    def add_to_project(self, pf_user_id: str, pf_project_id: str, access_level: str) -> None:
         safe_request(self.post, err_prefix="Failed to add user to project")(
             path=f"{pf_user_id}/pf_project/{pf_project_id}",
             json={
@@ -50,7 +66,7 @@ class UserClientService(ClientService, UserRequestMixin):
             }
         )
 
-    def set_project_privilege(self, pf_user_id: str, pf_project_id: str, access_level: str):
+    def set_project_privilege(self, pf_user_id: str, pf_project_id: str, access_level: str) -> None:
         safe_request(self.partial_update, err_prefix="Failed to update privilege level in project")(
             pk=pf_user_id,
             path=f"pf_project/{pf_project_id}/access_level",

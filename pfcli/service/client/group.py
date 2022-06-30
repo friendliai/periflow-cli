@@ -41,7 +41,7 @@ class GroupClientService(ClientService):
             }
         )
 
-    def verify(self, token: str) -> None:
+    def accept_invite(self, token: str) -> None:
         safe_request(self.post, err_prefix="Invalid code... Please Try again.")(
             path="invite/confirm",
             json={
@@ -51,7 +51,7 @@ class GroupClientService(ClientService):
 
     def get_user(self, pf_group_id: str, username: str) -> dict:
         get_response_dict = safe_request(self.list, err_prefix="Failed to get user in organization")
-        return paginated_get(get_response_dict, path=f"{pf_group_id}/pf_user", **{ "search": username })
+        return paginated_get(get_response_dict, path=f"{pf_group_id}/pf_user", search=username)
 
 
 class GroupProjectClientService(ClientService, GroupRequestMixin):

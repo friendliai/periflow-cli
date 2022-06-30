@@ -21,9 +21,9 @@ from pfcli import (
 )
 from pfcli.service import ServiceType
 from pfcli.service.auth import TokenType, update_token
-from pfcli.service.client import UserClientService, build_client
+from pfcli.service.client import UserClientService, UserSignUpService, build_client
 from pfcli.service.formatter import PanelFormatter
-from pfcli.utils import get_auth_uri, get_uri, secho_error_and_exit
+from pfcli.utils import get_uri, secho_error_and_exit
 
 app = typer.Typer(
     help="Welcome to PeriFlow 🤗",
@@ -54,19 +54,19 @@ def signup(
     username: str = typer.Option(..., prompt="Enter Username"),
     name: str = typer.Option(..., prompt="Enter Name"),
     email: str = typer.Option(..., prompt="Enter Email"),
-    password: str = typer.Option(..., prompt="Enter Password", hide_input=True)
+    password: str = typer.Option(..., prompt="Enter Password", hide_input=True),
+    confirm_password: str = typer.Option(..., prompt="Enter the password again (confirmation)", hide_input=True)
 ):
-    r = requests.post(
-        get_auth_uri("pf_user/self_signup"),
-        json={"username": username, "name": name, "email": email, "password": password}
-    )
-    try:
-        r.raise_for_status()
-        typer.echo(f"\n\nWe just sent a verification code over to {email}")
-    except HTTPError:
-        secho_error_and_exit("Signup failed... Please check your submissions.")
+    if password != confirm_password:
+        secho_error_and_exit("Passwords did not match.")
 
-    typer.run(_validate)
+    client: UserSignUpService = build_client(ServiceType.SIGNUP)
+    result = client.sign_up(username, name, email, password)
+    if "error_description" in result:
+        secho_error_and_exit(f'\n\nSignup failed... {result["error_description"]}')
+
+    typer.echo(f"\n\nWe just sent a verification code over to {email}")
+    typer.run(_verify)
 
 
 @app.command(help="Show who am I")
@@ -115,11 +115,9 @@ def passwd(
     typer.secho("Password is changed successfully!", fg=typer.colors.BLUE)
 
 
-def _validate(_, token: str = typer.Option(..., prompt="Enter Code")):
-    r = requests.post(get_auth_uri("pf_user/self_signup/confirm"), json={"email_token": token})
-    try:
-        r.raise_for_status()
-        typer.echo("\n\nVerified!")
-        typer.echo("Sign up success! Please sign in.")
-    except HTTPError:
-        secho_error_and_exit("Invalid code... Please Try again.")
+def _verify(_, token: str = typer.Option(..., prompt="Enter Code")):
+    client: UserSignUpService = build_client(ServiceType.SIGNUP)
+    client.verify(token)
+
+    typer.echo("\n\nVerified!")
+    typer.echo("Sign up success! Please sign in.")

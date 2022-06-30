@@ -2,19 +2,19 @@
 
 """PeriFlow Project CLI"""
 
-from enum import Enum
 import uuid
-from typing import List, Optional, Union
-from pfcli.group import _get_current_org, _get_org_user_id_by_name
-from pfcli.service.client.user import UserClientService
+from enum import Enum
+from typing import List, Optional, Tuple, Union
 
 import typer
 
 from pfcli.context import get_current_project_id, set_current_project_id, project_context_path
+from pfcli.group import GroupAccessLevel, _get_current_org, _get_org_user_id_by_name
 from pfcli.service import ServiceType
 from pfcli.service.client import (
     GroupProjectClientService,
     ProjectClientService,
+    UserClientService,
     UserGroupProjectClientService,
     build_client
 )
@@ -37,6 +37,7 @@ project_panel_formatter = PanelFormatter(
     fields=['pf_group_id', 'id', 'name'],
     headers=['Organization ID', 'Project ID', 'Name']
 )
+
 
 class ProjectAccessLevel(str, Enum):
     ADMIN = 'admin'
@@ -147,10 +148,6 @@ def delete(
 
 @app.command("add-user", help="add user to project")
 def add_user(
-    name: str = typer.Argument(
-        ...,
-        help="Name of project to invite",
-    ),
     username: str = typer.Argument(
         ...,
         help="username to invite",
@@ -162,19 +159,15 @@ def add_user(
 ):
     user_client: UserClientService = build_client(ServiceType.USER)
 
-    org_id, project_id = _check_project_and_get_id(name)
+    org_id, project_id = _check_project_and_get_id()
     user_id = _get_org_user_id_by_name(org_id, username)
 
     user_client.add_to_project(user_id, project_id, access_level)
-    typer.secho(f"User successfully added to {name}")
+    typer.secho(f"User successfully added to project")
 
 
 @app.command("set-privilege", help="set privilege level")
 def set_privilege(
-    name: str = typer.Argument(
-        ...,
-        help="Name of project to invite",
-    ),
     username: str = typer.Argument(
         ...,
         help="username to invite",
@@ -186,36 +179,26 @@ def set_privilege(
 ):
     user_client: UserClientService = build_client(ServiceType.USER)
 
-    org_id, project_id = _check_project_and_get_id(name)
+    org_id, project_id = _check_project_and_get_id()
     user_id = _get_org_user_id_by_name(org_id, username)
 
     user_client.set_project_privilege(user_id, project_id, access_level)
-    typer.secho("Privilege successfully updated")
+    typer.secho("Privilege successfully updated!")
 
 
-def _get_project_id_by_name(name: str) -> str:
-    group_project_client: GroupProjectClientService = build_client(ServiceType.GROUP_PROJECT)
-    projects = group_project_client.list_projects()
-    for project in projects:
-        if project['name'] == name:
-            return project['id']
-
-    secho_error_and_exit(f"No project exists with name {name}.")
-
-
-def _check_project_and_get_id(name: str) -> tuple[str,str]:
+def _check_project_and_get_id() -> Tuple[str, str]:
     """Get org_id and project_id if valid"""
 
     user_client: UserClientService = build_client(ServiceType.USER)
 
     org = _get_current_org()
-    project_id = _get_project_id_by_name(name)
+    project_id = get_current_project_id()
 
-    if org['privilege_level'] == 'owner':
+    if org['privilege_level'] == GroupAccessLevel.OWNER:
         return org['id'], project_id
 
     requester = user_client.get_project_membership(project_id)
-    if requester['access_level'] != 'admin':
+    if requester['access_level'] != ProjectAccessLevel.ADMIN:
         secho_error_and_exit("Only the admin of the project can add-user/set-privilege")
 
     return org['id'], project_id

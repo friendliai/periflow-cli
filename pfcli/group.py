@@ -3,7 +3,7 @@
 """PeriFlow Group (Organization) CLI"""
 
 from enum import Enum
-from pfcli.service.client.user import UserClientService
+
 import typer
 
 from pfcli.context import (
@@ -13,8 +13,13 @@ from pfcli.context import (
     set_current_group_id
 )
 from pfcli.service import ServiceType
-from pfcli.service.client import GroupClientService, UserGroupClientService, build_client
-from pfcli.service.client.project import ProjectClientService
+from pfcli.service.client import (
+    GroupClientService,
+    ProjectClientService,
+    UserClientService,
+    UserGroupClientService,
+    build_client
+)
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import secho_error_and_exit
 
@@ -128,10 +133,10 @@ def invite(
     typer.secho("Invitation Successfully Sent!")
 
 
-@app.command(help="verify invitation")
-def verify(token: str = typer.Option(..., prompt="Enter Verification Code")):
+@app.command("accept-invite", help="accept invitation")
+def accept_invite(token: str = typer.Option(..., prompt="Enter Verification Code")):
     group_client: GroupClientService = build_client(ServiceType.GROUP)
-    group_client.verify(token)
+    group_client.accept_invite(token)
     typer.secho("Verification Success!")
 
 
