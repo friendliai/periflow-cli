@@ -82,6 +82,7 @@ def login(
     password: str = typer.Option(..., prompt="Enter Password", hide_input=True)
 ):
     r = requests.post(get_uri("token/"), data={"username": username, "password": password})
+    breakpoint()
     try:
         r.raise_for_status()
         update_token(token_type=TokenType.ACCESS, token=r.json()["access_token"])
