@@ -24,13 +24,6 @@ app = typer.Typer(
     add_completion=False
 )
 
-template_app = typer.Typer(
-    no_args_is_help=True,
-    context_settings={"help_option_names": ["-h", "--help"]},
-    add_completion=False
-)
-app.add_typer(template_app, name="template", help="Manager job templates.")
-
 table_formatter = TableFormatter(
     name="Billing",
     fields = ['vm_name', 'price'],
