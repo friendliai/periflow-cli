@@ -138,7 +138,7 @@ def zip_dir(base_path: Path, target_files: List[Path], zip_path: Path):
             zip_file.write(file, file.relative_to(base_path.parent))
     typer.secho("Uploading workspace directory...", fg=typer.colors.MAGENTA)
     try:
-        yield zip_path.open("rb", encoding="utf-8")
+        yield zip_path.open("rb")
     finally:
         zip_path.unlink()
 
@@ -187,7 +187,7 @@ def get_workspace_files(dir_path: Path) -> List[Path]:
 
 def _upload_file(file_path: str, url: str, ctx: tqdm):
     try:
-        with open(file_path, 'rb', encoding="utf-8") as f:
+        with open(file_path, 'rb') as f:
             wrapped_object = CallbackIOWrapper(ctx.update, f, 'read')
             requests.put(url, data=wrapped_object)
     except FileNotFoundError:
@@ -244,7 +244,7 @@ def download_range(url: str, start: int, end: int, output: str, ctx: tqdm) -> No
     headers = {'Range': f'bytes={start}-{end}'}
     response = requests.get(url, headers=headers, stream=True)
 
-    with open(output, 'wb', encoding="utf-8") as f:
+    with open(output, 'wb') as f:
         wrapped_object = CallbackIOWrapper(ctx.update, f, 'write')
         for part in response.iter_content(1024):
             wrapped_object.write(part)
@@ -252,7 +252,7 @@ def download_range(url: str, start: int, end: int, output: str, ctx: tqdm) -> No
 
 def download_file_simple(url: str, out: str, content_length: int) -> None:
     response = requests.get(url, stream=True)
-    with tqdm.wrapattr(open(out, "wb", encoding="utf-8"), "write", miniters=1, total=content_length) as fout:
+    with tqdm.wrapattr(open(out, "wb"), "write", miniters=1, total=content_length) as fout:
         for chunk in response.iter_content(chunk_size=4096):
             fout.write(chunk)
 
@@ -273,10 +273,10 @@ def download_file_parallel(url: str, out: str, content_length: int, chunk_size: 
                 wait(futs, return_when=FIRST_EXCEPTION)
 
         # Merge partitioned files
-        with open(out, 'wb', encoding='utf-8') as f:
+        with open(out, 'wb') as f:
             for i in range(len(chunks)):
                 chunk_path = f'{temp_out_prefix}.part{i}'
-                with open(chunk_path, 'rb', encoding='utf-8') as chunk_f:
+                with open(chunk_path, 'rb') as chunk_f:
                     f.write(chunk_f.read())
 
                 os.remove(chunk_path)
