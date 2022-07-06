@@ -495,7 +495,7 @@ class CustomDataConfigService(DataConfigService):
                 path = os.path.join(dir, 'metadata.yaml')
                 open_editor(path, editor)
                 try:
-                    with open(path, 'r') as f:
+                    with open(path, 'r', encoding='utf-8') as f:
                         self.metadata = yaml.safe_load(f)
                 except yaml.YAMLError as exc:
                     secho_error_and_exit(f"Error occurred while parsing metadata file... {exc}")
