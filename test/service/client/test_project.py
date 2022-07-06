@@ -131,7 +131,7 @@ def test_project_job_client_run_job(requests_mock: requests_mock.Mocker,
     # Success w workspace dir
     with TemporaryDirectory() as dir:
         ws_dir = Path(dir)
-        with open(ws_dir / 'large_file', 'wb') as f:
+        with open(ws_dir / 'large_file', 'wb', encoding='utf-8') as f:
             f.seek(500 * 1024)  # 500KB
             f.write(b'0')
         assert project_job_client.run_job({'k': 'v'}, ws_dir) == {'id': 1}
@@ -139,7 +139,7 @@ def test_project_job_client_run_job(requests_mock: requests_mock.Mocker,
     # Failed due to large workspace dir exceeding the size limit
     with TemporaryDirectory() as dir:
         ws_dir = Path(dir)
-        with open(ws_dir / 'large_file', 'wb') as f:
+        with open(ws_dir / 'large_file', 'wb', encoding='utf-8') as f:
             f.seek(2 * 1024 * 1024 * 1024)  # 2GB
             f.write(b'0')
         with pytest.raises(typer.Exit):
