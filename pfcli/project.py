@@ -53,7 +53,7 @@ def _find_project_id(projects: List[dict], project_name: str) -> uuid.UUID:
     secho_error_and_exit(f"No project exists with name {project_name}.")
 
 
-@app.command()
+@app.command(help="list all accessible projects")
 def list(
     tail: Optional[int] = typer.Option(
         None,
@@ -72,8 +72,6 @@ def list(
         help="Show all projects in the current group"
     )
 ):
-    """List projects
-    """
     client: Union[GroupProjectClientService, UserGroupProjectClientService]
     if show_group_project:
         client = build_client(ServiceType.GROUP_PROJECT)
@@ -94,7 +92,7 @@ def list(
     project_table_formatter.render(target_project_list)
 
 
-@app.command()
+@app.command(help="create a new project")
 def create(
     name: str = typer.Argument(
         ...,

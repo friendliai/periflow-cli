@@ -42,21 +42,7 @@ PeriFlow에 사용자 계정을 생성하고, Organization 및 Project를 생성
 pf signup
 ```
 
-### Organization 관리
-
-#### Organization 생성
-
-#### Organization 초대
-
-```sh
-pf org craete
-```
-
-### Project 관리
-
-#### Project 생성
-
-#### Project 초대
+위의 명령어를 실행하면 프롬프트를 통해 username, name, email, password를 입력한 뒤 이메일로 전송된 인증 코드를 입력하여 회원가입을 진행할 수 있습니다.
 
 ### Login
 
@@ -69,6 +55,8 @@ pf login
 로그인 이후엔 현재 나의 "작업 context"를 설정할 수 있습니다. 여기에서 "작업 context"란 현재 내가 작업을 할 Organization 및 Project가 무엇인지에 해당합니다.
 아래 커맨드를 사용하여 작업할 Organization을 지정할 수 있습니다. Organization들의 리스트를 보려면 `pf org list` 커맨드를 사용하시면 됩니다.
 
+> **만약 Organization과 Project에 생성/초대 과정을 거치지 않았다면 [Organization 관리](#organization-관리) 및 [Project 관리](#project-관리) 항목을 먼저 읽어 주세요.**
+
 ```sh
 pf org switch [ORGANIZATION_NAME]
 ```
@@ -78,6 +66,88 @@ pf org switch [ORGANIZATION_NAME]
 ```sh
 pf project switch [PROJECT_NAME]
 ```
+
+### Organization 관리
+
+PeriFlow 서비스 이용을 위해서는 적어도 하나의 Organization에 속해있어야 합니다. 사용자는 직접 Organization을 생성하거나, 다른 사용자가 초대한 Organization에 들어감으로써 Organization에 속할 수 있습니다.
+
+#### Organization 생성
+
+```sh
+pf org create [ORGANIZATION_NAME]
+```
+
+위의 명령어를 통해 새로운 Organization을 생성할 수 있습니다.
+
+> **Organization 생성 직후엔 "Staged" 상태로, 서비스 관리자의 승인을 거쳐 "Active" 상태가 될 때까지 이용이 불가능합니다.**
+
+#### Organization 초대
+
+Organzation 생성 및 승인을 거쳐 Organization이 "Active" 상태가 되었다면 다른 사용자를 Organization에 초대할 수 있습니다.
+
+```sh
+pf org invite [EMAIL_ADDRESS]
+```
+
+위의 명령어를 통해 해당 이메일 주소로 Organization 초대 메일이 보내지고, 초대를 받은 사용자는 이메일로 전달된 링크 또는 승인 코드를 통해 초대를 수락할 수 있습니다.
+
+#### Organization 초대 수락
+
+```sh
+pf org accept-invite
+```
+
+Organization에 초대를 받은 사용자는 자신의 이메일로 전송된 링크 또는 승인 코드를 통해 초대를 수락할 수 있습니다.
+
+#### Organization 내 권한 부여
+
+Organization에는 "Owner"와 "Member" 두 개의 역할이 있고 각 역할은 다음과 같은 권한을 보유합니다.
+
+|                          | Owner | Member |
+|--------------------------|-------|--------|
+| Organization 내 서비스 이용 |   O   |    O   |
+| Member 초대               |   O   |    X   |
+| Organization 내 권한 부여   |  O    |   X    |
+| Project 생성 및 삭제        |  O    |   X    |
+| 서비스 이용 요금 지불         |  O    |   X    |
+| Organization 삭제         |  O    |   X    |
+
+Organization을 생성한 사용자는 기본으로 Owner가 되며, Organization에 초대된 사용자는 기본으로 Member가 됩니다.
+Owner는 위의 명령어를 통해 Organization에 속한 특정 사용자의 역할을 수정할 수 있습니다.
+
+```sh
+pf org set-privilege [USERNAME] [PRIVELEGE]
+```
+
+### Project 관리
+
+Organization 아래에는 여러 개의 Project들이 존재합니다. 각각의 Project 내에서는 구성원 간에 Datastore, Checkpoint, Artifact, Job 등의 자원 및 서비스들이 공유됩니다.
+
+#### Project 생성
+
+```sh
+pf project create [PROJECT_NAME]
+```
+
+위의 명령어를 통해 새로운 Project를 생성할 수 있습니다.
+
+#### Project 초대
+
+```sh
+pf project add-user [USERNAME] [ACCESS_LEVEL]
+```
+
+위의 명령어를 통해 같은 Organization에 속한 사용자를 Project에 추가하고 역할을 설정할 수 있습니다.
+
+#### Project 내 권한 부여
+
+Project에는 "Admin", "Maintainer", "Developer", "Guest" 4개의 역할이 존재합니다.
+
+```sh
+pf set-privilege [USERNAME] [ACCESS_LEVEL]
+```
+
+위의 명령어를 사용하여 특정 사용자에게 원하는 역할을 할당할 수 있습니다.
 
 ### Crdential 생성
 
