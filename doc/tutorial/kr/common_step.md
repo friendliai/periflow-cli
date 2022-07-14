@@ -25,9 +25,9 @@ PeriFlow를 사용하시는 여러분들을 환영합니다. 본 튜토리얼에
 ## 사용 방법 설명
 
 1. [회원가입](#sign-up)
-2. [Organization 관리](#group-management)
-3. [Project 관리](#project-management)
-4. [로그인](#login)
+2. [로그인](#login)
+3. [Organization 관리](#organization-관리)
+4. [Project 관리](#project-관리)
 5. [Credential 생성](#crdential-생성)
 6. [Dataset 생성](#dataset-생성)
 7. [Job 실행](#job-실행)
