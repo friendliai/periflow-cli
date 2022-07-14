@@ -57,6 +57,7 @@ def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable[..., 
                     secho_error_and_exit("Failed to refresh access token... Please login again")
 
                 update_token(token_type=TokenType.ACCESS, token=refresh_r.json()["access_token"])
+                update_token(token_type=TokenType.REFRESH, token=refresh_r.json()["refresh_token"])
                 # We need to restore file offset if we want to transfer file objects
                 if "files" in kwargs:
                     files = kwargs["files"]

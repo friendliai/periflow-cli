@@ -563,7 +563,7 @@ def log(
 
     job_finished = False
     if export_path is not None:
-        with export_path.open("w") as export_file:
+        with export_path.open("w", encoding="utf-8") as export_file:
             for record in logs:
                 for line, _ in _format_log_string(record, show_time, show_machine_id, use_style=False):
                     export_file.write(line)

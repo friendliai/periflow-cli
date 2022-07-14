@@ -9,6 +9,7 @@ import typer
 
 from pfcli import (
     artifact,
+    billing,
     checkpoint,
     credential,
     datastore,
@@ -21,7 +22,7 @@ from pfcli import (
 )
 from pfcli.service import ServiceType
 from pfcli.service.auth import TokenType, update_token
-from pfcli.service.client import UserClientService, build_client
+from pfcli.service.client import UserClientService, UserSignUpService, build_client
 from pfcli.service.formatter import PanelFormatter
 from pfcli.utils import get_uri, secho_error_and_exit
 
@@ -41,6 +42,7 @@ app.add_typer(serve.app, name="serve", help="Manage serves")
 app.add_typer(project.app, name="project", help="Manage projects")
 app.add_typer(group.app, name="org", help="Manage organizations")
 app.add_typer(artifact.app, name="artifact", help="Manager artifacts")
+app.add_typer(billing.app, name="billing", help="Manage billing")
 
 
 user_panel_formatter = PanelFormatter(
@@ -48,6 +50,23 @@ user_panel_formatter = PanelFormatter(
     fields=['name', 'username', 'email'],
     headers=["Name", "Username", "Email"]
 )
+
+@app.command(help="Sign up to PerfiFlow")
+def signup(
+    username: str = typer.Option(..., prompt="Enter Username"),
+    name: str = typer.Option(..., prompt="Enter Name"),
+    email: str = typer.Option(..., prompt="Enter Email"),
+    password: str = typer.Option(..., prompt="Enter Password", hide_input=True),
+    confirm_password: str = typer.Option(..., prompt="Enter the password again (confirmation)", hide_input=True)
+):
+    if password != confirm_password:
+        secho_error_and_exit("Passwords did not match.")
+
+    client: UserSignUpService = build_client(ServiceType.SIGNUP)
+    client.sign_up(username, name, email, password)
+
+    typer.echo(f"\n\nWe just sent a verification code over to {email}")
+    typer.run(_verify)
 
 
 @app.command(help="Show who am I")
@@ -94,3 +113,11 @@ def passwd(
     client.change_password(old_password, new_password)
 
     typer.secho("Password is changed successfully!", fg=typer.colors.BLUE)
+
+
+def _verify(_, token: str = typer.Option(..., prompt="Enter Code")):
+    client: UserSignUpService = build_client(ServiceType.SIGNUP)
+    client.verify(token)
+
+    typer.echo("\n\nVerified!")
+    typer.echo("Sign up success! Please sign in.")

@@ -135,6 +135,14 @@ class ClientService:
             headers=get_auth_header(),
             **kwargs
         )
+    
+    def bare_post(self, path: Optional[str] = None, **kwargs) -> Response:
+        r = requests.post(
+            self.url_template.render(path=path, **self.url_kwargs),
+            **kwargs
+        )
+        r.raise_for_status()
+        return r
 
 
 class UserRequestMixin:
