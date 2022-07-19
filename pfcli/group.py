@@ -39,7 +39,7 @@ org_table_formatter = TableFormatter(
 org_panel_formatter = PanelFormatter(
     name="Organization Detail",
     fields=['id', 'name', 'status'],
-    headers=['ID', 'Name', 'Statue']
+    headers=['ID', 'Name', 'Status']
 )
 
 
