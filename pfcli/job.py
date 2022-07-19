@@ -467,7 +467,7 @@ def _format_log_string(log_record: dict,
         if line in ('\n', '\r'):
             yield line, job_finished
         else:
-            job_finished = (line == "Job completed successfully." and node_rank == -1)
+            job_finished = (line in ("Job completed successfully.", "Job failed.") and node_rank == -1)
             if show_machine_id:
                 line = node_rank_str + line
             if show_time:
