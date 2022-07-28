@@ -69,7 +69,7 @@ def signup(
     typer.run(_verify)
 
 
-@app.command(help="Show who am I")
+@app.command(help="Show my user info")
 def whoami():
     client: UserClientService = build_client(ServiceType.USER)
     info = client.get_current_userinfo()

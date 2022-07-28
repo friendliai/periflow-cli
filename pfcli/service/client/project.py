@@ -28,6 +28,10 @@ class ProjectClientService(ClientService):
             pk=pf_project_id
         )
 
+    def list_users(self, pf_project_id: str) -> List[dict]:
+        get_response_dict = safe_request(self.list, err_prefix="Failed to list users in the current project")
+        return paginated_get(get_response_dict, path=f"{pf_project_id}/pf_user")
+
 
 class ProjectExperimentClientService(ClientService, ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):

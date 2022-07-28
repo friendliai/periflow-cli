@@ -116,7 +116,7 @@ Organization을 생성한 사용자는 기본으로 Owner가 되며, Organizatio
 Owner는 위의 명령어를 통해 Organization에 속한 특정 사용자의 역할을 수정할 수 있습니다.
 
 ```sh
-pf org set-privilege [USERNAME] [PRIVELEGE]
+pf org set-role [USERNAME] [ROLE]
 ```
 
 ### Project 관리
@@ -144,7 +144,7 @@ pf project add-user [USERNAME] [ACCESS_LEVEL]
 Project에는 "Admin", "Maintainer", "Developer", "Guest" 4개의 역할이 존재합니다.
 
 ```sh
-pf set-privilege [USERNAME] [ACCESS_LEVEL]
+pf set-role [USERNAME] [ACCESS_LEVEL]
 ```
 
 위의 명령어를 사용하여 특정 사용자에게 원하는 역할을 할당할 수 있습니다.

@@ -3,7 +3,6 @@
 from collections import defaultdict
 from functools import reduce
 from typing import Optional
-from uuid import UUID
 
 import tabulate
 import typer
@@ -50,7 +49,8 @@ def summary(
     view_organization: bool = typer.Option(
         False,
         '--organization',
-        '-o'
+        '-o',
+        help='View organization-level cost summary'
     )
 ):
     "Summarize the billing information for the given time range"

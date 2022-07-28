@@ -135,25 +135,24 @@ def create(
     credential_id: str = typer.Option(
         ...,
         "--credential-id",
-        "-c",
+        "-i",
         help="UUID of crendential to access cloud storage."
     ),
     iteration: int = typer.Option(
         ...,
         "--iteration",
-        "-i",
         help="The iteration number of the checkpoint."
     ),
     # advanced arguments
-    pp_degree: int = typer.Option(
-        1,
-        "--pp-degree",
-        help="Pipelined model parallelism degree of the model checkpoint."
-    ),
     dp_degree: int = typer.Option(
         1,
         "--dp-degree",
         help="Data parallelism degree of the model checkpoint."
+    ),
+    pp_degree: int = typer.Option(
+        1,
+        "--pp-degree",
+        help="Pipelined model parallelism degree of the model checkpoint."
     ),
     mp_degree: int = typer.Option(
         1,
