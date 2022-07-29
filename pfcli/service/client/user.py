@@ -5,7 +5,13 @@
 from string import Template
 from typing import List
 
-from pfcli.service.client.base import ClientService, GroupRequestMixin, UserRequestMixin, safe_request
+from pfcli.service import GroupRole, ProjectRole
+from pfcli.service.client.base import (
+    ClientService,
+    GroupRequestMixin,
+    UserRequestMixin,
+    safe_request,
+)
 from pfcli.utils import paginated_get
 
 
@@ -37,38 +43,36 @@ class UserClientService(ClientService, UserRequestMixin):
             }
         )
 
-    # Group
-    def set_group_privilege(self, pf_group_id: str, pf_user_id: str, privilege_level: str) -> None:
+    def set_group_privilege(self, pf_group_id: str, pf_user_id: str, privilege_level: GroupRole) -> None:
         safe_request(self.partial_update, err_prefix="Failed to update privilege level in group")(
             pk=pf_user_id,
             path=f"pf_group/{pf_group_id}/privilege_level",
             json={
-                "privilege_level": privilege_level
+                "privilege_level": privilege_level.value
             }
         )
 
-    # Project
-    def get_project_membership(self, pf_project_id) -> dict:
+    def get_project_membership(self, pf_project_id: str) -> dict:
         response = safe_request(self.retrieve, err_prefix="Failed identify member in project")(
             pk=self.user_id,
             path=f"pf_project/{pf_project_id}",
         )
         return response.json()
 
-    def add_to_project(self, pf_user_id: str, pf_project_id: str, access_level: str) -> None:
+    def add_to_project(self, pf_user_id: str, pf_project_id: str, access_level: ProjectRole) -> None:
         safe_request(self.post, err_prefix="Failed to add user to project")(
             path=f"{pf_user_id}/pf_project/{pf_project_id}",
             json={
-                "access_level": access_level
+                "access_level": access_level.value
             }
         )
 
-    def set_project_privilege(self, pf_user_id: str, pf_project_id: str, access_level: str) -> None:
+    def set_project_privilege(self, pf_user_id: str, pf_project_id: str, access_level: ProjectRole) -> None:
         safe_request(self.partial_update, err_prefix="Failed to update privilege level in project")(
             pk=pf_user_id,
             path=f"pf_project/{pf_project_id}/access_level",
             json={
-                "access_level": access_level
+                "access_level": access_level.value
             }
         )
 

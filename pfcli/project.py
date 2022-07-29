@@ -3,14 +3,13 @@
 """PeriFlow Project CLI"""
 
 import uuid
-from enum import Enum
 from typing import List, Optional, Tuple, Union
 
 import typer
 
 from pfcli.context import get_current_project_id, set_current_project_id, project_context_path
-from pfcli.group import GroupAccessLevel, _get_current_org, _get_org_user_id_by_name
-from pfcli.service import ServiceType
+from pfcli.group import _get_current_org, _get_org_user_id_by_name
+from pfcli.service import GroupRole, ProjectRole, ServiceType
 from pfcli.service.client import (
     GroupProjectClientService,
     ProjectClientService,
@@ -42,13 +41,6 @@ member_table_formatter = TableFormatter(
     fields=["id", "username", "name", "email", "access_level"],
     headers=["ID", "Username", "Name", "Email", "Role"]
 )
-
-
-class ProjectAccessLevel(str, Enum):
-    ADMIN = 'admin'
-    MAINTAIN = 'maintain'
-    DEVELOP = 'develop'
-    GUEST = 'guest'
 
 
 def _find_project_id(projects: List[dict], project_name: str) -> uuid.UUID:
@@ -127,10 +119,14 @@ def switch(
     )
 ):
     user_group_project_client: UserGroupProjectClientService = build_client(ServiceType.USER_GROUP_PROJECT)
+    project_client: ProjectClientService = build_client(ServiceType.PROJECT)
 
     project_id = _find_project_id(user_group_project_client.list_projects(), name)
-    set_current_project_id(project_id)
-    typer.secho(f"Project switched to {name}.", fg=typer.colors.BLUE)
+    if project_client.check_project_membership(pf_project_id=project_id):
+        set_current_project_id(project_id)
+        typer.secho(f"Project switched to {name}.", fg=typer.colors.BLUE)
+    else:
+        secho_error_and_exit(f"You don't have permission to project ({name}). Please contact to the project admin.")
 
 
 @app.command(help="delete project")
@@ -155,7 +151,7 @@ def add_user(
         ...,
         help="Username to add to the current working project",
     ),
-    role: ProjectAccessLevel = typer.Argument(
+    role: ProjectRole = typer.Argument(
         ...,
         help="Project role to assign",
     )
@@ -175,7 +171,7 @@ def set_role(
         ...,
         help="Username to set project role",
     ),
-    role: ProjectAccessLevel = typer.Argument(
+    role: ProjectRole = typer.Argument(
         ...,
         help="Project role",
     )
@@ -193,8 +189,7 @@ def set_role(
 def members():
     project_client: ProjectClientService = build_client(ServiceType.PROJECT)
 
-    _, project_id = _check_project_and_get_id()
-
+    project_id = get_current_project_id()
     members = project_client.list_users(project_id)
     member_table_formatter.render(members)
 
@@ -207,11 +202,11 @@ def _check_project_and_get_id() -> Tuple[str, str]:
     org = _get_current_org()
     project_id = get_current_project_id()
 
-    if org['privilege_level'] == GroupAccessLevel.OWNER:
+    if org['privilege_level'] == GroupRole.OWNER:
         return org['id'], project_id
 
     requester = user_client.get_project_membership(project_id)
-    if requester['access_level'] != ProjectAccessLevel.ADMIN:
+    if requester['access_level'] != ProjectRole.ADMIN:
         secho_error_and_exit("Only the admin of the project can add-user/set-role")
 
     return org['id'], project_id

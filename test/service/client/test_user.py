@@ -9,9 +9,7 @@ import pytest
 import requests_mock
 import typer
 
-from pfcli.group import GroupAccessLevel
-from pfcli.project import ProjectAccessLevel
-from pfcli.service import ServiceType
+from pfcli.service import GroupRole, ProjectRole, ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.user import UserClientService, UserGroupClientService
 
@@ -56,14 +54,14 @@ def test_user_client_set_group_privilege(requests_mock: requests_mock.Mocker,
 
     requests_mock.patch(url_template.render(pf_user_id=user_id, pf_group_id=group_id), status_code=204)
     try:
-        user_client.set_group_privilege(group_id, user_id, GroupAccessLevel.OWNER)
+        user_client.set_group_privilege(group_id, user_id, GroupRole.OWNER)
     except typer.Exit:
         raise pytest.fail("Test set group privilege failed.")
 
     # Failed
     requests_mock.patch(url_template.render(pf_user_id=user_id, pf_group_id=group_id), status_code=404)
     with pytest.raises(typer.Exit):
-        user_client.set_group_privilege(group_id, user_id, GroupAccessLevel.OWNER)
+        user_client.set_group_privilege(group_id, user_id, GroupRole.OWNER)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
@@ -104,14 +102,14 @@ def test_user_client_add_to_project(requests_mock: requests_mock.Mocker,
 
     requests_mock.post(url_template.render(pf_user_id=user_id, pf_project_id=project_id), status_code=204)
     try:
-        user_client.add_to_project(user_id, project_id, ProjectAccessLevel.ADMIN)
+        user_client.add_to_project(user_id, project_id, ProjectRole.ADMIN)
     except typer.Exit:
         raise pytest.fail("Test add to project failed.")
 
     # Failed
     requests_mock.post(url_template.render(pf_user_id=user_id, pf_project_id=project_id), status_code=404)
     with pytest.raises(typer.Exit):
-        user_client.add_to_project(user_id, project_id, ProjectAccessLevel.ADMIN)
+        user_client.add_to_project(user_id, project_id, ProjectRole.ADMIN)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
@@ -126,14 +124,14 @@ def test_user_client_set_project_privilege(requests_mock: requests_mock.Mocker,
 
     requests_mock.patch(url_template.render(pf_user_id=user_id, pf_project_id=project_id), status_code=204)
     try:
-        user_client.set_project_privilege(user_id, project_id, ProjectAccessLevel.ADMIN)
+        user_client.set_project_privilege(user_id, project_id, ProjectRole.ADMIN)
     except typer.Exit:
         raise pytest.fail("Test set project privilege failed.")
 
     # Failed
     requests_mock.patch (url_template.render(pf_user_id=user_id, pf_project_id=project_id), status_code=404)
     with pytest.raises(typer.Exit):
-        user_client.set_project_privilege(user_id, project_id, ProjectAccessLevel.ADMIN)
+        user_client.set_project_privilege(user_id, project_id, ProjectRole.ADMIN)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')

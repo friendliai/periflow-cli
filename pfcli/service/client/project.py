@@ -8,6 +8,7 @@ import uuid
 from pathlib import Path
 from string import Template
 from typing import List, Optional
+from requests import HTTPError
 
 from rich.filesize import decimal
 
@@ -22,6 +23,14 @@ class ProjectClientService(ClientService):
             pk=pf_project_id
         )
         return response.json()
+
+    def check_project_membership(self, pf_project_id: uuid.UUID) -> bool:
+        try:
+            self.retrieve(pf_project_id)
+        except HTTPError:
+            return False
+        else:
+            return True
 
     def delete_project(self, pf_project_id: uuid.UUID) -> None:
         safe_request(self.delete, err_prefix="Failed to delete a project.")(

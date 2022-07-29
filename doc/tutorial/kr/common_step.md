@@ -134,7 +134,7 @@ pf project create [PROJECT_NAME]
 #### Project 초대
 
 ```sh
-pf project add-user [USERNAME] [ACCESS_LEVEL]
+pf project add-user [USERNAME] [ROLE]
 ```
 
 위의 명령어를 통해 같은 Organization에 속한 사용자를 Project에 추가하고 역할을 설정할 수 있습니다.
@@ -144,7 +144,7 @@ pf project add-user [USERNAME] [ACCESS_LEVEL]
 Project에는 "Admin", "Maintainer", "Developer", "Guest" 4개의 역할이 존재합니다.
 
 ```sh
-pf set-role [USERNAME] [ACCESS_LEVEL]
+pf set-role [USERNAME] [ROLE]
 ```
 
 위의 명령어를 사용하여 특정 사용자에게 원하는 역할을 할당할 수 있습니다.

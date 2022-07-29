@@ -2,8 +2,6 @@
 
 """PeriFlow Group (Organization) CLI"""
 
-from enum import Enum
-
 import typer
 
 from pfcli.context import (
@@ -12,7 +10,7 @@ from pfcli.context import (
     project_context_path,
     set_current_group_id
 )
-from pfcli.service import ServiceType
+from pfcli.service import GroupRole, ServiceType
 from pfcli.service.client import (
     GroupClientService,
     ProjectClientService,
@@ -46,11 +44,6 @@ member_table_formatter = TableFormatter(
     fields=["id", "username", "name", "email", "privilege_level"],
     headers=["ID", "Username", "Name", "Email", "Role"]
 )
-
-
-class GroupAccessLevel(str, Enum):
-    OWNER = 'owner'
-    MEMBER = 'member'
 
 
 @app.command(help="list all organizations")
@@ -113,8 +106,11 @@ def switch(
 
     project_id = get_current_project_id()
     if project_id is not None:
-        project_org_id = project_client.get_project(pf_project_id=project_id)["pf_group_id"]
-        if project_org_id != org_id:
+        if project_client.check_project_membership(pf_project_id=project_id):
+            project_org_id = project_client.get_project(pf_project_id=project_id)["pf_group_id"]
+            if project_org_id != org_id:
+                project_context_path.unlink(missing_ok=True)
+        else:
             project_context_path.unlink(missing_ok=True)
 
     set_current_group_id(org_id)
@@ -152,7 +148,7 @@ def set_role(
         ...,
         help='Username to set role'
     ),
-    role: GroupAccessLevel = typer.Argument(
+    role: GroupRole = typer.Argument(
         ...,
         help='Organization role'
     )
