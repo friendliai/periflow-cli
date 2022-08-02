@@ -104,6 +104,7 @@ def list(
         serve["vm"] = "p3.8xlarge"
         serve["num_gpus"] = serve.get("config")["total_gpus"]
         serve["status"] = "enqueued" if serve["status"] == "False" else "running"
+        serve["id"] = serve.get("id").split("-")[-1]
     
     if tail is not None or head is not None:
         target_serve_list = []
@@ -157,6 +158,7 @@ def view(
     serve["vm"] = "p3.8xlarge"
     serve["num_gpus"] = serve.get("config")["total_gpus"]
     serve["status"] = "enqueued" if serve["status"] == "False" else "running"
+    serve["id"] = serve.get("id").split("-")[-1]
 
     serve["endpoint"] = serve.get("endpoint")
     serve_panel.render([serve])
