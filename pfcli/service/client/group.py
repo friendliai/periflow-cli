@@ -53,7 +53,7 @@ class GroupClientService(ClientService):
         get_response_dict = safe_request(self.list, err_prefix="Failed to get user in organization")
         return paginated_get(get_response_dict, path=f"{pf_group_id}/pf_user", search=username)
 
-    def list_users(self, pf_group_id: str) -> List[dict]:
+    def list_users(self, pf_group_id: uuid.UUID) -> List[dict]:
         get_response_dict = safe_request(self.list, err_prefix="Failed to list users in organization")
         return paginated_get(get_response_dict, path=f"{pf_group_id}/pf_user")
 

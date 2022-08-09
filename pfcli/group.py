@@ -68,14 +68,8 @@ def create(
 
 @app.command(help="get current working organization")
 def current():
-    project_client: ProjectClientService = build_client(ServiceType.PROJECT)
     group_client: GroupClientService = build_client(ServiceType.GROUP)
-    project_id = get_current_project_id()
-
-    if project_id is not None:
-        org_id = project_client.get_project(pf_project_id=project_id)["pf_group_id"]
-    else:
-        org_id = get_current_group_id()
+    org_id = get_current_group_id()
 
     if org_id is None:
         secho_error_and_exit("working organization is not set")
@@ -192,14 +186,8 @@ def _get_current_org() -> dict:
 
 @app.command(help="list up members in the current working organization")
 def members():
-    project_client: ProjectClientService = build_client(ServiceType.PROJECT)
     group_client: GroupClientService = build_client(ServiceType.GROUP)
-    project_id = get_current_project_id()
-
-    if project_id is not None:
-        org_id = project_client.get_project(pf_project_id=project_id)["pf_group_id"]
-    else:
-        org_id = get_current_group_id()
+    org_id = get_current_group_id()
 
     if org_id is None:
         secho_error_and_exit("working organization is not set")
