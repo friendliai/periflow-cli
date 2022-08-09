@@ -2,8 +2,6 @@
 
 """PeriFlow Group (Organization) CLI"""
 
-from enum import Enum
-
 import typer
 
 from pfcli.context import (
@@ -12,7 +10,7 @@ from pfcli.context import (
     project_context_path,
     set_current_group_id
 )
-from pfcli.service import ServiceType
+from pfcli.service import GroupRole, ServiceType
 from pfcli.service.client import (
     GroupClientService,
     ProjectClientService,
@@ -41,11 +39,11 @@ org_panel_formatter = PanelFormatter(
     fields=['id', 'name', 'status'],
     headers=['ID', 'Name', 'Status']
 )
-
-
-class GroupAccessLevel(str, Enum):
-    OWNER = 'owner'
-    MEMBER = 'member'
+member_table_formatter = TableFormatter(
+    name="Members",
+    fields=["id", "username", "name", "email", "privilege_level"],
+    headers=["ID", "Username", "Name", "Email", "Role"]
+)
 
 
 @app.command(help="list all organizations")
@@ -70,14 +68,8 @@ def create(
 
 @app.command(help="get current working organization")
 def current():
-    project_client: ProjectClientService = build_client(ServiceType.PROJECT)
     group_client: GroupClientService = build_client(ServiceType.GROUP)
-    project_id = get_current_project_id()
-
-    if project_id is not None:
-        org_id = project_client.get_project(pf_project_id=project_id)["pf_group_id"]
-    else:
-        org_id = get_current_group_id()
+    org_id = get_current_group_id()
 
     if org_id is None:
         secho_error_and_exit("working organization is not set")
@@ -108,8 +100,11 @@ def switch(
 
     project_id = get_current_project_id()
     if project_id is not None:
-        project_org_id = project_client.get_project(pf_project_id=project_id)["pf_group_id"]
-        if project_org_id != org_id:
+        if project_client.check_project_membership(pf_project_id=project_id):
+            project_org_id = project_client.get_project(pf_project_id=project_id)["pf_group_id"]
+            if project_org_id != org_id:
+                project_context_path.unlink(missing_ok=True)
+        else:
             project_context_path.unlink(missing_ok=True)
 
     set_current_group_id(org_id)
@@ -128,7 +123,7 @@ def invite(
     org = _get_current_org()
 
     if org['privilege_level'] != 'owner':
-        secho_error_and_exit("Only the owner of the organization can invite/set-privilege.")
+        secho_error_and_exit("Only the owner of the organization can invite/set-role.")
 
     group_client.invite_to_group(org['id'], email)
     typer.secho("Invitation Successfully Sent!")
@@ -141,15 +136,15 @@ def accept_invite(token: str = typer.Option(..., prompt="Enter Verification Code
     typer.secho("Verification Success!")
 
 
-@app.command("set-privilege", help="set privilege level")
-def set_privilege(
+@app.command("set-role", help="set organization role of the user")
+def set_role(
     username: str = typer.Argument(
         ...,
-        help='username to set privilege'
+        help='Username to set role'
     ),
-    privilege: GroupAccessLevel = typer.Argument(
+    role: GroupRole = typer.Argument(
         ...,
-        help='Privilege level to set'
+        help='Organization role'
     )
 ):
     user_client: UserClientService = build_client(ServiceType.USER)
@@ -160,8 +155,8 @@ def set_privilege(
         secho_error_and_exit("Only the owner of the organization can invite/set-privilege.")
 
     user_id = _get_org_user_id_by_name(org['id'], username)
-    user_client.set_group_privilege(org['id'], user_id, privilege)
-    typer.secho("Privilege successfully updated!")
+    user_client.set_group_privilege(org['id'], user_id, role)
+    typer.secho(f"Organization role for user ({username}) successfully updated to {role.value}!")
 
 
 def _get_org_user_id_by_name(org_id: str, username: str) -> str:
@@ -187,3 +182,15 @@ def _get_current_org() -> dict:
 
     # org context may be wrong
     secho_error_and_exit("Failed to identify organization... Please set organization again.")
+
+
+@app.command(help="list up members in the current working organization")
+def members():
+    group_client: GroupClientService = build_client(ServiceType.GROUP)
+    org_id = get_current_group_id()
+
+    if org_id is None:
+        secho_error_and_exit("working organization is not set")
+
+    members = group_client.list_users(org_id)
+    member_table_formatter.render(members)

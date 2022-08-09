@@ -57,13 +57,11 @@ def view(
     tail: Optional[int] = typer.Option(
         None,
         "--tail",
-        "-t",
         help="The number of job list to view at the tail"
     ),
     head: Optional[int] = typer.Option(
         None,
         "--head",
-        "-h",
         help="The number of job list to view at the head"
     ),
 ):

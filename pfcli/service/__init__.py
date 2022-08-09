@@ -34,6 +34,18 @@ class ServiceType(str, Enum):
     BILLING_SUMMARY = "BILLING_SUMMARY"
 
 
+class GroupRole(str, Enum):
+    OWNER = 'owner'
+    MEMBER = 'member'
+
+
+class ProjectRole(str, Enum):
+    ADMIN = 'admin'
+    MAINTAIN = 'maintain'
+    DEVELOP = 'develop'
+    GUEST = 'guest'
+
+
 class JobType(str, Enum):
     PREDEFINED = "predefined"
     CUSTOM = "custom"

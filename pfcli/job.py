@@ -198,21 +198,8 @@ def run(
     workspace_dir: Optional[Path] = typer.Option(
         None,
         "--workspace-dir",
-        "-d",
+        "-w",
         help="Path to workspace directory in your local file system"
-    ),
-    vm_name: Optional[str] = typer.Option(
-        None,
-        "--vm",
-        "-v",
-        help="VM type. You can check the list of VMs with `pf vm list`. "
-             "If not provided, the value in the config file will be used."
-    ),
-    num_devices: Optional[int] = typer.Option(
-        None,
-        "--num-devices",
-        "-n",
-        help="The number of devices to use in the job"
     ),
     experiment_name: Optional[str] = typer.Option(
         None,
@@ -227,6 +214,19 @@ def run(
        "-n",
        help="The name of this job. " 
              "If not provided, the value in the config file will be used."
+    ),
+    vm_name: Optional[str] = typer.Option(
+        None,
+        "--vm",
+        "-v",
+        help="VM type. You can check the list of VMs with `pf vm list`. "
+             "If not provided, the value in the config file will be used."
+    ),
+    num_devices: Optional[int] = typer.Option(
+        None,
+        "--num-devices",
+        "-d",
+        help="The number of devices to use in the job"
     )
 ):
     """Run a job.

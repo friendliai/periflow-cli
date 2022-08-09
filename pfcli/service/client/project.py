@@ -8,6 +8,7 @@ import uuid
 from pathlib import Path
 from string import Template
 from typing import List, Optional
+from requests import HTTPError
 
 from rich.filesize import decimal
 
@@ -23,10 +24,22 @@ class ProjectClientService(ClientService):
         )
         return response.json()
 
+    def check_project_membership(self, pf_project_id: uuid.UUID) -> bool:
+        try:
+            self.retrieve(pf_project_id)
+        except HTTPError:
+            return False
+        else:
+            return True
+
     def delete_project(self, pf_project_id: uuid.UUID) -> None:
         safe_request(self.delete, err_prefix="Failed to delete a project.")(
             pk=pf_project_id
         )
+
+    def list_users(self, pf_project_id: str) -> List[dict]:
+        get_response_dict = safe_request(self.list, err_prefix="Failed to list users in the current project")
+        return paginated_get(get_response_dict, path=f"{pf_project_id}/pf_user")
 
 
 class ProjectExperimentClientService(ClientService, ProjectRequestMixin):
