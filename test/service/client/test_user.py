@@ -11,7 +11,7 @@ import typer
 
 from pfcli.service import GroupRole, ProjectRole, ServiceType
 from pfcli.service.client import build_client
-from pfcli.service.client.user import UserClientService, UserGroupClientService
+from pfcli.service.client.user import UserClientService, UserGroupClientService, UserSignUpService
 
 
 @pytest.fixture
@@ -22,6 +22,11 @@ def user_client(user_project_group_context) -> UserClientService:
 @pytest.fixture
 def user_group_client(user_project_group_context) -> UserGroupClientService:
     return build_client(ServiceType.USER_GROUP)
+
+
+@pytest.fixture
+def user_sign_up_client(user_project_group_context) -> UserSignUpService:
+    return build_client(ServiceType.SIGNUP)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
@@ -141,7 +146,6 @@ def test_user_group_client_get_group_info(requests_mock: requests_mock.Mocker,
 
     # Success
     url_template = deepcopy(user_group_client.url_template)
-    # url_template.attach_pattern('group/')
     requests_mock.get(
         url_template.render(**user_group_client.url_kwargs),
         json=[
@@ -162,3 +166,65 @@ def test_user_group_client_get_group_info(requests_mock: requests_mock.Mocker,
     requests_mock.get(url_template.render(**user_group_client.url_kwargs), status_code=404)
     with pytest.raises(typer.Exit):
         user_group_client.get_group_info()
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_user_sign_up_client_sign_up(requests_mock: requests_mock.Mocker,
+                                     user_sign_up_client: UserSignUpService):
+    assert isinstance(user_sign_up_client, UserSignUpService)
+
+    # Success
+    url_template = deepcopy(user_sign_up_client.url_template)
+    requests_mock.post(
+        url_template.render(**user_sign_up_client.url_kwargs),
+        json=[
+            {
+                'username': 'user1',
+                'name': 'tester',
+                'email': 'test@friendli.ai',
+                'password': 'passwd1234'
+            }
+        ]
+    )
+    try:
+        user_sign_up_client.sign_up(
+            username='user1',
+            name='tester',
+            email='test@friendli.ai',
+            password='passwd1234'
+        )
+    except typer.Exit:
+        raise pytest.fail("Test add to project failed.")
+
+    # Failed
+    requests_mock.post(url_template.render(**user_sign_up_client.url_kwargs), status_code=400)
+    with pytest.raises(typer.Exit):
+        user_sign_up_client.sign_up(
+            username='user1',
+            name='tester',
+            email='test@friendli.ai',
+            password='passwd1234'
+        )
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_user_sign_up_client_verify(requests_mock: requests_mock.Mocker,
+                                    user_sign_up_client: UserSignUpService):
+    assert isinstance(user_sign_up_client, UserSignUpService)
+
+    # Success
+    url_template = deepcopy(user_sign_up_client.url_template)
+    url_template.attach_pattern('confirm')
+    requests_mock.post(
+        url_template.render(**user_sign_up_client.url_kwargs),
+        json=[
+            {
+                'email_token': '00000000-0000-0000-0000-000000000000',
+                'key': '123456'
+            }
+        ]
+    )
+    user_sign_up_client.verify(
+        token='00000000-0000-0000-0000-000000000000',
+        key='123456'
+    )

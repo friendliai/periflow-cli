@@ -101,17 +101,18 @@ def test_group_client_invite_to_group(requests_mock: requests_mock.Mocker,
 def test_group_client_accept_invite(requests_mock: requests_mock.Mocker,
                                     group_client: GroupClientService):
     token = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+    key = "123456"
     # Success
     requests_mock.post(group_client.url_template.render('invite/confirm'), status_code=204)
     try:
-        group_client.accept_invite(token)
+        group_client.accept_invite(token, key)
     except typer.Exit:
         raise pytest.fail("Test accept invite failed.")
         
     # Failed due to HTTP error
     requests_mock.post(group_client.url_template.render('invite/confirm'), status_code=404)
     with pytest.raises(typer.Exit):
-        group_client.accept_invite(token)
+        group_client.accept_invite(token, key)
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
