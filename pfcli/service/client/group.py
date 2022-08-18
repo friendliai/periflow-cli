@@ -41,11 +41,12 @@ class GroupClientService(ClientService):
             }
         )
 
-    def accept_invite(self, token: str) -> None:
+    def accept_invite(self, token: str, key: str) -> None:
         safe_request(self.post, err_prefix="Invalid code... Please Try again.")(
             path="invite/confirm",
             json={
-                "email_token": token
+                "email_token": token,
+                "key": key
             }
         )
 

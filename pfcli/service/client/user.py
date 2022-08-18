@@ -21,10 +21,13 @@ class UserSignUpService(ClientService):
             json={"username": username, "name": name, "email": email, "password": password}
         )
 
-    def verify(self, token: str) -> None:
+    def verify(self, token: str, key: str) -> None:
         safe_request(self.bare_post, err_prefix="Failed to verify")(
             path="confirm",
-            json={"email_token": token}
+            json={
+                "email_token": token,
+                "key": key
+            }
         )
 
 
