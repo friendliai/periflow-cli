@@ -68,9 +68,14 @@ def list(
 
     vm_dict_list = vm_quota_client.list_vm_quotas(vendor=cloud, region=region, device_type=device_type)
     vm_id_map = group_vm_config_client.get_vm_config_id_map()
+    available_vm_dict_list = []
     for vm_dict in vm_dict_list:
         vm_instance_name = vm_dict['vm_config_type']['code']
-        active_vm_count = vm_config_client.get_active_vm_count(vm_id_map[vm_instance_name])
-        vm_dict['quota'] = f"{vm_dict['quota'] - active_vm_count} / {vm_dict['quota']}"
+        try:
+            active_vm_count = vm_config_client.get_active_vm_count(vm_id_map[vm_instance_name])
+            vm_dict['quota'] = f"{vm_dict['quota'] - active_vm_count} / {vm_dict['quota']}"
+        except KeyError:
+            continue
+        available_vm_dict_list.append(vm_dict)
 
-    formatter.render(vm_dict_list)
+    formatter.render(available_vm_dict_list)
