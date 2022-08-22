@@ -176,7 +176,16 @@ def refine_config(config: dict,
         config["data"]["id"] = data_id
 
     if config["job_setting"]["type"] == "custom":
-        config["job_setting"]["launch_mode"] = "node"
+        if "launch_mode" not in config["job_setting"]:
+            config["job_setting"]["launch_mode"] = "node"
+
+        if "docker" in config["job_setting"]:
+            docker_command = config["job_setting"]["docker"]["command"]
+            if isinstance(docker_command, str):
+                config["job_setting"]["docker"]["command"] = {
+                    "setup": "",
+                    "run": docker_command
+                }
     else:
         job_template_name = config["job_setting"]["template_name"]
         job_template_config = job_template_client.get_job_template_by_name(job_template_name)
