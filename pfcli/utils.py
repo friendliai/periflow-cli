@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from dateutil.tz import tzlocal
 from pathlib import Path
 from subprocess import CalledProcessError, check_call
-from typing import Callable, Optional, List, Dict
+from typing import Callable, Optional, List
 from urllib.parse import urljoin
 
 import pathspec
@@ -185,19 +185,6 @@ def get_workspace_files(dir_path: Path) -> List[Path]:
     return list(all_files.difference(matched_files))
 
 
-def _upload_file(file_path: str, url: str, ctx: tqdm):
-    try:
-        with open(file_path, 'rb') as f:
-            wrapped_object = CallbackIOWrapper(ctx.update, f, 'read')
-            requests.put(url, data=wrapped_object)
-    except FileNotFoundError:
-        secho_error_and_exit(f"{file_path} is not found.")
-
-
-def _get_total_file_size(file_paths: List[str]) -> int:
-    return sum([os.stat(file_path).st_size for file_path in file_paths])
-
-
 def storage_path_to_local_path(storage_path: str, source_path: Path, expand: bool) -> str:
     if source_path.is_file():
         return str(source_path)
@@ -206,21 +193,6 @@ def storage_path_to_local_path(storage_path: str, source_path: Path, expand: boo
         return str(source_path / Path(storage_path))
 
     return str(source_path / Path(storage_path.split('/', 1)[1]))
-
-
-def upload_files(url_dicts: List[Dict[str, str]], source_path: Path, expand: bool) -> None:
-    local_paths = [ storage_path_to_local_path(url_info['path'], source_path, expand) for url_info in url_dicts ]
-    total_size = _get_total_file_size(local_paths)
-    upload_urls = [ url_info['upload_url'] for url_info in url_dicts ]
-
-    with tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024) as t:
-        with ThreadPoolExecutor() as executor:
-            futs = [
-                executor.submit(
-                    _upload_file, local_path, upload_url, t
-                ) for (local_path, upload_url) in zip(local_paths, upload_urls)
-            ]
-            wait(futs, return_when=FIRST_EXCEPTION)
 
 
 def get_file_info(storage_path: str, source_path: Path, expand: bool) -> dict:
