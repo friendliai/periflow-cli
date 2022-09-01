@@ -62,6 +62,7 @@ job_table = TableFormatter(
     fields=[
         'id',
         'project',
+        'experiment',
         'name',
         'status',
         'vm_config.vm_config_type.vm_instance_type.name',
@@ -71,7 +72,7 @@ job_table = TableFormatter(
         'started_at',
         'duration',
     ],
-    headers=['ID', 'Project', 'Name', 'Status', 'VM', 'Device', 'Device Cnt', 'Data', 'Start', 'Duration'],
+    headers=['ID', 'Project', 'Experiment', 'Name', 'Status', 'VM', 'Device', 'Device Cnt', 'Data', 'Start', 'Duration'],
 )
 job_table.apply_styling("ID", style="bold")
 job_table.add_substitution_rule("waiting", "[bold]waiting")
@@ -176,7 +177,16 @@ def refine_config(config: dict,
         config["data"]["id"] = data_id
 
     if config["job_setting"]["type"] == "custom":
-        config["job_setting"]["launch_mode"] = "node"
+        if "launch_mode" not in config["job_setting"]:
+            config["job_setting"]["launch_mode"] = "node"
+
+        if "docker" in config["job_setting"]:
+            docker_command = config["job_setting"]["docker"]["command"]
+            if isinstance(docker_command, str):
+                config["job_setting"]["docker"]["command"] = {
+                    "setup": "",
+                    "run": docker_command
+                }
     else:
         job_template_name = config["job_setting"]["template_name"]
         job_template_config = job_template_client.get_job_template_by_name(job_template_name)
@@ -309,6 +319,7 @@ def list(
         job['started_at'] = start
         job['duration'] = duration
         job['data_name'] = job["data_store"]['name'] if job["data_store"] is not None else None
+        job['experiment'] = job['experiment']['name']
 
     if tail is not None or head is not None:
         target_job_list = []
