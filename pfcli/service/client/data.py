@@ -5,11 +5,12 @@
 import math
 import os
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
+from enum import Enum
 from functools import wraps
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import requests
+import typer
 from requests import Request, Session
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
@@ -94,7 +95,7 @@ class DataClientService(ClientService):
         )
         return response.json()
 
-    def get_mpu_urls(self, datastore_id: T, paths: List[str]) -> List[dict]:
+    def get_mpu_urls(self, datastore_id: T, paths: List[str], src_path: Optional[str] = None) -> List[dict]:
         """Get multipart upload URLs for multiple datasets
 
         Args:
@@ -116,7 +117,10 @@ class DataClientService(ClientService):
         """
         start_mpu_resps = []
         for path in paths:
-            num_parts = math.ceil(get_file_size(path) / S3_MPU_PART_MAX_SIZE)
+            if src_path is not None and not os.path.isfile(path):
+                num_parts = math.ceil(get_file_size(os.path.join(src_path, path)) / S3_MPU_PART_MAX_SIZE)
+            else:
+                num_parts = math.ceil(get_file_size(path) / S3_MPU_PART_MAX_SIZE)
             response = safe_request(self.post, err_prefix="Failed to get presigned URLs for multipart upload.")(
                 path=f"{datastore_id}/start_mpu/",
                 json={
@@ -150,25 +154,29 @@ class DataClientService(ClientService):
         self,
         datastore_id: T,
         file_path: str,
-        urls: List[str],
-        upload_id: str,
+        url_dict: List[dict],
         ctx: tqdm
     ) -> None:
         parts = []
+        upload_id = url_dict['upload_id']
+        object_path = url_dict['path']
         try:
             with open(file_path, 'rb') as f:
                 fileno = f.fileno()
                 total_file_size = os.fstat(fileno).st_size
-                for idx, url_info in enumerate(urls):
+                for idx, url_info in enumerate(url_dict['upload_urls']):
                     cursor = idx * S3_MPU_PART_MAX_SIZE
                     f.seek(cursor)
-                    chunk_size = S3_MPU_PART_MAX_SIZE if idx < len(urls) - 1 else total_file_size - cursor
+                    # Only the last part can be smaller than ``S3_MPU_PART_MAX_SIZE``.
+                    chunk_size = min(S3_MPU_PART_MAX_SIZE, total_file_size - cursor)
                     wrapped_object = _CustomCallbackIOWrapper(ctx.update, f, 'read', chunk_size)
                     s = Session()
                     req = Request('PUT', url_info['upload_url'], data=wrapped_object)
                     prep = req.prepare()
                     prep.headers['Content-Length'] = chunk_size
                     response = s.send(prep)
+                    if response.status_code != 200:
+                        secho_error_and_exit(f"Failed to upload file ({file_path}): {response.content}")
 
                     etag = response.headers['ETag']
                     parts.append(
@@ -178,11 +186,11 @@ class DataClientService(ClientService):
                         }
                     )
                 assert not f.read(S3_MPU_PART_MAX_SIZE)
-            self.complete_mpu(datastore_id, file_path, upload_id, parts)
+            self.complete_mpu(datastore_id, object_path, upload_id, parts)
         except FileNotFoundError:
             secho_error_and_exit(f"{file_path} is not found.")
         except Exception:
-            self.abort_mpu(datastore_id, file_path, upload_id)
+            self.abort_mpu(datastore_id, object_path, upload_id)
             secho_error_and_exit("File upload is aborted.")
 
     def upload_files(
@@ -201,8 +209,6 @@ class DataClientService(ClientService):
         ]
         total_size = get_total_file_size(spu_local_paths + mpu_local_paths)
         spu_urls = [ url_info['upload_url'] for url_info in spu_url_dicts ]
-        mpu_urls = [ url_info['upload_urls'] for url_info in mpu_url_dicts ]
-        mpu_upload_ids = [ url_info['upload_id'] for url_info in mpu_url_dicts ]
 
         with tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024) as t:
             with ThreadPoolExecutor() as executor:
@@ -215,8 +221,8 @@ class DataClientService(ClientService):
                 # Multipart upload for large files with sizes >= 5 GiB
                 futs.extend([
                     executor.submit(
-                        self._multipart_upload_file, datastore_id, local_path, upload_urls, upload_id, t
-                    ) for (local_path, upload_urls, upload_id) in zip(mpu_local_paths, mpu_urls, mpu_upload_ids)
+                        self._multipart_upload_file, datastore_id, local_path, url_dict, t
+                    ) for (local_path, url_dict) in zip(mpu_local_paths, mpu_url_dicts)
                 ])
                 wait(futs, return_when=FIRST_EXCEPTION)
                 for fut in futs:
@@ -225,23 +231,30 @@ class DataClientService(ClientService):
                         raise exc
 
 
-def expand_paths(path: Path, expand: bool) -> List[str]:
+class FileSizeType(Enum):
+    LARGE = "LARGE"
+    SMALL = "SMALL"
+
+
+def filter_files_by_size(paths: List[str], size_type: FileSizeType) -> List[str]:
+    if size_type is FileSizeType.LARGE:
+        return [ path for path in paths if get_file_size(path) >= S3_UPLOAD_SIZE_LIMIT ]
+    if size_type is FileSizeType.SMALL:
+        # NOTE: S3 does not support file uploading for 0B size files.
+        return [ path for path in paths if 0 < get_file_size(path) < S3_UPLOAD_SIZE_LIMIT ]
+
+
+def expand_paths(path: Path, expand: bool, size_type: FileSizeType) -> List[str]:
     if path.is_file():
         paths = [str(path.name)]
+        paths = filter_files_by_size(paths, size_type)
     else:
         paths = list(path.rglob('*'))
+        paths = filter_files_by_size(paths, size_type)
         rel_path = path if expand else path.parent
         paths = [str(f.relative_to(rel_path)) for f in paths if f.is_file()]
 
     return paths
-
-
-def get_spu_targets(src_path: Path, expand: bool) -> List[str]:
-    return [ path for path in expand_paths(src_path, expand) if get_file_size(path) < S3_UPLOAD_SIZE_LIMIT ]
-
-
-def get_mpu_targets(src_path: Path, expand: bool) -> List[str]:
-    return [ path for path in expand_paths(src_path, expand) if get_file_size(path) >= S3_UPLOAD_SIZE_LIMIT ]
 
 
 def _upload_file(file_path: str, url: str, ctx: tqdm) -> None:
@@ -249,22 +262,40 @@ def _upload_file(file_path: str, url: str, ctx: tqdm) -> None:
         with open(file_path, 'rb') as f:
             fileno = f.fileno()
             total_file_size = os.fstat(fileno).st_size
+            if total_file_size == 0:
+                typer.secho(f"The file with 0B size ({file_path}) is skipped.", fg=typer.colors.RED)
+                return
+
             wrapped_object = CallbackIOWrapper(ctx.update, f, 'read')
             s = Session()
             req = Request('PUT', url, data=wrapped_object)
             prep = req.prepare()
             prep.headers['Content-Length'] = total_file_size    # necessary to use ``CallbackIOWrapper``
-            s.send(prep)
+            response = s.send(prep)
+            if response.status_code != 200:
+                secho_error_and_exit(f"Failed to upload file ({file_path}): {response.content}")
     except FileNotFoundError:
         secho_error_and_exit(f"{file_path} is not found.")
 
 
-def get_file_size(file_path: str) -> int:
+def get_file_size(file_path: str, prefix: Optional[str] = None) -> int:
+    """Calculate a file size in bytes.
+
+    Args:
+        file_path (str): Path to the target file.
+        prefix (Optional[str], optional): If it is not None, attach the prefix to the path. Defaults to None.
+
+    Returns:
+        int: The size of a file.
+    """
+    if prefix is not None:
+        file_path = os.path.join(prefix, file_path)
+
     return os.stat(file_path).st_size
 
 
-def get_total_file_size(file_paths: List[str]) -> int:
-    return sum([ get_file_size(file_path) for file_path in file_paths ])
+def get_total_file_size(file_paths: List[str], prefix: Optional[str] = None) -> int:
+    return sum([ get_file_size(file_path, prefix) for file_path in file_paths ])
 
 
 class _CustomCallbackIOWrapper(CallbackIOWrapper):
