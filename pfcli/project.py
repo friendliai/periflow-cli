@@ -7,7 +7,11 @@ from typing import List, Optional, Tuple, Union
 
 import typer
 
-from pfcli.context import get_current_project_id, set_current_project_id, project_context_path
+from pfcli.context import (
+    get_current_project_id,
+    set_current_project_id,
+    project_context_path,
+)
 from pfcli.group import _get_current_org, _get_org_user_id_by_name
 from pfcli.service import GroupRole, ProjectRole, ServiceType
 from pfcli.service.client import (
@@ -15,7 +19,7 @@ from pfcli.service.client import (
     ProjectClientService,
     UserClientService,
     UserGroupProjectClientService,
-    build_client
+    build_client,
 )
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import secho_error_and_exit
@@ -24,50 +28,41 @@ from pfcli.utils import secho_error_and_exit
 app = typer.Typer(
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},
-    add_completion=False
+    add_completion=False,
 )
 project_table_formatter = TableFormatter(
-    name="Project",
-    fields=['id', 'name'],
-    headers=["ID", "Name"]
+    name="Project", fields=["id", "name"], headers=["ID", "Name"]
 )
 project_panel_formatter = PanelFormatter(
     name="Project Detail",
-    fields=['pf_group_id', 'id', 'name'],
-    headers=['Organization ID', 'Project ID', 'Name']
+    fields=["pf_group_id", "id", "name"],
+    headers=["Organization ID", "Project ID", "Name"],
 )
 member_table_formatter = TableFormatter(
     name="Members",
     fields=["id", "username", "name", "email", "access_level"],
-    headers=["ID", "Username", "Name", "Email", "Role"]
+    headers=["ID", "Username", "Name", "Email", "Role"],
 )
 
 
 def _find_project_id(projects: List[dict], project_name: str) -> uuid.UUID:
     for project in projects:
-        if project['name'] == project_name:
-            return uuid.UUID(project['id'])
+        if project["name"] == project_name:
+            return uuid.UUID(project["id"])
     secho_error_and_exit(f"No project exists with name {project_name}.")
 
 
 @app.command(help="list all accessible projects")
 def list(
     tail: Optional[int] = typer.Option(
-        None,
-        "--tail",
-        help="The number of project list to view at the tail"
+        None, "--tail", help="The number of project list to view at the tail"
     ),
     head: Optional[int] = typer.Option(
-        None,
-        "--tail",
-        help="The number of project list to view at the head"
+        None, "--tail", help="The number of project list to view at the head"
     ),
     show_group_project: bool = typer.Option(
-        False,
-        "--group",
-        "-g",
-        help="Show all projects in the current group"
-    )
+        False, "--group", "-g", help="Show all projects in the current group"
+    ),
 ):
     client: Union[GroupProjectClientService, UserGroupProjectClientService]
     if show_group_project:
@@ -90,12 +85,7 @@ def list(
 
 
 @app.command(help="create a new project")
-def create(
-    name: str = typer.Argument(
-        ...,
-        help='Name of project to create'
-    )
-):
+def create(name: str = typer.Argument(..., help="Name of project to create")):
     client: GroupProjectClientService = build_client(ServiceType.GROUP_PROJECT)
     project_detail = client.create_project(name)
     project_panel_formatter.render(project_detail)
@@ -115,10 +105,12 @@ def current():
 def switch(
     name: str = typer.Argument(
         ...,
-        help='Name of project to switch',
+        help="Name of project to switch",
     )
 ):
-    user_group_project_client: UserGroupProjectClientService = build_client(ServiceType.USER_GROUP_PROJECT)
+    user_group_project_client: UserGroupProjectClientService = build_client(
+        ServiceType.USER_GROUP_PROJECT
+    )
     project_client: ProjectClientService = build_client(ServiceType.PROJECT)
 
     project_id = _find_project_id(user_group_project_client.list_projects(), name)
@@ -126,7 +118,9 @@ def switch(
         set_current_project_id(project_id)
         typer.secho(f"Project switched to {name}.", fg=typer.colors.BLUE)
     else:
-        secho_error_and_exit(f"You don't have permission to project ({name}). Please contact to the project admin.")
+        secho_error_and_exit(
+            f"You don't have permission to project ({name}). Please contact to the project admin."
+        )
 
 
 @app.command(help="delete project")
@@ -137,7 +131,9 @@ def delete(
     )
 ):
     project_client: ProjectClientService = build_client(ServiceType.PROJECT)
-    user_group_project_client: UserGroupProjectClientService = build_client(ServiceType.USER_GROUP_PROJECT)
+    user_group_project_client: UserGroupProjectClientService = build_client(
+        ServiceType.USER_GROUP_PROJECT
+    )
     project_id = _find_project_id(user_group_project_client.list_projects(), name)
     project_client.delete_project(pf_project_id=project_id)
     if project_id == get_current_project_id():
@@ -154,7 +150,7 @@ def add_user(
     role: ProjectRole = typer.Argument(
         ...,
         help="Project role to assign",
-    )
+    ),
 ):
     user_client: UserClientService = build_client(ServiceType.USER)
 
@@ -174,7 +170,7 @@ def set_role(
     role: ProjectRole = typer.Argument(
         ...,
         help="Project role",
-    )
+    ),
 ):
     user_client: UserClientService = build_client(ServiceType.USER)
 
@@ -182,7 +178,9 @@ def set_role(
     user_id = _get_org_user_id_by_name(org_id, username)
 
     user_client.set_project_privilege(user_id, project_id, role)
-    typer.secho(f"Project role for user ({username}) successfully updated to {role.value}!")
+    typer.secho(
+        f"Project role for user ({username}) successfully updated to {role.value}!"
+    )
 
 
 @app.command(help="list up members in the current working project")
@@ -202,11 +200,11 @@ def _check_project_and_get_id() -> Tuple[str, str]:
     org = _get_current_org()
     project_id = get_current_project_id()
 
-    if org['privilege_level'] == GroupRole.OWNER:
-        return org['id'], project_id
+    if org["privilege_level"] == GroupRole.OWNER:
+        return org["id"], project_id
 
     requester = user_client.get_project_membership(project_id)
-    if requester['access_level'] != ProjectRole.ADMIN:
+    if requester["access_level"] != ProjectRole.ADMIN:
         secho_error_and_exit("Only the admin of the project can add-user/set-role")
 
-    return org['id'], project_id
+    return org["id"], project_id

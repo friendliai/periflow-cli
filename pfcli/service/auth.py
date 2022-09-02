@@ -43,21 +43,32 @@ def update_token(token_type: TokenType, token: str) -> None:
         refresh_token_path.write_text(token)
 
 
-def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable[..., requests.Response]:
+def auto_token_refresh(
+    func: Callable[..., requests.Response]
+) -> Callable[..., requests.Response]:
     @functools.wraps(func)
     def inner(*args, **kwargs) -> requests.Response:
         r = func(*args, **kwargs)
         if r.status_code == 401 or r.status_code == 403:
             refresh_token = get_token(TokenType.REFRESH)
             if refresh_token is not None:
-                refresh_r = requests.post(get_uri("token/refresh/"), data={"refresh_token": refresh_token})
+                refresh_r = requests.post(
+                    get_uri("token/refresh/"), data={"refresh_token": refresh_token}
+                )
                 try:
                     refresh_r.raise_for_status()
                 except requests.HTTPError:
-                    secho_error_and_exit("Failed to refresh access token... Please login again")
+                    secho_error_and_exit(
+                        "Failed to refresh access token... Please login again"
+                    )
 
-                update_token(token_type=TokenType.ACCESS, token=refresh_r.json()["access_token"])
-                update_token(token_type=TokenType.REFRESH, token=refresh_r.json()["refresh_token"])
+                update_token(
+                    token_type=TokenType.ACCESS, token=refresh_r.json()["access_token"]
+                )
+                update_token(
+                    token_type=TokenType.REFRESH,
+                    token=refresh_r.json()["refresh_token"],
+                )
                 # We need to restore file offset if we want to transfer file objects
                 if "files" in kwargs:
                     files = kwargs["files"]
@@ -69,8 +80,11 @@ def auto_token_refresh(func: Callable[..., requests.Response]) -> Callable[..., 
                 r = func(*args, **kwargs)
                 r.raise_for_status()
             else:
-                secho_error_and_exit("Failed to refresh access token... Please login again")
+                secho_error_and_exit(
+                    "Failed to refresh access token... Please login again"
+                )
         else:
             r.raise_for_status()
         return r
+
     return inner

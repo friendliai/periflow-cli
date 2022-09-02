@@ -12,9 +12,27 @@ from requests import HTTPError
 
 from rich.filesize import decimal
 
-from pfcli.service import CloudType, CredType, LockType, StorageType, cred_type_map, storage_type_map
-from pfcli.service.client.base import ClientService, ProjectRequestMixin, T, safe_request
-from pfcli.utils import get_workspace_files, paginated_get, secho_error_and_exit, validate_storage_region, zip_dir
+from pfcli.service import (
+    CloudType,
+    CredType,
+    LockType,
+    StorageType,
+    cred_type_map,
+    storage_type_map,
+)
+from pfcli.service.client.base import (
+    ClientService,
+    ProjectRequestMixin,
+    T,
+    safe_request,
+)
+from pfcli.utils import (
+    get_workspace_files,
+    paginated_get,
+    secho_error_and_exit,
+    validate_storage_region,
+    zip_dir,
+)
 
 
 class ProjectClientService(ClientService):
@@ -38,7 +56,9 @@ class ProjectClientService(ClientService):
         )
 
     def list_users(self, pf_project_id: str) -> List[dict]:
-        get_response_dict = safe_request(self.list, err_prefix="Failed to list users in the current project")
+        get_response_dict = safe_request(
+            self.list, err_prefix="Failed to list users in the current project"
+        )
         return paginated_get(get_response_dict, path=f"{pf_project_id}/pf_user")
 
 
@@ -52,10 +72,12 @@ class ProjectExperimentClientService(ClientService, ProjectRequestMixin):
         return response.json()
 
     def get_id_by_name(self, name: str) -> Optional[T]:
-        response = safe_request(self.list, err_prefix="Failed to get experiment info.")()
+        response = safe_request(
+            self.list, err_prefix="Failed to get experiment info."
+        )()
         for experiment in response.json():
-            if experiment['name'] == name:
-                return experiment['id']
+            if experiment["name"] == name:
+                return experiment["id"]
         return None
 
     def create_experiment(self, name: str) -> dict:
@@ -71,7 +93,9 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
         super().__init__(template, project_id=self.project_id, **kwargs)
 
     def list_jobs(self) -> List[dict]:
-        return paginated_get(safe_request(self.list, err_prefix="Failed to list jobs in project."))
+        return paginated_get(
+            safe_request(self.list, err_prefix="Failed to list jobs in project.")
+        )
 
     def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
         job_request = safe_request(self.post, err_prefix="Failed to run job.")
@@ -85,10 +109,8 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
                 )
             workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
             with zip_dir(workspace_dir, workspace_files, workspace_zip) as zip_file:
-                files = {'workspace_zip': ('workspace.zip', zip_file)}
-                response = job_request(
-                    data={"data": json.dumps(config)}, files=files
-                )
+                files = {"workspace_zip": ("workspace.zip", zip_file)}
+                response = job_request(data={"data": json.dumps(config)}, files=files)
         else:
             response = job_request(json=config)
         return response.json()
@@ -106,19 +128,21 @@ class ProjectDataClientService(ClientService, ProjectRequestMixin):
     def get_id_by_name(self, name: str) -> Optional[T]:
         datastores = self.list_datastores()
         for datastore in datastores:
-            if datastore['name'] == name:
-                return datastore['id']
+            if datastore["name"] == name:
+                return datastore["id"]
         return None
 
-    def create_datastore(self,
-                         name: str,
-                         vendor: StorageType,
-                         region: str,
-                         storage_name: str,
-                         credential_id: Optional[T],
-                         metadata: dict,
-                         files: List[dict],
-                         active: bool) -> dict:
+    def create_datastore(
+        self,
+        name: str,
+        vendor: StorageType,
+        region: str,
+        storage_name: str,
+        credential_id: Optional[T],
+        metadata: dict,
+        files: List[dict],
+        active: bool,
+    ) -> dict:
         validate_storage_region(vendor, region)
 
         vendor_name = storage_type_map[vendor]
@@ -132,9 +156,9 @@ class ProjectDataClientService(ClientService, ProjectRequestMixin):
             "files": files,
             "active": active,
         }
-        response = safe_request(self.post, err_prefix="Failed to create a new datastore.")(
-            json=request_data
-        )
+        response = safe_request(
+            self.post, err_prefix="Failed to create a new datastore."
+        )(json=request_data)
         return response.json()
 
 
@@ -143,18 +167,40 @@ class ProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_vm_quotas(self,
-                       vendor: Optional[CloudType] = None,
-                       region: Optional[str] = None,
-                       device_type: Optional[str] = None) -> Optional[List[dict]]:
+    def list_vm_quotas(
+        self,
+        vendor: Optional[CloudType] = None,
+        region: Optional[str] = None,
+        device_type: Optional[str] = None,
+    ) -> Optional[List[dict]]:
         response = safe_request(self.list, err_prefix="Failed to list VM quota info.")()
         vm_dict_list = response.json()
         if vendor is not None:
-            vm_dict_list = list(filter(lambda info: info['vm_config_type']['vm_instance_type']['vendor'] == vendor, vm_dict_list))
+            vm_dict_list = list(
+                filter(
+                    lambda info: info["vm_config_type"]["vm_instance_type"]["vendor"]
+                    == vendor,
+                    vm_dict_list,
+                )
+            )
         if region is not None:
-            vm_dict_list = list(filter(lambda info: info['vm_config_type']['vm_instance_type']['region'] == region, vm_dict_list))
+            vm_dict_list = list(
+                filter(
+                    lambda info: info["vm_config_type"]["vm_instance_type"]["region"]
+                    == region,
+                    vm_dict_list,
+                )
+            )
         if device_type is not None:
-            vm_dict_list = list(filter(lambda info: info['vm_config_type']['vm_instance_type']['device_type'] == device_type, vm_dict_list))
+            vm_dict_list = list(
+                filter(
+                    lambda info: info["vm_config_type"]["vm_instance_type"][
+                        "device_type"
+                    ]
+                    == device_type,
+                    vm_dict_list,
+                )
+            )
         return vm_dict_list
 
 
@@ -165,26 +211,24 @@ class ProjectCredentialClientService(ClientService, ProjectRequestMixin):
 
     def list_credentials(self, cred_type: CredType) -> List[dict]:
         type_name = cred_type_map[cred_type]
-        response = safe_request(self.list, err_prefix=f"Failed to list credential for {cred_type}.")(
-            params={"type": type_name}
-        )
+        response = safe_request(
+            self.list, err_prefix=f"Failed to list credential for {cred_type}."
+        )(params={"type": type_name})
         return response.json()
 
-    def create_credential(self,
-                          cred_type: CredType,
-                          name: str,
-                          type_version: int,
-                          value: dict) -> dict:
+    def create_credential(
+        self, cred_type: CredType, name: str, type_version: int, value: dict
+    ) -> dict:
         type_name = cred_type_map[cred_type]
         request_data = {
             "type": type_name,
             "name": name,
             "type_version": type_version,
-            "value": value
+            "value": value,
         }
-        response = safe_request(self.post, err_prefix="Failed to create user credential.")(
-            json=request_data
-        )
+        response = safe_request(
+            self.post, err_prefix="Failed to create user credential."
+        )(json=request_data)
         return response.json()
 
 
@@ -195,8 +239,7 @@ class ProjectVMConfigClientService(ClientService, ProjectRequestMixin):
 
     def list_vm_locks(self, vm_config_id: T, lock_type: LockType) -> List[dict]:
         response = safe_request(self.list, err_prefix="Failed to inspect locked VMs.")(
-            path=f"{vm_config_id}/vm_lock/",
-            params={"lock_type": lock_type}
+            path=f"{vm_config_id}/vm_lock/", params={"lock_type": lock_type}
         )
         return response.json()
 
