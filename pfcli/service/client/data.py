@@ -157,6 +157,7 @@ class DataClientService(ClientService):
         url_dict: List[dict],
         ctx: tqdm
     ) -> None:
+        # TODO (ym): parallelize each part upload.
         parts = []
         upload_id = url_dict['upload_id']
         object_path = url_dict['path']
@@ -175,8 +176,7 @@ class DataClientService(ClientService):
                     prep = req.prepare()
                     prep.headers['Content-Length'] = chunk_size
                     response = s.send(prep)
-                    if response.status_code != 200:
-                        secho_error_and_exit(f"Failed to upload file ({file_path}): {response.content}")
+                    response.raise_for_status()
 
                     etag = response.headers['ETag']
                     parts.append(
@@ -189,9 +189,9 @@ class DataClientService(ClientService):
             self.complete_mpu(datastore_id, object_path, upload_id, parts)
         except FileNotFoundError:
             secho_error_and_exit(f"{file_path} is not found.")
-        except Exception:
+        except Exception as exc:
             self.abort_mpu(datastore_id, object_path, upload_id)
-            secho_error_and_exit("File upload is aborted.")
+            secho_error_and_exit(f"File upload is aborted: ({exc!r})")
 
     def upload_files(
         self,
@@ -240,8 +240,16 @@ def filter_files_by_size(paths: List[str], size_type: FileSizeType) -> List[str]
     if size_type is FileSizeType.LARGE:
         return [ path for path in paths if get_file_size(path) >= S3_UPLOAD_SIZE_LIMIT ]
     if size_type is FileSizeType.SMALL:
-        # NOTE: S3 does not support file uploading for 0B size files.
-        return [ path for path in paths if 0 < get_file_size(path) < S3_UPLOAD_SIZE_LIMIT ]
+        res = []
+        for path in paths:
+            size = get_file_size(path)
+            if size == 0:
+                # NOTE: S3 does not support file uploading for 0B size files.
+                typer.secho(f"Skip uploading file ({path}) with size 0B.", fg=typer.colors.RED)
+                continue
+            if size < S3_UPLOAD_SIZE_LIMIT:
+                res.append(path)
+        return res
 
 
 def expand_paths(path: Path, expand: bool, size_type: FileSizeType) -> List[str]:
@@ -324,7 +332,7 @@ class _CustomCallbackIOWrapper(CallbackIOWrapper):
                     return
 
                 data = func(*args, **kwargs)
-                data_size = len(data)
+                data_size = len(data)   # default to 8 KiB
                 callback(data_size)
                 self._cursor += data_size
                 return data

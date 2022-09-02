@@ -2,6 +2,7 @@
 
 """Test DataClient Service"""
 
+import os
 from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -12,7 +13,13 @@ import typer
 
 from pfcli.service import ServiceType, StorageType
 from pfcli.service.client import build_client
-from pfcli.service.client.data import DataClientService
+from pfcli.service.client.data import S3_MPU_PART_MAX_SIZE, S3_UPLOAD_SIZE_LIMIT, DataClientService
+
+
+def write_file(path: str, size: int) -> None:
+    with open(path, 'wb') as f:
+        f.seek(size - 1)
+        f.write(b'\0')
 
 
 @pytest.fixture
@@ -112,7 +119,7 @@ def test_data_client_delete_datastore(requests_mock: requests_mock.Mocker, data_
 
 
 @pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_data_client_get_upload_urls(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+def test_data_client_get_spu_urls(requests_mock: requests_mock.Mocker, data_client: DataClientService):
     assert isinstance(data_client, DataClientService)
 
     url_template = deepcopy(data_client.url_template)
@@ -125,25 +132,213 @@ def test_data_client_get_upload_urls(requests_mock: requests_mock.Mocker, data_c
             {'path': '/path/to/local/file', 'upload_url': 'https://s3.bucket.com'}
         ]
     )
-    with TemporaryDirectory() as dir:
-        (Path(dir) / 'file').touch()
-        assert data_client.get_upload_urls(0, Path(dir), True) == [
-            {'path': '/path/to/local/file', 'upload_url': 'https://s3.bucket.com'}
-        ]
-
-        # Handle a single file
-        assert data_client.get_upload_urls(0, Path(dir) / 'file', True) == [
-            {'path': '/path/to/local/file', 'upload_url': 'https://s3.bucket.com'}
-        ]
-
-    # Failed when uploading empty directory.
-    with TemporaryDirectory() as dir:
-        with pytest.raises(typer.Exit):
-            data_client.get_upload_urls(0, Path(dir), True)
+    assert data_client.get_spu_urls(0, ['/path/to/local/file']) == [
+        {'path': '/path/to/local/file', 'upload_url': 'https://s3.bucket.com'}
+    ]
 
     # Failed due to HTTP error
     requests_mock.post(url_template.render(datastore_id=0), status_code=500)
-    with TemporaryDirectory() as dir:
-        (Path(dir) / 'file').touch()
+    with pytest.raises(typer.Exit):
+        data_client.get_spu_urls(0, ['/path/to/local/file'])
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_data_client_get_mpu_urls(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+    assert isinstance(data_client, DataClientService)
+
+    url_template = deepcopy(data_client.url_template)
+    url_template.attach_pattern('$datastore_id/start_mpu/')
+
+    with TemporaryDirectory() as temp_dir:
+        target_file_path = os.path.join(temp_dir, 'large_file')
+        resp_mock = {
+            'path': target_file_path,
+            'upload_id': '865b8d498d1fb82e92a7e808e82c4111',
+            'upload_urls': [
+                {
+                    'upload_url': 'https://mydata.s3.amazonaws.com/path/to/file/part1',
+                    'part_number': 1
+                },
+                {
+                    'upload_url': 'https://mydata.s3.amazonaws.com/path/to/file/part2',
+                    'part_number': 2
+                }
+            ]
+        }
+        write_file(target_file_path, S3_UPLOAD_SIZE_LIMIT * 2)
+
+        requests_mock.post(
+            url_template.render(datastore_id=0),
+            json=resp_mock
+        )
+        assert data_client.get_mpu_urls(0, [target_file_path]) == [resp_mock]
+
+        requests_mock.post(url_template.render(datastore_id=0), status_code=500)
         with pytest.raises(typer.Exit):
-            data_client.get_upload_urls(0, Path(dir), True)
+            data_client.get_mpu_urls(0, [target_file_path])
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_data_client_complete_mpu(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+    assert isinstance(data_client, DataClientService)
+
+    url_template = deepcopy(data_client.url_template)
+    url_template.attach_pattern('$datastore_id/complete_mpu/')
+
+    requests_mock.post(url_template.render(datastore_id=0))
+    data_client.complete_mpu(
+        0,
+        ['/path/to/file'],
+        'fakeuploadid',
+        {
+            'part': [
+                {'etag': 'fakeetag', 'part_number': 1},
+                {'etag': 'fakeetag', 'part_number': 2},
+            ],
+        },
+    )
+
+    requests_mock.post(url_template.render(datastore_id=0), status_code=500)
+    with pytest.raises(typer.Exit):
+        data_client.complete_mpu(
+            0,
+            ['/path/to/file'],
+            'fakeuploadid',
+            {
+                'part': [
+                    {'etag': 'fakeetag', 'part_number': 1},
+                    {'etag': 'fakeetag', 'part_number': 2},
+                ],
+            },
+        )
+
+
+@pytest.mark.usefixtures('patch_auto_token_refresh')
+def test_data_client_abort_mpu(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+    assert isinstance(data_client, DataClientService)
+
+    url_template = deepcopy(data_client.url_template)
+    url_template.attach_pattern('$datastore_id/abort_mpu/')
+
+    requests_mock.post(url_template.render(datastore_id=0))
+    data_client.abort_mpu(
+        0,
+        ['/path/to/file'],
+        'fakeuploadid',
+    )
+
+    requests_mock.post(url_template.render(datastore_id=0), status_code=500)
+    with pytest.raises(typer.Exit):
+        data_client.abort_mpu(
+            0,
+            ['/path/to/file'],
+            'fakeuploadid',
+        )
+
+
+def test_upload_small_files(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+    assert isinstance(data_client, DataClientService)
+    fake_upload_url = 'https://mybucket.s3.amazon.com'
+
+    with TemporaryDirectory() as tmp_dir:
+        path = os.path.join(tmp_dir, 'small_file')
+        write_file(path, 1024)
+
+        # Success
+        requests_mock.put(fake_upload_url)
+        data_client.upload_files(
+            datastore_id=0,
+            spu_url_dicts=[
+                {
+                    'path': 'small_file',
+                    'upload_url': fake_upload_url,
+                }
+            ],
+            mpu_url_dicts=[],
+            source_path=Path(tmp_dir),
+            expand=True,
+        )
+
+        # Upload failed
+        requests_mock.put(fake_upload_url, status_code=400)
+        with pytest.raises(typer.Exit):
+            data_client.upload_files(
+                datastore_id=0,
+                spu_url_dicts=[
+                    {
+                        'path': 'small_file',
+                        'upload_url': fake_upload_url,
+                    }
+                ],
+                mpu_url_dicts=[],
+                source_path=Path(tmp_dir),
+                expand=True,
+            )
+
+
+def test_upload_large_files(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+    assert isinstance(data_client, DataClientService)
+    fake_upload_url = 'https://mybucket.s3.amazon.com'
+
+    url_template = deepcopy(data_client.url_template)
+    url_template.attach_pattern('$datastore_id/abort_mpu/')
+    requests_mock.post(url_template.render(datastore_id=0))
+
+    url_template = deepcopy(data_client.url_template)
+    url_template.attach_pattern('$datastore_id/complete_mpu/')
+    requests_mock.post(url_template.render(datastore_id=0))
+
+    with TemporaryDirectory() as tmp_dir:
+        path = os.path.join(tmp_dir, 'large_file')
+        write_file(path, S3_MPU_PART_MAX_SIZE)      # This is hack to pass assertion
+
+        # Success
+        requests_mock.put(fake_upload_url, headers={'ETag': 'fakeetag'})
+        data_client.upload_files(
+            datastore_id=0,
+            spu_url_dicts=[],
+            mpu_url_dicts=[
+                {
+                    'path': 'large_file',
+                    'upload_id': 'uploadid1',
+                    'upload_urls': [
+                        {
+                            'upload_url': fake_upload_url,
+                            'part_number': 1,
+                        },
+                        {
+                            'upload_url': fake_upload_url,
+                            'part_number': 2,
+                        },
+                    ]
+                },
+            ],
+            source_path=Path(tmp_dir),
+            expand=True,
+        )
+
+        # Upload failed
+        requests_mock.put(fake_upload_url, status_code=400)
+        with pytest.raises(typer.Exit):
+            data_client.upload_files(
+                datastore_id=0,
+                spu_url_dicts=[],
+                mpu_url_dicts=[
+                    {
+                        'path': 'large_file',
+                        'upload_id': 'uploadid1',
+                        'upload_urls': [
+                            {
+                                'upload_url': fake_upload_url,
+                                'part_number': 1,
+                            },
+                            {
+                                'upload_url': fake_upload_url,
+                                'part_number': 2,
+                            },
+                        ]
+                    },
+                ],
+                source_path=Path(tmp_dir),
+                expand=True,
+            )
