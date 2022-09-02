@@ -18,10 +18,12 @@ from pfcli.service.auth import auto_token_refresh, get_auth_header
 from pfcli.utils import decode_http_err, get_auth_uri, secho_error_and_exit
 
 
-T = TypeVar('T', bound=Union[int, str, uuid.UUID])
+T = TypeVar("T", bound=Union[int, str, uuid.UUID])
 
 
-def safe_request(func: Optional[Callable[..., Response]] = None, *, err_prefix: str = "") -> Callable[..., Response]:
+def safe_request(
+    func: Optional[Callable[..., Response]] = None, *, err_prefix: str = ""
+) -> Callable[..., Response]:
     if err_prefix:
         err_prefix = err_prefix.rstrip() + "\n"
 
@@ -42,7 +44,9 @@ def safe_request(func: Optional[Callable[..., Response]] = None, *, err_prefix: 
 class URLTemplate:
     pattern: Template
 
-    def render(self, pk: Optional[T] = None, path: Optional[str] = None, **kwargs) -> str:
+    def render(
+        self, pk: Optional[T] = None, path: Optional[str] = None, **kwargs
+    ) -> str:
         """render URLTemplate
 
         Args:
@@ -53,17 +57,17 @@ class URLTemplate:
             return self.pattern.substitute(**kwargs)
 
         pattern = copy.deepcopy(self.pattern)
-        need_trailing_slash = pattern.template.endswith('/')
+        need_trailing_slash = pattern.template.endswith("/")
 
         if pk is not None:
-            pattern.template = urljoin(pattern.template + '/', str(pk))
+            pattern.template = urljoin(pattern.template + "/", str(pk))
             if need_trailing_slash:
-                pattern.template += '/'
+                pattern.template += "/"
 
         if path is not None:
-            pattern.template = urljoin(pattern.template + '/', path.rstrip('/'))
+            pattern.template = urljoin(pattern.template + "/", path.rstrip("/"))
             if need_trailing_slash:
-                pattern.template += '/'
+                pattern.template += "/"
 
         return pattern.substitute(**kwargs)
 
@@ -72,7 +76,7 @@ class URLTemplate:
         return f"{result.scheme}://{result.hostname}"
 
     def attach_pattern(self, pattern: str) -> None:
-        self.pattern.template = urljoin(self.pattern.template + '/', pattern)
+        self.pattern.template = urljoin(self.pattern.template + "/", pattern)
 
     def replace_path(self, path: str):
         result = urlparse(self.pattern.template)
@@ -93,7 +97,7 @@ class ClientService:
         return requests.get(
             self.url_template.render(path=path, **self.url_kwargs),
             headers=get_auth_header(),
-            **kwargs
+            **kwargs,
         )
 
     @auto_token_refresh
@@ -101,7 +105,7 @@ class ClientService:
         return requests.get(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             headers=get_auth_header(),
-            **kwargs
+            **kwargs,
         )
 
     @auto_token_refresh
@@ -109,7 +113,7 @@ class ClientService:
         return requests.post(
             self.url_template.render(path=path, **self.url_kwargs),
             headers=get_auth_header(),
-            **kwargs
+            **kwargs,
         )
 
     @auto_token_refresh
@@ -117,7 +121,7 @@ class ClientService:
         return requests.patch(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             headers=get_auth_header(),
-            **kwargs
+            **kwargs,
         )
 
     @auto_token_refresh
@@ -125,7 +129,7 @@ class ClientService:
         return requests.delete(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             headers=get_auth_header(),
-            **kwargs
+            **kwargs,
         )
 
     @auto_token_refresh
@@ -133,13 +137,12 @@ class ClientService:
         return requests.put(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             headers=get_auth_header(),
-            **kwargs
+            **kwargs,
         )
-    
+
     def bare_post(self, path: Optional[str] = None, **kwargs) -> Response:
         r = requests.post(
-            self.url_template.render(path=path, **self.url_kwargs),
-            **kwargs
+            self.url_template.render(path=path, **self.url_kwargs), **kwargs
         )
         r.raise_for_status()
         return r
@@ -158,7 +161,7 @@ class UserRequestMixin:
 
     def get_current_user_id(self) -> uuid.UUID:
         userinfo = self.get_current_userinfo()
-        return uuid.UUID(userinfo['sub'].split('|')[1])
+        return uuid.UUID(userinfo["sub"].split("|")[1])
 
     def initialize_user(self):
         self.user_id = self.get_current_user_id()

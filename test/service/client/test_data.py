@@ -13,13 +13,17 @@ import typer
 
 from pfcli.service import ServiceType, StorageType
 from pfcli.service.client import build_client
-from pfcli.service.client.data import S3_MPU_PART_MAX_SIZE, S3_UPLOAD_SIZE_LIMIT, DataClientService
+from pfcli.service.client.data import (
+    S3_MPU_PART_MAX_SIZE,
+    S3_UPLOAD_SIZE_LIMIT,
+    DataClientService,
+)
 
 
 def write_file(path: str, size: int) -> None:
-    with open(path, 'wb') as f:
+    with open(path, "wb") as f:
         f.seek(size - 1)
-        f.write(b'\0')
+        f.write(b"\0")
 
 
 @pytest.fixture
@@ -27,13 +31,17 @@ def data_client() -> DataClientService:
     return build_client(ServiceType.DATA)
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_data_client_get_datastore(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_data_client_get_datastore(
+    requests_mock: requests_mock.Mocker, data_client: DataClientService
+):
     assert isinstance(data_client, DataClientService)
 
     # Success
-    requests_mock.get(data_client.url_template.render(0), json={'id': 0, 'name': 'cifar100'})
-    assert data_client.get_datastore(0) == {'id': 0, 'name': 'cifar100'}
+    requests_mock.get(
+        data_client.url_template.render(0), json={"id": 0, "name": "cifar100"}
+    )
+    assert data_client.get_datastore(0) == {"id": 0, "name": "cifar100"}
 
     # Failed due to HTTP error
     requests_mock.get(data_client.url_template.render(0), status_code=404)
@@ -41,58 +49,48 @@ def test_data_client_get_datastore(requests_mock: requests_mock.Mocker, data_cli
         data_client.get_datastore(0)
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_data_client_update_datastore(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_data_client_update_datastore(
+    requests_mock: requests_mock.Mocker, data_client: DataClientService
+):
     assert isinstance(data_client, DataClientService)
 
     # Success
     requests_mock.get(
         data_client.url_template.render(0),
-        json={
-            'id': 0,
-            'name': 'cifar10',
-            'vendor': 'aws',
-            'region': 'us-west-2'
-        }
+        json={"id": 0, "name": "cifar10", "vendor": "aws", "region": "us-west-2"},
     )
-    requests_mock.patch(data_client.url_template.render(0), json={'id': 0, 'name': 'cifar100'})
+    requests_mock.patch(
+        data_client.url_template.render(0), json={"id": 0, "name": "cifar100"}
+    )
     assert data_client.update_datastore(
         0,
-        name='cifar100',
+        name="cifar100",
         vendor=StorageType.S3,
-        region='us-east-1',
-        storage_name='my-bucket',
-        credential_id='f5609b48-5e7e-4431-81d3-23b141847211',
-        metadata={'k': 'v'},
-        files=[
-            {'name': 'cifar100', 'path': '/path/to/cifar100'}
-        ],
-        active=True
-    ) == {'id': 0, 'name': 'cifar100'}
+        region="us-east-1",
+        storage_name="my-bucket",
+        credential_id="f5609b48-5e7e-4431-81d3-23b141847211",
+        metadata={"k": "v"},
+        files=[{"name": "cifar100", "path": "/path/to/cifar100"}],
+        active=True,
+    ) == {"id": 0, "name": "cifar100"}
 
     # Failed at region validation
     requests_mock.get(
         data_client.url_template.render(0),
-        json={
-            'id': 0,
-            'name': 'cifar10',
-            'vendor': 'aws',
-            'region': 'us-west-2'
-        }
+        json={"id": 0, "name": "cifar10", "vendor": "aws", "region": "us-west-2"},
     )
     with pytest.raises(typer.Exit):
         data_client.update_datastore(
             0,
-            name='cifar100',
+            name="cifar100",
             vendor=StorageType.S3,
-            region='busan',     # region not available in AWS S3
-            storage_name='my-bucket',
-            credential_id='f5609b48-5e7e-4431-81d3-23b141847211',
-            metadata={'k': 'v'},
-            files=[
-                {'name': 'cifar100', 'path': '/path/to/cifar100'}
-            ],
-            active=True
+            region="busan",  # region not available in AWS S3
+            storage_name="my-bucket",
+            credential_id="f5609b48-5e7e-4431-81d3-23b141847211",
+            metadata={"k": "v"},
+            files=[{"name": "cifar100", "path": "/path/to/cifar100"}],
+            active=True,
         )
 
     # Failed due to HTTP error
@@ -101,8 +99,10 @@ def test_data_client_update_datastore(requests_mock: requests_mock.Mocker, data_
         data_client.update_datastore(0)
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_data_client_delete_datastore(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_data_client_delete_datastore(
+    requests_mock: requests_mock.Mocker, data_client: DataClientService
+):
     assert isinstance(data_client, DataClientService)
 
     # Success
@@ -118,59 +118,58 @@ def test_data_client_delete_datastore(requests_mock: requests_mock.Mocker, data_
         data_client.delete_datastore(0)
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_data_client_get_spu_urls(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_data_client_get_spu_urls(
+    requests_mock: requests_mock.Mocker, data_client: DataClientService
+):
     assert isinstance(data_client, DataClientService)
 
     url_template = deepcopy(data_client.url_template)
-    url_template.attach_pattern('$datastore_id/upload/')
+    url_template.attach_pattern("$datastore_id/upload/")
 
     # Success
     requests_mock.post(
         url_template.render(datastore_id=0),
-        json=[
-            {'path': '/path/to/local/file', 'upload_url': 'https://s3.bucket.com'}
-        ]
+        json=[{"path": "/path/to/local/file", "upload_url": "https://s3.bucket.com"}],
     )
-    assert data_client.get_spu_urls(0, ['/path/to/local/file']) == [
-        {'path': '/path/to/local/file', 'upload_url': 'https://s3.bucket.com'}
+    assert data_client.get_spu_urls(0, ["/path/to/local/file"]) == [
+        {"path": "/path/to/local/file", "upload_url": "https://s3.bucket.com"}
     ]
 
     # Failed due to HTTP error
     requests_mock.post(url_template.render(datastore_id=0), status_code=500)
     with pytest.raises(typer.Exit):
-        data_client.get_spu_urls(0, ['/path/to/local/file'])
+        data_client.get_spu_urls(0, ["/path/to/local/file"])
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_data_client_get_mpu_urls(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_data_client_get_mpu_urls(
+    requests_mock: requests_mock.Mocker, data_client: DataClientService
+):
     assert isinstance(data_client, DataClientService)
 
     url_template = deepcopy(data_client.url_template)
-    url_template.attach_pattern('$datastore_id/start_mpu/')
+    url_template.attach_pattern("$datastore_id/start_mpu/")
 
     with TemporaryDirectory() as temp_dir:
-        target_file_path = os.path.join(temp_dir, 'large_file')
+        target_file_path = os.path.join(temp_dir, "large_file")
         resp_mock = {
-            'path': target_file_path,
-            'upload_id': '865b8d498d1fb82e92a7e808e82c4111',
-            'upload_urls': [
+            "path": target_file_path,
+            "upload_id": "865b8d498d1fb82e92a7e808e82c4111",
+            "upload_urls": [
                 {
-                    'upload_url': 'https://mydata.s3.amazonaws.com/path/to/file/part1',
-                    'part_number': 1
+                    "upload_url": "https://mydata.s3.amazonaws.com/path/to/file/part1",
+                    "part_number": 1,
                 },
                 {
-                    'upload_url': 'https://mydata.s3.amazonaws.com/path/to/file/part2',
-                    'part_number': 2
-                }
-            ]
+                    "upload_url": "https://mydata.s3.amazonaws.com/path/to/file/part2",
+                    "part_number": 2,
+                },
+            ],
         }
         write_file(target_file_path, S3_UPLOAD_SIZE_LIMIT * 2)
 
-        requests_mock.post(
-            url_template.render(datastore_id=0),
-            json=resp_mock
-        )
+        requests_mock.post(url_template.render(datastore_id=0), json=resp_mock)
         assert data_client.get_mpu_urls(0, [target_file_path]) == [resp_mock]
 
         requests_mock.post(url_template.render(datastore_id=0), status_code=500)
@@ -178,22 +177,24 @@ def test_data_client_get_mpu_urls(requests_mock: requests_mock.Mocker, data_clie
             data_client.get_mpu_urls(0, [target_file_path])
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_data_client_complete_mpu(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_data_client_complete_mpu(
+    requests_mock: requests_mock.Mocker, data_client: DataClientService
+):
     assert isinstance(data_client, DataClientService)
 
     url_template = deepcopy(data_client.url_template)
-    url_template.attach_pattern('$datastore_id/complete_mpu/')
+    url_template.attach_pattern("$datastore_id/complete_mpu/")
 
     requests_mock.post(url_template.render(datastore_id=0))
     data_client.complete_mpu(
         0,
-        ['/path/to/file'],
-        'fakeuploadid',
+        ["/path/to/file"],
+        "fakeuploadid",
         {
-            'part': [
-                {'etag': 'fakeetag', 'part_number': 1},
-                {'etag': 'fakeetag', 'part_number': 2},
+            "part": [
+                {"etag": "fakeetag", "part_number": 1},
+                {"etag": "fakeetag", "part_number": 2},
             ],
         },
     )
@@ -202,46 +203,50 @@ def test_data_client_complete_mpu(requests_mock: requests_mock.Mocker, data_clie
     with pytest.raises(typer.Exit):
         data_client.complete_mpu(
             0,
-            ['/path/to/file'],
-            'fakeuploadid',
+            ["/path/to/file"],
+            "fakeuploadid",
             {
-                'part': [
-                    {'etag': 'fakeetag', 'part_number': 1},
-                    {'etag': 'fakeetag', 'part_number': 2},
+                "part": [
+                    {"etag": "fakeetag", "part_number": 1},
+                    {"etag": "fakeetag", "part_number": 2},
                 ],
             },
         )
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_data_client_abort_mpu(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_data_client_abort_mpu(
+    requests_mock: requests_mock.Mocker, data_client: DataClientService
+):
     assert isinstance(data_client, DataClientService)
 
     url_template = deepcopy(data_client.url_template)
-    url_template.attach_pattern('$datastore_id/abort_mpu/')
+    url_template.attach_pattern("$datastore_id/abort_mpu/")
 
     requests_mock.post(url_template.render(datastore_id=0))
     data_client.abort_mpu(
         0,
-        ['/path/to/file'],
-        'fakeuploadid',
+        ["/path/to/file"],
+        "fakeuploadid",
     )
 
     requests_mock.post(url_template.render(datastore_id=0), status_code=500)
     with pytest.raises(typer.Exit):
         data_client.abort_mpu(
             0,
-            ['/path/to/file'],
-            'fakeuploadid',
+            ["/path/to/file"],
+            "fakeuploadid",
         )
 
 
-def test_upload_small_files(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+def test_upload_small_files(
+    requests_mock: requests_mock.Mocker, data_client: DataClientService
+):
     assert isinstance(data_client, DataClientService)
-    fake_upload_url = 'https://mybucket.s3.amazon.com'
+    fake_upload_url = "https://mybucket.s3.amazon.com"
 
     with TemporaryDirectory() as tmp_dir:
-        path = os.path.join(tmp_dir, 'small_file')
+        path = os.path.join(tmp_dir, "small_file")
         write_file(path, 1024)
 
         # Success
@@ -250,8 +255,8 @@ def test_upload_small_files(requests_mock: requests_mock.Mocker, data_client: Da
             datastore_id=0,
             spu_url_dicts=[
                 {
-                    'path': 'small_file',
-                    'upload_url': fake_upload_url,
+                    "path": "small_file",
+                    "upload_url": fake_upload_url,
                 }
             ],
             mpu_url_dicts=[],
@@ -266,8 +271,8 @@ def test_upload_small_files(requests_mock: requests_mock.Mocker, data_client: Da
                 datastore_id=0,
                 spu_url_dicts=[
                     {
-                        'path': 'small_file',
-                        'upload_url': fake_upload_url,
+                        "path": "small_file",
+                        "upload_url": fake_upload_url,
                     }
                 ],
                 mpu_url_dicts=[],
@@ -276,41 +281,43 @@ def test_upload_small_files(requests_mock: requests_mock.Mocker, data_client: Da
             )
 
 
-def test_upload_large_files(requests_mock: requests_mock.Mocker, data_client: DataClientService):
+def test_upload_large_files(
+    requests_mock: requests_mock.Mocker, data_client: DataClientService
+):
     assert isinstance(data_client, DataClientService)
-    fake_upload_url = 'https://mybucket.s3.amazon.com'
+    fake_upload_url = "https://mybucket.s3.amazon.com"
 
     url_template = deepcopy(data_client.url_template)
-    url_template.attach_pattern('$datastore_id/abort_mpu/')
+    url_template.attach_pattern("$datastore_id/abort_mpu/")
     requests_mock.post(url_template.render(datastore_id=0))
 
     url_template = deepcopy(data_client.url_template)
-    url_template.attach_pattern('$datastore_id/complete_mpu/')
+    url_template.attach_pattern("$datastore_id/complete_mpu/")
     requests_mock.post(url_template.render(datastore_id=0))
 
     with TemporaryDirectory() as tmp_dir:
-        path = os.path.join(tmp_dir, 'large_file')
-        write_file(path, S3_MPU_PART_MAX_SIZE)      # This is hack to pass assertion
+        path = os.path.join(tmp_dir, "large_file")
+        write_file(path, S3_MPU_PART_MAX_SIZE)  # This is hack to pass assertion
 
         # Success
-        requests_mock.put(fake_upload_url, headers={'ETag': 'fakeetag'})
+        requests_mock.put(fake_upload_url, headers={"ETag": "fakeetag"})
         data_client.upload_files(
             datastore_id=0,
             spu_url_dicts=[],
             mpu_url_dicts=[
                 {
-                    'path': 'large_file',
-                    'upload_id': 'uploadid1',
-                    'upload_urls': [
+                    "path": "large_file",
+                    "upload_id": "uploadid1",
+                    "upload_urls": [
                         {
-                            'upload_url': fake_upload_url,
-                            'part_number': 1,
+                            "upload_url": fake_upload_url,
+                            "part_number": 1,
                         },
                         {
-                            'upload_url': fake_upload_url,
-                            'part_number': 2,
+                            "upload_url": fake_upload_url,
+                            "part_number": 2,
                         },
-                    ]
+                    ],
                 },
             ],
             source_path=Path(tmp_dir),
@@ -325,18 +332,18 @@ def test_upload_large_files(requests_mock: requests_mock.Mocker, data_client: Da
                 spu_url_dicts=[],
                 mpu_url_dicts=[
                     {
-                        'path': 'large_file',
-                        'upload_id': 'uploadid1',
-                        'upload_urls': [
+                        "path": "large_file",
+                        "upload_id": "uploadid1",
+                        "upload_urls": [
                             {
-                                'upload_url': fake_upload_url,
-                                'part_number': 1,
+                                "upload_url": fake_upload_url,
+                                "part_number": 1,
                             },
                             {
-                                'upload_url': fake_upload_url,
-                                'part_number': 2,
+                                "upload_url": fake_upload_url,
+                                "part_number": 2,
                             },
-                        ]
+                        ],
                     },
                 ],
                 source_path=Path(tmp_dir),
