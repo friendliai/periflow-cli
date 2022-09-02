@@ -55,7 +55,7 @@ template_app = typer.Typer(
     add_completion=False
 )
 
-app.add_typer(template_app, name="template", help="Manager job templates.")
+app.add_typer(template_app, name="template", help="Manage job templates.")
 
 job_table = TableFormatter(
     name="Jobs",

@@ -24,6 +24,7 @@ from pfcli.service.client import (
     ProjectDataClientService,
     build_client,
 )
+from pfcli.service.client.data import FileSizeType, expand_paths
 from pfcli.service.cloud import build_storage_helper
 from pfcli.service.config import build_data_configurator
 from pfcli.service.formatter import (
@@ -32,11 +33,7 @@ from pfcli.service.formatter import (
     TableFormatter,
     TreeFormatter,
 )
-from pfcli.utils import (
-    secho_error_and_exit,
-    upload_files,
-    get_file_info,
-)
+from pfcli.utils import secho_error_and_exit, get_file_info
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -255,25 +252,37 @@ def upload(
             secho_error_and_exit(f"Error occurred while parsing metadata file... {exc}")
 
     datastore = project_client.create_datastore(name, StorageType.FAI, '', '', None, metadata, [], False)
-    typer.secho(f"Datastore ({name}) is created successfully.", fg=typer.colors.BLUE)
     datastore_id = datastore['id']
 
-    typer.echo(f"Start uploading objects to datastore ({name})...")
-    url_dicts = client.get_upload_urls(
-        datastore_id=datastore_id,
-        src_path=source_path,
-        expand=expand
-    )
-    upload_files(url_dicts, source_path, expand)
+    try:
+        typer.echo(f"Start uploading objects to datastore ({name})...")
+        spu_targets = expand_paths(source_path, expand, FileSizeType.SMALL)
+        mpu_targets = expand_paths(source_path, expand, FileSizeType.LARGE)
+        spu_url_dicts = client.get_spu_urls(datastore_id=datastore_id, paths=spu_targets) if len(spu_targets) > 0 else []
+        mpu_url_dicts = client.get_mpu_urls(
+            datastore_id=datastore_id,
+            paths=mpu_targets,
+            src_path=source_path.name if expand else None
+        ) if len(mpu_targets) > 0 else []
 
-    datastore = client.update_datastore(
-        datastore_id,
-        files=[
-            get_file_info(url_info['path'], source_path, expand) for url_info in url_dicts
-        ],
-        metadata=metadata,
-        active=True
-    )
+        client.upload_files(datastore_id, spu_url_dicts, mpu_url_dicts, source_path, expand)
+
+        files = [
+            get_file_info(url_info['path'], source_path, expand) for url_info in spu_url_dicts
+        ]
+        files.extend([
+            get_file_info(url_info['path'], source_path, expand) for url_info in mpu_url_dicts
+        ])
+        datastore = client.update_datastore(
+            datastore_id,
+            files=files,
+            metadata=metadata,
+            active=True
+        )
+    except Exception as exc:
+        client.delete_datastore(datastore_id)
+        raise exc
+
     datastore['vendor'] = storage_type_map_inv[datastore['vendor']].value
 
     typer.secho(f"Objects are uploaded to datastore ({name}) successfully!", fg=typer.colors.BLUE)
