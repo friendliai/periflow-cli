@@ -121,18 +121,18 @@ class ProjectDataClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_datastores(self) -> List[dict]:
+    def list_datasets(self) -> List[dict]:
         response = safe_request(self.list, err_prefix="Failed to list dataset info.")()
         return response.json()
 
     def get_id_by_name(self, name: str) -> Optional[T]:
-        datastores = self.list_datastores()
-        for datastore in datastores:
-            if datastore["name"] == name:
-                return datastore["id"]
+        datasets = self.list_datasets()
+        for dataset in datasets:
+            if dataset["name"] == name:
+                return dataset["id"]
         return None
 
-    def create_datastore(
+    def create_dataset(
         self,
         name: str,
         vendor: StorageType,
@@ -157,7 +157,7 @@ class ProjectDataClientService(ClientService, ProjectRequestMixin):
             "active": active,
         }
         response = safe_request(
-            self.post, err_prefix="Failed to create a new datastore."
+            self.post, err_prefix="Failed to create a new dataset."
         )(json=request_data)
         return response.json()
 

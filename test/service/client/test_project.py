@@ -205,7 +205,7 @@ def test_project_job_client_run_job(
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
-def test_project_data_client_list_datastores(
+def test_project_data_client_list_datasets(
     requests_mock: requests_mock.Mocker, project_data_client: ProjectDataClientService
 ):
     # Success
@@ -213,7 +213,7 @@ def test_project_data_client_list_datastores(
         project_data_client.url_template.render(**project_data_client.url_kwargs),
         json=[{"id": 0, "name": "wikitext"}, {"id": 1, "name": "imagenet"}],
     )
-    assert project_data_client.list_datastores() == [
+    assert project_data_client.list_datasets() == [
         {"id": 0, "name": "wikitext"},
         {"id": 1, "name": "imagenet"},
     ]
@@ -224,7 +224,7 @@ def test_project_data_client_list_datastores(
         status_code=404,
     )
     with pytest.raises(typer.Exit):
-        project_data_client.list_datastores()
+        project_data_client.list_datasets()
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
@@ -250,7 +250,7 @@ def test_project_data_client_get_id_by_name(
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
-def test_project_data_client_create_datastore(
+def test_project_data_client_create_dataset(
     requests_mock: requests_mock.Mocker, project_data_client: ProjectDataClientService
 ):
     # Success
@@ -258,7 +258,7 @@ def test_project_data_client_create_datastore(
         project_data_client.url_template.render(**project_data_client.url_kwargs),
         json={"id": 0, "name": "cifar100"},
     )
-    assert project_data_client.create_datastore(
+    assert project_data_client.create_dataset(
         name="cifar100",
         vendor=StorageType.FAI,
         region="",
@@ -271,7 +271,7 @@ def test_project_data_client_create_datastore(
 
     # Failed at region validation
     with pytest.raises(typer.Exit):
-        project_data_client.create_datastore(
+        project_data_client.create_dataset(
             name="cifar100",
             vendor=StorageType.FAI,
             region="us-east-1",  # not supported by FAI storage type
@@ -288,7 +288,7 @@ def test_project_data_client_create_datastore(
         status_code=400,
     )
     with pytest.raises(typer.Exit):
-        project_data_client.create_datastore(
+        project_data_client.create_dataset(
             name="cifar100",
             vendor=StorageType.FAI,
             region="",

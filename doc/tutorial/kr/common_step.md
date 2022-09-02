@@ -14,7 +14,7 @@ PeriFlow를 사용하시는 여러분들을 환영합니다. 본 튜토리얼에
 - **Project**: Organization 내의 서브 그룹의 단위입니다. Organization 내에서 용도에 따라 여러 개의 Project를 생성하고 각 Project 마다 필요한 멤버들을 추가할 수 있습니다. Project 내에서는 Job, Dataset, Checkpoint, Credential 등의 모든 자원이 공유됩니다. 사용자는 동시에 여러 개의 Project에 속할 수 있습니다.
 - **Job**: 학습 작업의 실행/스케줄링 단위 입니다. `python main.py ...`와 같은 명령어를 사용하여 학습 프로세스를 실행하는 것이 PeriFlow에선 Job 하나에 해당 합니다.
 - **Experiment**: 여러 Job들의 묶음으로, Job에 붙이는 태그에 해당합니다. 같은 종류의 Job은 같은 Experiment에 묶어서 보다 편하게 Job을 관리할 수 있습니다.
-- **Datastore/Dataset**: Datastore는 Job에 사용될 여러 Dataset들의 집합입니다.
+- **Dataset**: Job에 사용될 학습 데이터입니다.
 - **Checkpoint**: 모델 학습의 결과물로 생긴 모델 가중치 체크포인트입니다. 학습 과정의 특정 스텝에서 Checkpoint 하나가 생성될 수 있습니다.
 - **Credential**: 유저의 개인 클라우드 저장소, Slack 등에 접근하기 위해 필요한 secret 입니다.
 
@@ -121,7 +121,7 @@ pf org set-role [USERNAME] [ROLE]
 
 ### Project 관리
 
-Organization 아래에는 여러 개의 Project들이 존재합니다. 각각의 Project 내에서는 구성원 간에 Datastore, Checkpoint, Artifact, Job 등의 자원 및 서비스들이 공유됩니다.
+Organization 아래에는 여러 개의 Project들이 존재합니다. 각각의 Project 내에서는 구성원 간에 Dataset, Checkpoint, Artifact, Job 등의 자원 및 서비스들이 공유됩니다.
 
 #### Project 생성
 
@@ -279,7 +279,7 @@ Weights & Biases API key 값을 얻으려면 다음 과정을 따릅니다.
 
 ### Dataset 생성
 
-PeriFlow Datastore에 Dataset을 생성하는 방법은 2가지가 있습니다.
+PeriFlow에 Dataset을 생성하는 방법은 2가지가 있습니다.
 
 1. [컴퓨터 로컬 파일 시스템에 있는 데이터셋 파일을 업로드](#from-local-file-system)
 2. [클라우드 스토리지에 업로드 된 데이터셋을 연결](#from-cloud-storage)
@@ -299,14 +299,14 @@ $ tree
 
 ```
 
-우리는 이 중에 `cifar100` 디렉토리 안에 있는 `cifar-100-python` 디렉토리를 Datastore에 업로드하여 사용하고 싶습니다. 이를 위해서 우리는 단 한 줄의 커맨드만 입력하면 됩니다.
+우리는 이 중에 `cifar100` 디렉토리 안에 있는 `cifar-100-python` 디렉토리를 업로드하여 Dataset으로 사용하고 싶습니다. 이를 위해서 우리는 단 한 줄의 커맨드만 입력하면 됩니다.
 
 ```sh
-$ pf datastore upload -n my-cifar-100 -p ./cifar100/cifar-100-python
+$ pf dataset upload -n my-cifar-100 -p ./cifar100/cifar-100-python
 
 # 또는
 
-$ pf datastore upload -n my-cifar-100 -p ./cifar100/
+$ pf dataset upload -n my-cifar-100 -p ./cifar100/
 ```
 
 - `-n` 옵션에는 데이터셋의 이름을 입력합니다. 데이터셋의 이름은 Organization 내에서 유일해야 합니다 (Organization 내에서 중복 이름 사용 불가).
@@ -314,10 +314,10 @@ $ pf datastore upload -n my-cifar-100 -p ./cifar100/
 
 업로드 커맨드를 입력하면 상태 바가 나타나면서 업로드가 진행됩니다. 만약 업로드할 파일 사이즈가 크다면 `tmux`, `screen` 세션 등을 사용하여 업로드하는 것을 권장합니다.
 
-업로드가 완료되었다면 `pf datastore view my-cifar-100` 커맨드를 통해 업로드한 데이터셋의 세부 사항을 확인할 수 있습니다.
+업로드가 완료되었다면 `pf dataset view my-cifar-100` 커맨드를 통해 업로드한 데이터셋의 세부 사항을 확인할 수 있습니다.
 
 ```sh
-$ pf datastore view my-cifar-100  
+$ pf dataset view my-cifar-100  
 ╭─────────────────────────── Overview ───────────────────────────╮
 │  Name          my-cifar-100                                    │
 │  Cloud         fai                                             │
@@ -341,10 +341,10 @@ $ pf datastore view my-cifar-100
 
 PeriFlow에서 사용하고 싶은 데이터셋이 이미 클라우드 스토리지(e.g., AWS S3, Azure Blob Storage, Google Cloud Storage)에 업로드 된 상태라면 별도의 업로드 과정 없이 해당 스토리지를 링크하여 사용이 가능합니다. 이를 위해서는 데이터셋이 업로드 된 클라우드 스토리지에 접근 권한이 필요하기 때문에 [Credential 생성](#crdential-생성) 설명을 참고하여 Credential이 생성된 상태여야 합니다.
 
-예를 들어, AWS `us-east-1` 리전에 `cifar-100`이라는 이름의 S3 버켓이 있고, 우리는 이 버켓에 있는 데이터셋을 Datastore에 등록하고 싶은 상황이라고 해보겠습니다. 위의 [매뉴얼](#aws-s3)을 따라 AWS S3 Credential을 생성하고 다음과 같이 커맨드를 실행합니다.
+예를 들어, AWS `us-east-1` 리전에 `cifar-100`이라는 이름의 S3 버켓이 있고, 우리는 이 버켓에 있는 데이터셋을 PeriFlow에 등록하고 싶은 상황이라고 해보겠습니다. 위의 [매뉴얼](#aws-s3)을 따라 AWS S3 Credential을 생성하고 다음과 같이 커맨드를 실행합니다.
 
 ```sh
-$ pf datastore create \
+$ pf dataset create \
     -n aws-cifar-100 \
     -c s3 \
     -r us-east-1 \
@@ -358,10 +358,10 @@ $ pf datastore create \
 - `-s` 옵션에는 클라우드 스토리지의 이름을 입력합니다. 본 예시에서 사용하는 S3 버켓의 이름은 `cifar-100`이므로 `cifar-100`을 입력합니다.
 - `-i` 옵션에는 S3 타입의 Credential ID(UUID 형식)를 입력합니다.
 
-업로드가 완료되었다면 `pf datastore view aws-cifar-100` 커맨드를 통해 업로드한 데이터셋의 세부 사항을 확인할 수 있습니다.
+업로드가 완료되었다면 `pf dataset view aws-cifar-100` 커맨드를 통해 업로드한 데이터셋의 세부 사항을 확인할 수 있습니다.
 
 ```sh
-$ pf datastore view aws-cifar-100  
+$ pf dataset view aws-cifar-100  
 ╭─────────────────────────── Overview ───────────────────────────╮
 │  Name          aws-cifar-100                                   │
 │  Cloud         s3                                              │

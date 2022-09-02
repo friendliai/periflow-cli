@@ -37,7 +37,7 @@ pf COMMAND --help
 You may go through the following steps when training AI models in PeriFlow.
 
 1. Sign in.
-2. Create/upload a dataset to PeriFlow datastore.
+2. Create/upload a dataset.
 3. Run a job and monitor the job status.
 4. Download trained model checkpoints to your local computer.
 
@@ -49,22 +49,22 @@ You can login to PeriFlow with the following command.
 pf login
 ```
 
-### Step 2. Manage Datastore
+### Step 2. Manage Datasets
 
-PeriFlow Datastore contains multiple datasets for your jobs. Once you create a dataset in PeriFlow Datastore, the dataset can be easily used in any job you want. You can create datasets in Datastore in two different ways:
+PeriFlow manages multiple datasets for your jobs. Once you create a dataset, the dataset can be easily used in any job you want. You can create datasets in two different ways:
 
 1. Upload the dataset files from your local file system.
 2. Link(register) the dataset files from your cloud storage (e.g., AWS S3, Azure Blob Storage, Google Cloud Storage).
 
 ```sh
 # Option 1)
-pf datastore create [OPTIONS]
+pf dataset create [OPTIONS]
 
 # Option 2)
-pf datastore upload [OPTIONS]
+pf dataset upload [OPTIONS]
 ```
 
-For the second option, you need to create a credential to access your cloud storage with `pf credential create [OPTIONS]` command in advance. You can also list, view, edit and delete the datasets in Datastore using the CLI. Please use `pf datastore --help` for more details.
+For the second option, you need to create a credential to access your cloud storage with `pf credential create [OPTIONS]` command in advance. You can also list, view, edit and delete the datasets using the CLI. Please use `pf dataset --help` for more details.
 
 ### Step 3. Manage Job
 
@@ -92,7 +92,7 @@ There are two types of jobs in PeriFlow: "custom" and "predefined".
 You can describe the job setting in configuration YAML files. By using `pf job template create [OPTIONS]` command, you can get a job configuration template file generated with the required fields that you need to fill in. For example, suppose that you want to run a custom job with the following requirements:
 
 - Use private docker image.
-- Use a dataset in Datastore.
+- Use a training dataset you've created.
 - The training will be resumed from a specific model checkpoint file.
 - Get Slack notification to get notified of the job status.
 
@@ -210,4 +210,4 @@ You can manage model checkpoint files generated from your jobs using the CLI.
 ## Getting Help
 
 - Contact us via contact@friendli.ai to get trial access to PeriFlow.
-- If you have any issues or questions, please visit [PeriFlow Discussion Forum](https://discuss-staging.friendli.ai/) and get support.
+- If you have any issues or questions, please visit [PeriFlow Discussion Forum](https://discuss.friendli.ai/) and get support.
