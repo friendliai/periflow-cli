@@ -170,7 +170,6 @@ class ProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
     def list_vm_quotas(
         self,
         vendor: Optional[CloudType] = None,
-        region: Optional[str] = None,
         device_type: Optional[str] = None,
     ) -> Optional[List[dict]]:
         response = safe_request(self.list, err_prefix="Failed to list VM quota info.")()
@@ -178,25 +177,15 @@ class ProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
         if vendor is not None:
             vm_dict_list = list(
                 filter(
-                    lambda info: info["vm_config_type"]["vm_instance_type"]["vendor"]
+                    lambda info: info["vm_config_type"]["vendor"]
                     == vendor,
-                    vm_dict_list,
-                )
-            )
-        if region is not None:
-            vm_dict_list = list(
-                filter(
-                    lambda info: info["vm_config_type"]["vm_instance_type"]["region"]
-                    == region,
                     vm_dict_list,
                 )
             )
         if device_type is not None:
             vm_dict_list = list(
                 filter(
-                    lambda info: info["vm_config_type"]["vm_instance_type"][
-                        "device_type"
-                    ]
+                    lambda info: info["vm_config_type"]["device_type"]
                     == device_type,
                     vm_dict_list,
                 )

@@ -89,14 +89,14 @@ class GroupVMConfigClientService(ClientService, GroupRequestMixin):
     def get_vm_config_id_map(self) -> Dict[str, T]:
         id_map = {}
         for vm_config in self.list_vm_configs():
-            id_map[vm_config["vm_config_type"]["vm_instance_type"]["code"]] = vm_config[
+            id_map[vm_config["vm_config_type"]["code"]] = vm_config[
                 "id"
             ]
         return id_map
 
     def get_id_by_name(self, name: str) -> Optional[T]:
         for vm_config in self.list_vm_configs():
-            if vm_config["vm_config_type"]["vm_instance_type"]["code"] == name:
+            if vm_config["vm_config_type"]["code"] == name:
                 return vm_config["id"]
         return None
 
