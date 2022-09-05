@@ -12,7 +12,7 @@ from pfcli import (
     billing,
     checkpoint,
     credential,
-    datastore,
+    dataset,
     experiment,
     group,
     job,
@@ -35,7 +35,7 @@ app = typer.Typer(
 app.add_typer(credential.app, name="credential", help="Manage credentials")
 app.add_typer(job.app, name="job", help="Manage jobs")
 app.add_typer(checkpoint.app, name="checkpoint", help="Manage checkpoints")
-app.add_typer(datastore.app, name="datastore", help="Manage datasets")
+app.add_typer(dataset.app, name="dataset", help="Manage datasets")
 app.add_typer(vm.app, name="vm", help="Manage VMs")
 app.add_typer(experiment.app, name="experiment", help="Manage experiments")
 app.add_typer(serve.app, name="serve", help="Manage serves")

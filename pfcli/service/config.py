@@ -482,7 +482,7 @@ class PredefinedDataConfigService(DataConfigService):
         )
         template_names = job_template_client_service.list_job_template_names()
         self.model_name = typer.prompt(
-            "Which job would you like to use this datastore? Choose one in the following catalog:\n",
+            "Which job would you like to use this dataset? Choose one in the following catalog:\n",
             type=Choice(template_names),
             prompt_suffix="\n>> ",
         )
@@ -522,7 +522,7 @@ class CustomDataConfigService(DataConfigService):
 
         # Configure metdata
         exist_metadata = typer.confirm(
-            "[Optional] Do you want to add metadata for your datastore? "
+            "[Optional] Do you want to add metadata for your dataset? "
             "You can use this metadata in PeriFlow serving service.",
         )
         if exist_metadata:

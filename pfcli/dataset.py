@@ -1,6 +1,6 @@
 # Copyright (C) 2021 FriendliAI
 
-"""PeriFlow Datastore CLI"""
+"""PeriFlow Dataset CLI"""
 
 from pathlib import Path
 from typing import Optional
@@ -42,7 +42,7 @@ app = typer.Typer(
 )
 
 table_formatter = TableFormatter(
-    name="Datastore",
+    name="Datasets",
     fields=["name", "vendor", "region", "storage_name", "active"],
     headers=["Name", "Cloud", "Region", "Storage Name", "Active"],
 )
@@ -81,7 +81,7 @@ def main(
 
     if ctx.invoked_subcommand == "create":
         job_type = typer.prompt(
-            "What kind job would you like to create a datastore for?\n",
+            "What kind job would you like to create a dataset for?\n",
             type=Choice([e.value for e in JobType]),
             prompt_suffix="\n>> ",
         )
@@ -97,47 +97,47 @@ def main(
         ) = configurator.render()
 
         client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
-        datastore = client.create_datastore(
+        dataset = client.create_dataset(
             name, cloud, region, storage_name, credential_id, metadata, files, True
         )
 
-        typer.secho("Datastore created successfully!", fg=typer.colors.BLUE)
+        typer.secho("Dataset is created successfully!", fg=typer.colors.BLUE)
 
-        datastore["vendor"] = storage_type_map_inv[datastore["vendor"]].value
-        panel_formatter.render([datastore], show_detail=True)
+        dataset["vendor"] = storage_type_map_inv[dataset["vendor"]].value
+        panel_formatter.render([dataset], show_detail=True)
         exit(0)
 
 
 @app.command()
 def list():
-    """List datasets in datastore."""
+    """List datasets in dataset."""
     client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
-    datastores = client.list_datastores()
-    for datastore in datastores:
-        datastore["vendor"] = storage_type_map_inv[datastore["vendor"]].value
-    table_formatter.render(datastores)
+    datasets = client.list_datasets()
+    for dataset in datasets:
+        dataset["vendor"] = storage_type_map_inv[dataset["vendor"]].value
+    table_formatter.render(datasets)
 
 
 @app.command()
 def view(
-    name: str = typer.Argument(..., help="ID or name of datastore to see detail info.")
+    name: str = typer.Argument(..., help="ID or name of dataset to see detail info.")
 ):
     """View the detail of a dataset."""
     project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
     client: DataClientService = build_client(ServiceType.DATA)
 
-    datastore_id = project_client.get_id_by_name(name)
-    datastore = client.get_datastore(datastore_id)
-    datastore["vendor"] = storage_type_map_inv[datastore["vendor"]].value
-    panel_formatter.render([datastore], show_detail=True)
-    tree_formatter.render(datastore["files"])
-    json_formatter.render(datastore["metadata"])
+    dataset_id = project_client.get_id_by_name(name)
+    dataset = client.get_dataset(dataset_id)
+    dataset["vendor"] = storage_type_map_inv[dataset["vendor"]].value
+    panel_formatter.render([dataset], show_detail=True)
+    tree_formatter.render(dataset["files"])
+    json_formatter.render(dataset["metadata"])
 
 
 @app.command()
 def create(
     name: str = typer.Option(
-        ..., "--name", "-n", help="Name of your datastore to create."
+        ..., "--name", "-n", help="Name of your dataset to create."
     ),
     cloud: Optional[StorageType] = typer.Option(
         ...,
@@ -177,8 +177,8 @@ def create(
         "The metadata should be written in YAML format.",
     ),
 ):
-    """Link user's own cloud storage to PeriFlow datastore.
-    Use `pf datastore --interactive create` command to create a dataset with interactive prompt.
+    """Link user's own cloud storage to PeriFlow dataset.
+    Use `pf dataset --interactive create` command to create a dataset with interactive prompt.
     """
     credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     credential = credential_client.get_credential(credential_id)
@@ -202,21 +202,21 @@ def create(
             secho_error_and_exit(f"Error occurred while parsing metadata file... {exc}")
 
     client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
-    datastore = client.create_datastore(
+    dataset = client.create_dataset(
         name, cloud, region, storage_name, credential_id, metadata, files, True
     )
-    datastore["vendor"] = storage_type_map_inv[datastore["vendor"]].value
+    dataset["vendor"] = storage_type_map_inv[dataset["vendor"]].value
 
-    typer.secho(f"Datastore ({name}) is created successfully!", fg=typer.colors.BLUE)
-    panel_formatter.render([datastore], show_detail=True)
-    tree_formatter.render(datastore["files"])
-    json_formatter.render(datastore["metadata"])
+    typer.secho(f"Dataset ({name}) is created successfully!", fg=typer.colors.BLUE)
+    panel_formatter.render([dataset], show_detail=True)
+    tree_formatter.render(dataset["files"])
+    json_formatter.render(dataset["metadata"])
 
 
 @app.command()
 def upload(
     name: str = typer.Option(
-        ..., "--name", "-n", help="Name of your datastore to upload objects."
+        ..., "--name", "-n", help="Name of your dataset to upload objects."
     ),
     source_path: str = typer.Option(
         ..., "--source-path", "-p", help="Path to source file or directory to upload."
@@ -237,13 +237,11 @@ def upload(
     expand = source_path.endswith("/")
     source_path: Path = Path(source_path)
 
-    datastore_id = project_client.get_id_by_name(name)
-    if datastore_id is not None:
-        secho_error_and_exit(
-            f"The datastore with the same name ({name}) already exists."
-        )
+    dataset_id = project_client.get_id_by_name(name)
+    if dataset_id is not None:
+        secho_error_and_exit(f"The dataset with the same name ({name}) already exists.")
 
-    typer.echo(f"Creating datastore ({name})...")
+    typer.echo(f"Creating dataset ({name})...")
     metadata = {}
     if metadata_file is not None:
         try:
@@ -251,23 +249,23 @@ def upload(
         except yaml.YAMLError as exc:
             secho_error_and_exit(f"Error occurred while parsing metadata file... {exc}")
 
-    datastore = project_client.create_datastore(
+    dataset = project_client.create_dataset(
         name, StorageType.FAI, "", "", None, metadata, [], False
     )
-    datastore_id = datastore["id"]
+    dataset_id = dataset["id"]
 
     try:
-        typer.echo(f"Start uploading objects to datastore ({name})...")
+        typer.echo(f"Start uploading objects to dataset ({name})...")
         spu_targets = expand_paths(source_path, expand, FileSizeType.SMALL)
         mpu_targets = expand_paths(source_path, expand, FileSizeType.LARGE)
         spu_url_dicts = (
-            client.get_spu_urls(datastore_id=datastore_id, paths=spu_targets)
+            client.get_spu_urls(dataset_id=dataset_id, paths=spu_targets)
             if len(spu_targets) > 0
             else []
         )
         mpu_url_dicts = (
             client.get_mpu_urls(
-                datastore_id=datastore_id,
+                dataset_id=dataset_id,
                 paths=mpu_targets,
                 src_path=source_path.name if expand else None,
             )
@@ -276,7 +274,7 @@ def upload(
         )
 
         client.upload_files(
-            datastore_id, spu_url_dicts, mpu_url_dicts, source_path, expand
+            dataset_id, spu_url_dicts, mpu_url_dicts, source_path, expand
         )
 
         files = [
@@ -289,29 +287,29 @@ def upload(
                 for url_info in mpu_url_dicts
             ]
         )
-        datastore = client.update_datastore(
-            datastore_id, files=files, metadata=metadata, active=True
+        dataset = client.update_dataset(
+            dataset_id, files=files, metadata=metadata, active=True
         )
     except Exception as exc:
-        client.delete_datastore(datastore_id)
+        client.delete_dataset(dataset_id)
         raise exc
 
-    datastore["vendor"] = storage_type_map_inv[datastore["vendor"]].value
+    dataset["vendor"] = storage_type_map_inv[dataset["vendor"]].value
 
     typer.secho(
-        f"Objects are uploaded to datastore ({name}) successfully!",
+        f"Objects are uploaded to dataset ({name}) successfully!",
         fg=typer.colors.BLUE,
     )
-    panel_formatter.render([datastore], show_detail=True)
-    tree_formatter.render(datastore["files"])
-    json_formatter.render(datastore["metadata"])
+    panel_formatter.render([dataset], show_detail=True)
+    tree_formatter.render(dataset["files"])
+    json_formatter.render(dataset["metadata"])
 
 
 @app.command()
 def edit(
-    name: str = typer.Argument(..., help="The name of datastore to update."),
+    name: str = typer.Argument(..., help="The name of dataset to update."),
     new_name: Optional[str] = typer.Option(
-        None, "--name", "-n", help="The new name of datastore."
+        None, "--name", "-n", help="The new name of dataset."
     ),
     metadata_file: Optional[typer.FileText] = typer.Option(
         None,
@@ -323,7 +321,7 @@ def edit(
 ):
     """Edit metadata of dataset."""
     project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
-    datastore_id = project_client.get_id_by_name(name)
+    dataset_id = project_client.get_id_by_name(name)
 
     metadata = None
     if metadata_file is not None:
@@ -334,47 +332,47 @@ def edit(
             secho_error_and_exit(f"Error occurred while parsing metadata file... {exc}")
 
     client: DataClientService = build_client(ServiceType.DATA)
-    datastore = client.update_datastore(
-        datastore_id, name=new_name, metadata=metadata, active=True
+    dataset = client.update_dataset(
+        dataset_id, name=new_name, metadata=metadata, active=True
     )
-    datastore["vendor"] = storage_type_map_inv[datastore["vendor"]].value
+    dataset["vendor"] = storage_type_map_inv[dataset["vendor"]].value
 
-    typer.secho("Datastore is updated successfully!", fg=typer.colors.BLUE)
-    panel_formatter.render([datastore], show_detail=True)
-    tree_formatter.render(datastore["files"])
-    json_formatter.render(datastore["metadata"])
+    typer.secho("Dataset is updated successfully!", fg=typer.colors.BLUE)
+    panel_formatter.render([dataset], show_detail=True)
+    tree_formatter.render(dataset["files"])
+    json_formatter.render(dataset["metadata"])
 
 
 @app.command()
 def delete(
     name: str = typer.Argument(
         ...,
-        help="Name of datastore to delete.",
+        help="Name of dataset to delete.",
     ),
     force: bool = typer.Option(
         False,
         "--force",
         "-f",
-        help="Forcefully delete datastore without confirmation prompt.",
+        help="Forcefully delete dataset without confirmation prompt.",
     ),
 ):
-    """Delete dataset from datastore.
-    If the dataset was linked from user's cloud storage by `pf datastore link` command, then the storage will not be
-    deleted and only the DB record is deleted. If the dataset was uploaded by `pf datastore upload` command, the storage
+    """Delete dataset from dataset.
+    If the dataset was linked from user's cloud storage by `pf dataset link` command, then the storage will not be
+    deleted and only the DB record is deleted. If the dataset was uploaded by `pf dataset upload` command, the storage
     will be deleted along with the DB record.
     """
     if not force:
-        do_delete = typer.confirm("Are your sure to delete datastore?")
+        do_delete = typer.confirm("Are your sure to delete dataset?")
         if not do_delete:
             raise typer.Abort()
 
     client: DataClientService = build_client(ServiceType.DATA)
     project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
 
-    datastore_id = project_client.get_id_by_name(name)
-    if datastore_id is None:
-        secho_error_and_exit(f"Datastore ({name}) is not found.")
+    dataset_id = project_client.get_id_by_name(name)
+    if dataset_id is None:
+        secho_error_and_exit(f"Dataset ({name}) is not found.")
 
-    client.delete_datastore(datastore_id)
+    client.delete_dataset(dataset_id)
 
-    typer.secho(f"Datastore ({name}) deleted successfully!", fg=typer.colors.BLUE)
+    typer.secho(f"Dataset ({name}) deleted successfully!", fg=typer.colors.BLUE)

@@ -30,15 +30,15 @@ S3_UPLOAD_SIZE_LIMIT = 5 * 1024 * 1024 * 1024  # 5 GiB
 
 
 class DataClientService(ClientService):
-    def get_datastore(self, datastore_id: T) -> dict:
+    def get_dataset(self, dataset_id: T) -> dict:
         response = safe_request(
-            self.retrieve, err_prefix=f"Datastore ({datastore_id}) is not found."
-        )(pk=datastore_id)
+            self.retrieve, err_prefix=f"Dataset ({dataset_id}) is not found."
+        )(pk=dataset_id)
         return response.json()
 
-    def update_datastore(
+    def update_dataset(
         self,
-        datastore_id: T,
+        dataset_id: T,
         *,
         name: Optional[str] = None,
         vendor: Optional[StorageType] = None,
@@ -51,7 +51,7 @@ class DataClientService(ClientService):
     ) -> dict:
         # Valdiate region
         if vendor is not None or region is not None:
-            prev_info = self.get_datastore(datastore_id)
+            prev_info = self.get_dataset(dataset_id)
             validate_storage_region(
                 vendor or storage_type_map_inv[prev_info["vendor"]],
                 region or prev_info["region"],
@@ -75,37 +75,35 @@ class DataClientService(ClientService):
         if active is not None:
             request_data["active"] = active
         response = safe_request(
-            self.partial_update, err_prefix="Failed to update datastore."
-        )(pk=datastore_id, json=request_data)
+            self.partial_update, err_prefix="Failed to update dataset."
+        )(pk=dataset_id, json=request_data)
         return response.json()
 
-    def delete_datastore(self, datastore_id: T) -> None:
-        safe_request(self.delete, err_prefix="Failed to delete datastore")(
-            pk=datastore_id
-        )
+    def delete_dataset(self, dataset_id: T) -> None:
+        safe_request(self.delete, err_prefix="Failed to delete dataset")(pk=dataset_id)
 
-    def get_spu_urls(self, datastore_id: T, paths: List[str]) -> List[dict]:
+    def get_spu_urls(self, dataset_id: T, paths: List[str]) -> List[dict]:
         """Get single part upload URLs for multiple files.
 
         Args:
-            datastore_id (T): _description_
+            dataset_id (T): _description_
             paths (List[str]): _description_
 
         Returns:
             List[dict]: _description_
         """
         response = safe_request(self.post, err_prefix="Failed to get presigned URLs.")(
-            path=f"{datastore_id}/upload/", json={"paths": paths}
+            path=f"{dataset_id}/upload/", json={"paths": paths}
         )
         return response.json()
 
     def get_mpu_urls(
-        self, datastore_id: T, paths: List[str], src_path: Optional[str] = None
+        self, dataset_id: T, paths: List[str], src_path: Optional[str] = None
     ) -> List[dict]:
         """Get multipart upload URLs for multiple datasets
 
         Args:
-            datastore_id (T): The ID of dataset
+            dataset_id (T): The ID of dataset
             paths (List[str]): A list of upload target paths
 
         Returns:
@@ -133,7 +131,7 @@ class DataClientService(ClientService):
                 self.post,
                 err_prefix="Failed to get presigned URLs for multipart upload.",
             )(
-                path=f"{datastore_id}/start_mpu/",
+                path=f"{dataset_id}/start_mpu/",
                 json={
                     "path": path,
                     "num_parts": num_parts,
@@ -143,12 +141,12 @@ class DataClientService(ClientService):
         return start_mpu_resps
 
     def complete_mpu(
-        self, datastore_id: T, path: str, upload_id: str, parts: List[dict]
+        self, dataset_id: T, path: str, upload_id: str, parts: List[dict]
     ) -> None:
         safe_request(
             self.post, err_prefix=f"Failed to complete multipart upload for {path}"
         )(
-            path=f"{datastore_id}/complete_mpu/",
+            path=f"{dataset_id}/complete_mpu/",
             json={
                 "path": path,
                 "upload_id": upload_id,
@@ -156,11 +154,11 @@ class DataClientService(ClientService):
             },
         )
 
-    def abort_mpu(self, datastore_id: T, path: str, upload_id: str) -> None:
+    def abort_mpu(self, dataset_id: T, path: str, upload_id: str) -> None:
         safe_request(
             self.post, err_prefix=f"Failed to abort multipart upload for {path}"
         )(
-            path=f"{datastore_id}/abort_mpu/",
+            path=f"{dataset_id}/abort_mpu/",
             json={
                 "path": path,
                 "upload_id": upload_id,
@@ -168,7 +166,7 @@ class DataClientService(ClientService):
         )
 
     def _multipart_upload_file(
-        self, datastore_id: T, file_path: str, url_dict: List[dict], ctx: tqdm
+        self, dataset_id: T, file_path: str, url_dict: List[dict], ctx: tqdm
     ) -> None:
         # TODO (ym): parallelize each part upload.
         parts = []
@@ -201,16 +199,16 @@ class DataClientService(ClientService):
                         }
                     )
                 assert not f.read(S3_MPU_PART_MAX_SIZE)
-            self.complete_mpu(datastore_id, object_path, upload_id, parts)
+            self.complete_mpu(dataset_id, object_path, upload_id, parts)
         except FileNotFoundError:
             secho_error_and_exit(f"{file_path} is not found.")
         except Exception as exc:
-            self.abort_mpu(datastore_id, object_path, upload_id)
+            self.abort_mpu(dataset_id, object_path, upload_id)
             secho_error_and_exit(f"File upload is aborted: ({exc!r})")
 
     def upload_files(
         self,
-        datastore_id: T,
+        dataset_id: T,
         spu_url_dicts: List[Dict[str, str]],
         mpu_url_dicts: List[dict],
         source_path: Path,
@@ -239,7 +237,7 @@ class DataClientService(ClientService):
                     [
                         executor.submit(
                             self._multipart_upload_file,
-                            datastore_id,
+                            dataset_id,
                             local_path,
                             url_dict,
                             t,

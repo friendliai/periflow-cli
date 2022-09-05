@@ -32,7 +32,7 @@ def data_client() -> DataClientService:
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
-def test_data_client_get_datastore(
+def test_data_client_get_dataset(
     requests_mock: requests_mock.Mocker, data_client: DataClientService
 ):
     assert isinstance(data_client, DataClientService)
@@ -41,16 +41,16 @@ def test_data_client_get_datastore(
     requests_mock.get(
         data_client.url_template.render(0), json={"id": 0, "name": "cifar100"}
     )
-    assert data_client.get_datastore(0) == {"id": 0, "name": "cifar100"}
+    assert data_client.get_dataset(0) == {"id": 0, "name": "cifar100"}
 
     # Failed due to HTTP error
     requests_mock.get(data_client.url_template.render(0), status_code=404)
     with pytest.raises(typer.Exit):
-        data_client.get_datastore(0)
+        data_client.get_dataset(0)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
-def test_data_client_update_datastore(
+def test_data_client_update_dataset(
     requests_mock: requests_mock.Mocker, data_client: DataClientService
 ):
     assert isinstance(data_client, DataClientService)
@@ -63,7 +63,7 @@ def test_data_client_update_datastore(
     requests_mock.patch(
         data_client.url_template.render(0), json={"id": 0, "name": "cifar100"}
     )
-    assert data_client.update_datastore(
+    assert data_client.update_dataset(
         0,
         name="cifar100",
         vendor=StorageType.S3,
@@ -81,7 +81,7 @@ def test_data_client_update_datastore(
         json={"id": 0, "name": "cifar10", "vendor": "aws", "region": "us-west-2"},
     )
     with pytest.raises(typer.Exit):
-        data_client.update_datastore(
+        data_client.update_dataset(
             0,
             name="cifar100",
             vendor=StorageType.S3,
@@ -96,11 +96,11 @@ def test_data_client_update_datastore(
     # Failed due to HTTP error
     requests_mock.patch(data_client.url_template.render(0), status_code=400)
     with pytest.raises(typer.Exit):
-        data_client.update_datastore(0)
+        data_client.update_dataset(0)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
-def test_data_client_delete_datastore(
+def test_data_client_delete_dataset(
     requests_mock: requests_mock.Mocker, data_client: DataClientService
 ):
     assert isinstance(data_client, DataClientService)
@@ -108,14 +108,14 @@ def test_data_client_delete_datastore(
     # Success
     requests_mock.delete(data_client.url_template.render(0), status_code=204)
     try:
-        data_client.delete_datastore(0)
+        data_client.delete_dataset(0)
     except typer.Exit:
         raise pytest.fail("Data client test failed.")
 
     # Failed due to HTTP error
     requests_mock.delete(data_client.url_template.render(0), status_code=404)
     with pytest.raises(typer.Exit):
-        data_client.delete_datastore(0)
+        data_client.delete_dataset(0)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
@@ -125,11 +125,11 @@ def test_data_client_get_spu_urls(
     assert isinstance(data_client, DataClientService)
 
     url_template = deepcopy(data_client.url_template)
-    url_template.attach_pattern("$datastore_id/upload/")
+    url_template.attach_pattern("$dataset_id/upload/")
 
     # Success
     requests_mock.post(
-        url_template.render(datastore_id=0),
+        url_template.render(dataset_id=0),
         json=[{"path": "/path/to/local/file", "upload_url": "https://s3.bucket.com"}],
     )
     assert data_client.get_spu_urls(0, ["/path/to/local/file"]) == [
@@ -137,7 +137,7 @@ def test_data_client_get_spu_urls(
     ]
 
     # Failed due to HTTP error
-    requests_mock.post(url_template.render(datastore_id=0), status_code=500)
+    requests_mock.post(url_template.render(dataset_id=0), status_code=500)
     with pytest.raises(typer.Exit):
         data_client.get_spu_urls(0, ["/path/to/local/file"])
 
@@ -149,7 +149,7 @@ def test_data_client_get_mpu_urls(
     assert isinstance(data_client, DataClientService)
 
     url_template = deepcopy(data_client.url_template)
-    url_template.attach_pattern("$datastore_id/start_mpu/")
+    url_template.attach_pattern("$dataset_id/start_mpu/")
 
     with TemporaryDirectory() as temp_dir:
         target_file_path = os.path.join(temp_dir, "large_file")
@@ -169,10 +169,10 @@ def test_data_client_get_mpu_urls(
         }
         write_file(target_file_path, S3_UPLOAD_SIZE_LIMIT * 2)
 
-        requests_mock.post(url_template.render(datastore_id=0), json=resp_mock)
+        requests_mock.post(url_template.render(dataset_id=0), json=resp_mock)
         assert data_client.get_mpu_urls(0, [target_file_path]) == [resp_mock]
 
-        requests_mock.post(url_template.render(datastore_id=0), status_code=500)
+        requests_mock.post(url_template.render(dataset_id=0), status_code=500)
         with pytest.raises(typer.Exit):
             data_client.get_mpu_urls(0, [target_file_path])
 
@@ -184,9 +184,9 @@ def test_data_client_complete_mpu(
     assert isinstance(data_client, DataClientService)
 
     url_template = deepcopy(data_client.url_template)
-    url_template.attach_pattern("$datastore_id/complete_mpu/")
+    url_template.attach_pattern("$dataset_id/complete_mpu/")
 
-    requests_mock.post(url_template.render(datastore_id=0))
+    requests_mock.post(url_template.render(dataset_id=0))
     data_client.complete_mpu(
         0,
         ["/path/to/file"],
@@ -199,7 +199,7 @@ def test_data_client_complete_mpu(
         },
     )
 
-    requests_mock.post(url_template.render(datastore_id=0), status_code=500)
+    requests_mock.post(url_template.render(dataset_id=0), status_code=500)
     with pytest.raises(typer.Exit):
         data_client.complete_mpu(
             0,
@@ -221,16 +221,16 @@ def test_data_client_abort_mpu(
     assert isinstance(data_client, DataClientService)
 
     url_template = deepcopy(data_client.url_template)
-    url_template.attach_pattern("$datastore_id/abort_mpu/")
+    url_template.attach_pattern("$dataset_id/abort_mpu/")
 
-    requests_mock.post(url_template.render(datastore_id=0))
+    requests_mock.post(url_template.render(dataset_id=0))
     data_client.abort_mpu(
         0,
         ["/path/to/file"],
         "fakeuploadid",
     )
 
-    requests_mock.post(url_template.render(datastore_id=0), status_code=500)
+    requests_mock.post(url_template.render(dataset_id=0), status_code=500)
     with pytest.raises(typer.Exit):
         data_client.abort_mpu(
             0,
@@ -252,7 +252,7 @@ def test_upload_small_files(
         # Success
         requests_mock.put(fake_upload_url)
         data_client.upload_files(
-            datastore_id=0,
+            dataset_id=0,
             spu_url_dicts=[
                 {
                     "path": "small_file",
@@ -268,7 +268,7 @@ def test_upload_small_files(
         requests_mock.put(fake_upload_url, status_code=400)
         with pytest.raises(typer.Exit):
             data_client.upload_files(
-                datastore_id=0,
+                dataset_id=0,
                 spu_url_dicts=[
                     {
                         "path": "small_file",
@@ -288,12 +288,12 @@ def test_upload_large_files(
     fake_upload_url = "https://mybucket.s3.amazon.com"
 
     url_template = deepcopy(data_client.url_template)
-    url_template.attach_pattern("$datastore_id/abort_mpu/")
-    requests_mock.post(url_template.render(datastore_id=0))
+    url_template.attach_pattern("$dataset_id/abort_mpu/")
+    requests_mock.post(url_template.render(dataset_id=0))
 
     url_template = deepcopy(data_client.url_template)
-    url_template.attach_pattern("$datastore_id/complete_mpu/")
-    requests_mock.post(url_template.render(datastore_id=0))
+    url_template.attach_pattern("$dataset_id/complete_mpu/")
+    requests_mock.post(url_template.render(dataset_id=0))
 
     with TemporaryDirectory() as tmp_dir:
         path = os.path.join(tmp_dir, "large_file")
@@ -302,7 +302,7 @@ def test_upload_large_files(
         # Success
         requests_mock.put(fake_upload_url, headers={"ETag": "fakeetag"})
         data_client.upload_files(
-            datastore_id=0,
+            dataset_id=0,
             spu_url_dicts=[],
             mpu_url_dicts=[
                 {
@@ -328,7 +328,7 @@ def test_upload_large_files(
         requests_mock.put(fake_upload_url, status_code=400)
         with pytest.raises(typer.Exit):
             data_client.upload_files(
-                datastore_id=0,
+                dataset_id=0,
                 spu_url_dicts=[],
                 mpu_url_dicts=[
                     {
