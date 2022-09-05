@@ -13,11 +13,13 @@ from pfcli.utils import get_periflow_directory, get_uri, secho_error_and_exit
 
 access_token_path = get_periflow_directory() / "access_token"
 refresh_token_path = get_periflow_directory() / "refresh_token"
+mfa_token_path = get_periflow_directory() / "mfa_token"
 
 
 class TokenType(str, Enum):
     ACCESS = "ACCESS"
     REFRESH = "REFRESH"
+    MFA = "MFA"
 
 
 def get_auth_header() -> dict:
@@ -30,8 +32,10 @@ def get_token(token_type: TokenType) -> Union[str, None]:
             return access_token_path.read_text()
         if token_type == TokenType.REFRESH:
             return refresh_token_path.read_text()
+        if token_type == TokenType.MFA:
+            return mfa_token_path.read_text()
         else:
-            secho_error_and_exit("token_type should be one of 'access' or 'refresh'.")
+            secho_error_and_exit("token_type should be one of 'access' or 'refresh' or 'mfa'.")
     except FileNotFoundError:
         return None
 
@@ -41,6 +45,8 @@ def update_token(token_type: TokenType, token: str) -> None:
         access_token_path.write_text(token)
     elif token_type == TokenType.REFRESH:
         refresh_token_path.write_text(token)
+    elif token_type == TokenType.MFA:
+        mfa_token_path.write_text(token)
 
 
 def auto_token_refresh(

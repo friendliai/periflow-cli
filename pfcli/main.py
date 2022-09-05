@@ -3,7 +3,7 @@
 """PeriFlow CLI"""
 
 import requests
-from requests import HTTPError
+from requests import HTTPError, Response
 
 import typer
 
@@ -21,7 +21,7 @@ from pfcli import (
     vm,
 )
 from pfcli.service import ServiceType
-from pfcli.service.auth import TokenType, update_token
+from pfcli.service.auth import get_token, TokenType, update_token
 from pfcli.service.client import UserClientService, UserSignUpService, build_client
 from pfcli.service.formatter import PanelFormatter
 from pfcli.utils import get_uri, secho_error_and_exit
@@ -87,22 +87,16 @@ def login(
     r = requests.post(
         get_uri("token/"), data={"username": username, "password": password}
     )
-    try:
-        r.raise_for_status()
-        update_token(token_type=TokenType.ACCESS, token=r.json()["access_token"])
-        update_token(token_type=TokenType.REFRESH, token=r.json()["refresh_token"])
-
-        typer.echo("\n\nLogin success!")
-        typer.echo("Welcome back to...")
-        typer.echo(" _____          _  _____ _")
-        typer.echo("|  __ \___ _ __(_)|  ___| | _____      __")
-        typer.echo("|  ___/ _ \ '__| || |__ | |/ _ \ \ /\ / /")
-        typer.echo("| |  |  __/ |  | ||  __|| | (_) | V  V / ")
-        typer.echo("|_|   \___|_|  |_||_|   |_|\___/ \_/\_/  ")
-        typer.echo("\n\n")
-    except HTTPError:
-        secho_error_and_exit("Login failed... Please check your username and password.")
-
+    resp = r.json()
+    if "code" in resp and resp["code"] == "mfa_required":
+        mfa_token = resp["mfa_token"]
+        client: UserClientService = build_client(ServiceType.MFA)
+        # TODO: MFA type currently defaults to totp, need changes when new options are added
+        client.initiate_mfa(mfa_type="totp", mfa_token=mfa_token)
+        update_token(token_type=TokenType.MFA, token=mfa_token)
+        typer.run(_mfa_verify)
+    else:
+        _handle_login_response(r, False)
 
 @app.command(help="Change your password")
 def passwd(
@@ -132,3 +126,35 @@ def _verify(_, token: str = typer.Option(..., prompt="Enter Code")):
 
     typer.echo("\n\nVerified!")
     typer.echo("Sign up success! Please sign in.")
+
+
+def _mfa_verify(_, code: str = typer.Option(..., prompt="Enter MFA Code")):
+    mfa_token = get_token(TokenType.MFA)
+    # TODO: MFA type currently defaults to totp, need changes when new options are added
+    mfa_type = "totp"
+    username = f"mfa://{mfa_type}/{mfa_token}"
+    r = requests.post(
+        get_uri("token/"), data={"username": username, "password": code}
+    )
+    _handle_login_response(r, True)
+
+
+def _handle_login_response(r: Response, mfa: bool):
+    try:
+        r.raise_for_status()
+        update_token(token_type=TokenType.ACCESS, token=r.json()["access_token"])
+        update_token(token_type=TokenType.REFRESH, token=r.json()["refresh_token"])
+
+        typer.echo("\n\nLogin success!")
+        typer.echo("Welcome back to...")
+        typer.echo(" _____          _  _____ _")
+        typer.echo("|  __ \___ _ __(_)|  ___| | _____      __")
+        typer.echo("|  ___/ _ \ '__| || |__ | |/ _ \ \ /\ / /")
+        typer.echo("| |  |  __/ |  | ||  __|| | (_) | V  V / ")
+        typer.echo("|_|   \___|_|  |_||_|   |_|\___/ \_/\_/  ")
+        typer.echo("\n\n")
+    except HTTPError:
+        if mfa:
+            secho_error_and_exit("Login failed... Invalid MFA Code.")
+        else:
+            secho_error_and_exit("Login failed... Please check your username and password.")
