@@ -97,6 +97,7 @@ def login(
         typer.run(_mfa_verify)
     else:
         _handle_login_response(r, False)
+        
 
 @app.command(help="Change your password")
 def passwd(

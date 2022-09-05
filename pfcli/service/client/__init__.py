@@ -55,7 +55,7 @@ from pfcli.utils import (
 client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.MFA: (
         UserMFAService,
-        Template(get_auth_uri("")),
+        Template(get_auth_uri("mfa")),
     ),
     ServiceType.SIGNUP: (
         UserSignUpService,

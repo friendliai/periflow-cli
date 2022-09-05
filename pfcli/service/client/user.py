@@ -18,7 +18,7 @@ from pfcli.utils import paginated_get
 class UserMFAService(ClientService):
     def initiate_mfa(self, mfa_type: str, mfa_token: str) -> None:
         safe_request(self.bare_post, err_prefix="Failed to verify MFA token.")(
-            path=f"mfa/challenge/{mfa_type}",
+            path=f"challenge/{mfa_type}",
             headers={
                 "x-mfa-token": mfa_token
             }
