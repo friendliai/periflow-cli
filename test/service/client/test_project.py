@@ -518,10 +518,10 @@ def test_project_vm_config_client_get_active_vm_count(
     requests_mock.get(
         url_template.render(**project_vm_config_client.url_kwargs, vm_config_id=0),
         json=[
-            {"lock_type": "active", "vm_config_id": 0, "job_id": 0},
-            {"lock_type": "active", "vm_config_id": 0, "job_id": 0},
-            {"lock_type": "active", "vm_config_id": 0, "job_id": 1},
-            {"lock_type": "active", "vm_config_id": 0, "job_id": 2},
+            {"status": "active", "vm_config_id": 0, "job_id": 0},
+            {"status": "active", "vm_config_id": 0, "job_id": 0},
+            {"status": "active", "vm_config_id": 0, "job_id": 1},
+            {"status": "active", "vm_config_id": 0, "job_id": 2},
         ],
     )
     assert project_vm_config_client.get_active_vm_count(0) == 4

@@ -15,7 +15,7 @@ from rich.filesize import decimal
 from pfcli.service import (
     CloudType,
     CredType,
-    LockType,
+    LockStatus,
     StorageType,
     cred_type_map,
     storage_type_map,
@@ -237,12 +237,12 @@ class ProjectVMConfigClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_vm_locks(self, vm_config_id: T, lock_type: LockType) -> List[dict]:
+    def list_vm_locks(self, vm_config_id: T, lock_status: LockStatus) -> List[dict]:
         response = safe_request(self.list, err_prefix="Failed to inspect locked VMs.")(
-            path=f"{vm_config_id}/vm_lock/", params={"lock_type": lock_type}
+            path=f"{vm_config_id}/vm_lock/", params={"status": lock_status}
         )
         return response.json()
 
     def get_active_vm_count(self, vm_config_id: T) -> int:
-        vm_locks = self.list_vm_locks(vm_config_id, LockType.ACTIVE)
+        vm_locks = self.list_vm_locks(vm_config_id, LockStatus.ACTIVE)
         return len(vm_locks)
