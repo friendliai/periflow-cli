@@ -237,12 +237,13 @@ class ProjectVMConfigClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_vm_locks(self, vm_config_id: T, lock_status: LockStatus) -> List[dict]:
+    def list_vm_locks(self, vm_config_id: T, lock_status_list: List[LockStatus]) -> List[dict]:
+        status_param = ",".join(lock_status_list)
         response = safe_request(self.list, err_prefix="Failed to inspect locked VMs.")(
-            path=f"{vm_config_id}/vm_lock/", params={"status": lock_status}
+            path=f"{vm_config_id}/vm_lock/", params={"status": status_param}
         )
         return response.json()
 
-    def get_active_vm_count(self, vm_config_id: T) -> int:
-        vm_locks = self.list_vm_locks(vm_config_id, LockStatus.ACTIVE)
+    def get_vm_count_in_use(self, vm_config_id: T) -> int:
+        vm_locks = self.list_vm_locks(vm_config_id, [LockStatus.ACTIVE, LockStatus.DELETING])
         return len(vm_locks)

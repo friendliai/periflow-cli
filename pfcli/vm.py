@@ -70,12 +70,12 @@ def list(
     for vm_dict in vm_dict_list:
         vm_instance_name = vm_dict["vm_config_type"]["code"]
         try:
-            active_vm_count = vm_config_client.get_active_vm_count(
+            vm_count_in_use = vm_config_client.get_vm_count_in_use(
                 vm_id_map[vm_instance_name]
             )
             vm_dict[
                 "quota"
-            ] = f"{vm_dict['quota'] - active_vm_count} / {vm_dict['quota']}"
+            ] = f"{vm_dict['quota'] - vm_count_in_use} / {vm_dict['quota']}"
         except KeyError:
             continue
         available_vm_dict_list.append(vm_dict)
