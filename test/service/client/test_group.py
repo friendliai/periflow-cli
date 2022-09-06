@@ -142,14 +142,14 @@ def test_group_vm_config_client_get_id_by_name(
                 "id": 0,
                 "name": "azure-v100",
                 "code": "azure-v100",
-                "vm_instance_type": {
-                    "id": 0,
-                    "name": "azure-v100",
-                    "code": "azure-v100",
-                    "vendor": "azure",
-                    "region": "eastus",
-                    "device_type": "V100",
-                },
+                "vendor": "azure",
+                "region": "eastus",
+                "device_type": "V100",
+                "num_devices_per_vm": 8,
+                "per_gpu_memory": 32.,
+                "vcpu": 40,
+                "cpu_memory": 512,
+                "is_spot": False,
             },
         },
         {
@@ -158,14 +158,14 @@ def test_group_vm_config_client_get_id_by_name(
                 "id": 1,
                 "name": "aws-a100",
                 "code": "aws-a100",
-                "vm_instance_type": {
-                    "id": 1,
-                    "name": "aws-a100",
-                    "code": "aws-a100",
-                    "vendor": "aws",
-                    "region": "us-east-1",
-                    "device_type": "A100",
-                },
+                "vendor": "aws",
+                "region": "us-east-1",
+                "device_type": "A100",
+                "num_devices_per_vm": 8,
+                "per_gpu_memory": 40.,
+                "vcpu": 96,
+                "cpu_memory": 1024,
+                "is_spot": False,
             },
         },
     ]
@@ -199,8 +199,8 @@ def test_group_vm_config_client_get_vm_config_id_map(
     requests_mock.get(
         group_vm_config_client.url_template.render(**group_vm_config_client.url_kwargs),
         json=[
-            {"id": 0, "vm_config_type": {"vm_instance_type": {"code": "azure-v100"}}},
-            {"id": 1, "vm_config_type": {"vm_instance_type": {"code": "aws-v100"}}},
+            {"id": 0, "vm_config_type": {"code": "azure-v100"}},
+            {"id": 1, "vm_config_type": {"code": "aws-v100"}},
         ],
     )
     assert group_vm_config_client.get_vm_config_id_map() == {

@@ -27,12 +27,18 @@ formatter = TableFormatter(
     name="VM Instances",
     fields=[
         "vm_config_type.code",
-        "vm_config_type.vm_instance_type.vendor",
-        "vm_config_type.vm_instance_type.region",
-        "vm_config_type.vm_instance_type.device_type",
+        "vm_config_type.vendor",
+        "vm_config_type.device_type",
+        "vm_config_type.num_devices_per_vm",
+        "vm_config_type.per_gpu_memory",
+        "vm_config_type.vcpu",
+        "vm_config_type.cpu_memory",
         "quota",
+        "vm_config_type.is_spot",
     ],
-    headers=["VM", "Cloud", "Region", "Device", "Quota (Available / Total)"],
+    headers=["VM", "Cloud", "GPU", "GPU COUNT",
+             "Per GPU Memory [GiB]", "vCPU", "CPU Memory [GiB]",
+             "Quota (Available / Total)", "Spot"],
 )
 
 
@@ -41,17 +47,11 @@ def list(
     cloud: Optional[CloudType] = typer.Option(
         None, "--cloud", "-c", help="Filter list by cloud vendor."
     ),
-    region: Optional[str] = typer.Option(
-        None, "--region", "-r", help="Filter list by region."
-    ),
     device_type: Optional[str] = typer.Option(
         None, "--device-type", "-d", help="Filter list by device type."
     ),
 ):
     """List all VM quota information."""
-    if cloud is not None and region is not None:
-        validate_cloud_region(cloud, region)
-
     vm_quota_client: ProjectVMQuotaClientService = build_client(
         ServiceType.PROJECT_VM_QUOTA
     )
@@ -63,7 +63,7 @@ def list(
     )
 
     vm_dict_list = vm_quota_client.list_vm_quotas(
-        vendor=cloud, region=region, device_type=device_type
+        vendor=cloud, device_type=device_type
     )
     vm_id_map = group_vm_config_client.get_vm_config_id_map()
     available_vm_dict_list = []
