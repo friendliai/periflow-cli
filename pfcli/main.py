@@ -90,7 +90,7 @@ def login(
     resp = r.json()
     if "code" in resp and resp["code"] == "mfa_required":
         mfa_token = resp["mfa_token"]
-        client: UserClientService = build_client(ServiceType.MFA)
+       client: UserMFAService = build_client(ServiceType.MFA)
         # TODO: MFA type currently defaults to totp, need changes when new options are added
         client.initiate_mfa(mfa_type="totp", mfa_token=mfa_token)
         update_token(token_type=TokenType.MFA, token=mfa_token)
