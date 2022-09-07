@@ -126,9 +126,13 @@ def passwd(
     typer.secho("Password is changed successfully!", fg=typer.colors.BLUE)
 
 
-def _verify(_, token: str = typer.Option(..., prompt="Enter Code")):
+def _verify(
+    _,
+    token: str = typer.Option(..., prompt="Enter verification code"),
+    key: str = typer.Option(..., prompt="Enter verification key")
+):
     client: UserSignUpService = build_client(ServiceType.SIGNUP)
-    client.verify(token)
+    client.verify(token, key)
 
     typer.echo("\n\nVerified!")
     typer.echo("Sign up success! Please sign in.")

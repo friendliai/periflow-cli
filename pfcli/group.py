@@ -120,9 +120,12 @@ def invite(email: str = typer.Argument(..., help="Invitation recipient email add
 
 
 @app.command("accept-invite", help="accept invitation")
-def accept_invite(token: str = typer.Option(..., prompt="Enter Verification Code")):
+def accept_invite(
+    token: str = typer.Option(..., prompt="Enter verification code"),
+    key: str = typer.Option(..., prompt="Enter verification key")
+):
     group_client: GroupClientService = build_client(ServiceType.GROUP)
-    group_client.accept_invite(token)
+    group_client.accept_invite(token, key)
     typer.secho("Verification Success!")
 
 
