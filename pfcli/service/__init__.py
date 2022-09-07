@@ -35,15 +35,15 @@ class ServiceType(str, Enum):
 
 
 class GroupRole(str, Enum):
-    OWNER = 'owner'
-    MEMBER = 'member'
+    OWNER = "owner"
+    MEMBER = "member"
 
 
 class ProjectRole(str, Enum):
-    ADMIN = 'admin'
-    MAINTAIN = 'maintain'
-    DEVELOP = 'develop'
-    GUEST = 'guest'
+    ADMIN = "admin"
+    MAINTAIN = "maintain"
+    DEVELOP = "develop"
+    GUEST = "guest"
 
 
 class JobType(str, Enum):
@@ -51,9 +51,10 @@ class JobType(str, Enum):
     CUSTOM = "custom"
 
 
-class LockType(str, Enum):
+class LockStatus(str, Enum):
     ACTIVE = "active"
     STALE = "stale"
+    DELETING = "deleting"
 
 
 class LogType(str, Enum):
@@ -227,34 +228,34 @@ GCP_REGION_NAMES = [
 ]
 
 AZURE_REGION_NAMES = [
-    'eastus',
-    'eastus2',
-    'southcentralus',
-    'westus2',
-    'westus3',
-    'australiaeast',
-    'southeastasia',
-    'northeurope',
-    'swedencentral',
-    'uksouth',
-    'westeurope',
-    'centralus',
-    'northcentralus',
-    'westus',
-    'southafricanorth',
-    'centralindia',
-    'eastasia',
-    'japaneast',
-    'jioindiawest',
-    'koreacentral',
-    'canadacentral',
-    'francecentral',
-    'germanywestcentral',
-    'norwayeast',
-    'switzerlandnorth',
-    'uaenorth',
-    'brazilsouth',
-    'centralusstage'
+    "eastus",
+    "eastus2",
+    "southcentralus",
+    "westus2",
+    "westus3",
+    "australiaeast",
+    "southeastasia",
+    "northeurope",
+    "swedencentral",
+    "uksouth",
+    "westeurope",
+    "centralus",
+    "northcentralus",
+    "westus",
+    "southafricanorth",
+    "centralindia",
+    "eastasia",
+    "japaneast",
+    "jioindiawest",
+    "koreacentral",
+    "canadacentral",
+    "francecentral",
+    "germanywestcentral",
+    "norwayeast",
+    "switzerlandnorth",
+    "uaenorth",
+    "brazilsouth",
+    "centralusstage",
 ]
 
 AWS_REGION_NAMES = [
@@ -273,7 +274,7 @@ AWS_REGION_NAMES = [
 ]
 
 FAI_REGION_NAMES = [
-    '',
+    "",
 ]
 
 storage_region_map = {

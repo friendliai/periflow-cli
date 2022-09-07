@@ -7,10 +7,10 @@
 - `pip install periflow-cli`로 CLI 패키지를 설치합니다.
 - `pip install periflow_sdk`로 SDK 패키지를 설치합니다.
 - [공통 가이드](./common_step.md)에 설명된 과정들이 완료되어야 합니다.
-- 본 튜토리얼에서는 CIFAR-100 데이터셋을 사용합니다. [다운로드 링크](https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz)를 클릭하여 파일을 다운받고 압축을 해제한 뒤 [Dataset 생성](./common_step.md#dataset-생성) 매뉴얼을 따라 Datastore에 데이터셋을 생성 합니다. 데이터셋 생성이 잘 이루어 졌다면 `pf datastore view` 커맨드를 실행했을 때 다음과 같은 결과가 보여야 합니다.
+- 본 튜토리얼에서는 CIFAR-100 데이터셋을 사용합니다. [다운로드 링크](https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz)를 클릭하여 파일을 다운받고 압축을 해제한 뒤 [Dataset 생성](./common_step.md#dataset-생성) 매뉴얼을 따라 데이터셋을 생성 합니다. 데이터셋 생성이 잘 이루어 졌다면 `pf dataset view` 커맨드를 실행했을 때 다음과 같은 결과가 보여야 합니다.
 
   ```sh
-  $ pf datastore view my-cifar-100  
+  $ pf dataset view my-cifar-100  
   ╭─────────────────────────── Overview ───────────────────────────╮
   │  Name          my-cifar-100                                    │
   │  Cloud         fai                                             │
@@ -99,7 +99,7 @@ PeriFlow를 initialize 하는 부분입니다. 이 함수는 다른 PeriFlow SDK
 
 ## Configuration YAML 파일
 
-Datastore에 CIFAR-100 데이터셋(`my-cifar-100`)을 업로드 했고, 로컬에 SDK가 적용된 코드(`main.py`)가 준비되었다면, 마지막으로 YAML 파일로 Job의 세부사항을 명시하는 과정만이 남았습니다. [`pf-template.yml`](https://github.com/friendliai/periflow-python-sdk/blob/main/examples/cifar/pf-template.yml)에는 `main.py`를 수행하기 위한 configuration 예시가 나와 있습니다.
+CIFAR-100 데이터셋(`my-cifar-100`)을 업로드 했고, 로컬에 SDK가 적용된 코드(`main.py`)가 준비되었다면, 마지막으로 YAML 파일로 Job의 세부사항을 명시하는 과정만이 남았습니다. [`pf-template.yml`](https://github.com/friendliai/periflow-python-sdk/blob/main/examples/cifar/pf-template.yml)에는 `main.py`를 수행하기 위한 configuration 예시가 나와 있습니다.
 
 ```yaml
 # pf-template.yml
@@ -197,7 +197,7 @@ data:
 - `checkpoint`
   - `output_checkpoint_dir`: SDK에서 `pf.upload_checkpoint()`를 호출하였을 때 이 필드에 입력한 경로에 있는 모든 파일들이 업로드 됩니다.
 - `data`
-  - `name`: [Dataset 생성](./common_step.md#dataset-생성) 매뉴얼을 따라 생성된 CIFAR-100 데이터셋의 이름을 입력합니다. 여기에서는 앞에서 생성한 데이터셋인 `my-cifar-100`을 입력합니다. Datastore에 있는 데이터셋 목록을 확인하려면 `pf datastore list` 명령어를 사용합니다.
+  - `name`: [Dataset 생성](./common_step.md#dataset-생성) 매뉴얼을 따라 생성된 CIFAR-100 데이터셋의 이름을 입력합니다. 여기에서는 앞에서 생성한 데이터셋인 `my-cifar-100`을 입력합니다. 사용가능한 데이터셋 목록을 확인하려면 `pf dataset list` 명령어를 사용합니다.
   - `mount_path`: 데이터셋을 볼륨 마운트 할 곳을 지정합니다. 여기에선 `/workspace/data`로 경로를 지정하였기 때문에 앞서 생성한 `my-cifar-100` 데이터셋이 `/workspace/data`에 마운트 되어 `/workspace/data/cifar-100-python/train`, `/workspace/data/cifar-100-python/test`, `/workspace/data/cifar-100-python/meta`와 같은 파일 시스템 구조에서 Job이 실행 됩니다.
 
 ## Job 실행

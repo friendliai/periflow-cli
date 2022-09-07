@@ -56,6 +56,10 @@ TEST_DEPS = [
     "requests-mock>=1.9.3",
 ]
 
+DEV_DEPS = [
+    "black>=22.8.0",
+]
+
 setup(
     name='periflow-cli',
     version=read_version(),
@@ -79,6 +83,7 @@ setup(
     include_package_data=True,
     install_requires=COMMON_DEPS,
     extras_require={
-        "test": TEST_DEPS
+        "test": TEST_DEPS,
+        "dev": DEV_DEPS,
     }
 )

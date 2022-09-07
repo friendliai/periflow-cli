@@ -12,7 +12,7 @@ from pfcli import (
     billing,
     checkpoint,
     credential,
-    datastore,
+    dataset,
     experiment,
     group,
     job,
@@ -30,12 +30,12 @@ app = typer.Typer(
     help="Welcome to PeriFlow 🤗",
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},
-    add_completion=False
+    add_completion=False,
 )
 app.add_typer(credential.app, name="credential", help="Manage credentials")
 app.add_typer(job.app, name="job", help="Manage jobs")
 app.add_typer(checkpoint.app, name="checkpoint", help="Manage checkpoints")
-app.add_typer(datastore.app, name="datastore", help="Manage datasets")
+app.add_typer(dataset.app, name="dataset", help="Manage datasets")
 app.add_typer(vm.app, name="vm", help="Manage VMs")
 app.add_typer(experiment.app, name="experiment", help="Manage experiments")
 app.add_typer(serve.app, name="serve", help="Manage serves")
@@ -47,9 +47,10 @@ app.add_typer(billing.app, name="billing", help="Manage billing")
 
 user_panel_formatter = PanelFormatter(
     name="My Info",
-    fields=['name', 'username', 'email'],
-    headers=["Name", "Username", "Email"]
+    fields=["name", "username", "email"],
+    headers=["Name", "Username", "Email"],
 )
+
 
 @app.command(help="Sign up to PerfiFlow")
 def signup(
@@ -57,7 +58,9 @@ def signup(
     name: str = typer.Option(..., prompt="Enter Name"),
     email: str = typer.Option(..., prompt="Enter Email"),
     password: str = typer.Option(..., prompt="Enter Password", hide_input=True),
-    confirm_password: str = typer.Option(..., prompt="Enter the password again (confirmation)", hide_input=True)
+    confirm_password: str = typer.Option(
+        ..., prompt="Enter the password again (confirmation)", hide_input=True
+    ),
 ):
     if password != confirm_password:
         secho_error_and_exit("Passwords did not match.")
@@ -79,9 +82,11 @@ def whoami():
 @app.command(help="Sign in PeriFlow")
 def login(
     username: str = typer.Option(..., prompt="Enter Username"),
-    password: str = typer.Option(..., prompt="Enter Password", hide_input=True)
+    password: str = typer.Option(..., prompt="Enter Password", hide_input=True),
 ):
-    r = requests.post(get_uri("token/"), data={"username": username, "password": password})
+    r = requests.post(
+        get_uri("token/"), data={"username": username, "password": password}
+    )
     try:
         r.raise_for_status()
         update_token(token_type=TokenType.ACCESS, token=r.json()["access_token"])
@@ -101,9 +106,15 @@ def login(
 
 @app.command(help="Change your password")
 def passwd(
-    old_password: str = typer.Option(..., prompt="Enter your current password", hide_input=True),
-    new_password: str = typer.Option(..., prompt="Enter your new password", hide_input=True),
-    confirm_password: str = typer.Option(..., prompt="Enter the new password again (confirmation)", hide_input=True)
+    old_password: str = typer.Option(
+        ..., prompt="Enter your current password", hide_input=True
+    ),
+    new_password: str = typer.Option(
+        ..., prompt="Enter your new password", hide_input=True
+    ),
+    confirm_password: str = typer.Option(
+        ..., prompt="Enter the new password again (confirmation)", hide_input=True
+    ),
 ):
     if old_password == new_password:
         secho_error_and_exit("The current password is the same with the new password.")
