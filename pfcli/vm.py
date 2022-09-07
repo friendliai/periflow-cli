@@ -80,4 +80,8 @@ def list(
             continue
         available_vm_dict_list.append(vm_dict)
 
+    available_vm_dict_list = sorted(
+        available_vm_dict_list, key=lambda d: d['vm_config_type']['code']
+    )
+
     formatter.render(available_vm_dict_list)
