@@ -63,9 +63,9 @@ def summary(
     price_by_vmname = defaultdict(float)
 
     for price_info in prices:
-        price_by_vmname[price_info["instance"]["attributes"]["vm_name"]] += price_info[
-            "price"
-        ]
+        attributes = price_info["instance"]["attributes"]
+        if "vm_name" in attributes:
+            price_by_vmname[attributes["vm_name"]] += price_info["price"]
     table_formatter.render(
         [
             {"vm_name": vm_name, "price": round(price, 2)}
