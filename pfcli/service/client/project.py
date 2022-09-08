@@ -15,7 +15,7 @@ from rich.filesize import decimal
 from pfcli.service import (
     CloudType,
     CredType,
-    LockType,
+    LockStatus,
     StorageType,
     cred_type_map,
     storage_type_map,
@@ -170,7 +170,6 @@ class ProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
     def list_vm_quotas(
         self,
         vendor: Optional[CloudType] = None,
-        region: Optional[str] = None,
         device_type: Optional[str] = None,
     ) -> Optional[List[dict]]:
         response = safe_request(self.list, err_prefix="Failed to list VM quota info.")()
@@ -178,25 +177,15 @@ class ProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
         if vendor is not None:
             vm_dict_list = list(
                 filter(
-                    lambda info: info["vm_config_type"]["vm_instance_type"]["vendor"]
+                    lambda info: info["vm_config_type"]["vendor"]
                     == vendor,
-                    vm_dict_list,
-                )
-            )
-        if region is not None:
-            vm_dict_list = list(
-                filter(
-                    lambda info: info["vm_config_type"]["vm_instance_type"]["region"]
-                    == region,
                     vm_dict_list,
                 )
             )
         if device_type is not None:
             vm_dict_list = list(
                 filter(
-                    lambda info: info["vm_config_type"]["vm_instance_type"][
-                        "device_type"
-                    ]
+                    lambda info: info["vm_config_type"]["device_type"]
                     == device_type,
                     vm_dict_list,
                 )
@@ -237,12 +226,13 @@ class ProjectVMConfigClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_vm_locks(self, vm_config_id: T, lock_type: LockType) -> List[dict]:
+    def list_vm_locks(self, vm_config_id: T, lock_status_list: List[LockStatus]) -> List[dict]:
+        status_param = ",".join(lock_status_list)
         response = safe_request(self.list, err_prefix="Failed to inspect locked VMs.")(
-            path=f"{vm_config_id}/vm_lock/", params={"lock_type": lock_type}
+            path=f"{vm_config_id}/vm_lock/", params={"status": status_param}
         )
         return response.json()
 
-    def get_active_vm_count(self, vm_config_id: T) -> int:
-        vm_locks = self.list_vm_locks(vm_config_id, LockType.ACTIVE)
+    def get_vm_count_in_use(self, vm_config_id: T) -> int:
+        vm_locks = self.list_vm_locks(vm_config_id, [LockStatus.ACTIVE, LockStatus.DELETING])
         return len(vm_locks)

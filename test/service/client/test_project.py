@@ -308,40 +308,31 @@ def test_project_vm_quota_client_list_vm_quotas(
     example_data = [
         {
             "vm_config_type": {
-                "vm_instance_type": {
-                    "id": 0,
-                    "name": "azure-v100",
-                    "code": "azure-v100",
-                    "vendor": "azure",
-                    "region": "eastus",
-                    "device_type": "V100",
-                },
+                "id": 0,
+                "code": "azure-v100",
+                "vendor": "azure",
+                "region": "eastus",
+                "device_type": "V100",
             },
             "quota": 4,
         },
         {
             "vm_config_type": {
-                "vm_instance_type": {
-                    "id": 0,
-                    "name": "azure-a100",
-                    "code": "azure-a100",
-                    "vendor": "azure",
-                    "region": "westus2",
-                    "device_type": "A100",
-                },
+                "id": 1,
+                "code": "azure-a100",
+                "vendor": "azure",
+                "region": "westus2",
+                "device_type": "A100",
             },
             "quota": 8,
         },
         {
             "vm_config_type": {
-                "vm_instance_type": {
-                    "id": 1,
-                    "name": "aws-a100",
-                    "code": "aws-a100",
-                    "vendor": "aws",
-                    "region": "us-east-1",
-                    "device_type": "A100",
-                },
+                "id": 2,
+                "code": "aws-a100",
+                "vendor": "aws",
+                "region": "us-east-1",
+                "device_type": "A100",
             },
             "quota": 16,
         },
@@ -362,14 +353,11 @@ def test_project_vm_quota_client_list_vm_quotas(
     assert project_vm_quota_client.list_vm_quotas(vendor=CloudType.AWS) == [
         {
             "vm_config_type": {
-                "vm_instance_type": {
-                    "id": 1,
-                    "name": "aws-a100",
-                    "code": "aws-a100",
-                    "vendor": "aws",
-                    "region": "us-east-1",
-                    "device_type": "A100",
-                },
+                "id": 2,
+                "code": "aws-a100",
+                "vendor": "aws",
+                "region": "us-east-1",
+                "device_type": "A100",
             },
             "quota": 16,
         }
@@ -377,74 +365,45 @@ def test_project_vm_quota_client_list_vm_quotas(
     assert project_vm_quota_client.list_vm_quotas(vendor=CloudType.AZURE) == [
         {
             "vm_config_type": {
-                "vm_instance_type": {
-                    "id": 0,
-                    "name": "azure-v100",
-                    "code": "azure-v100",
-                    "vendor": "azure",
-                    "region": "eastus",
-                    "device_type": "V100",
-                },
+                "id": 0,
+                "code": "azure-v100",
+                "vendor": "azure",
+                "region": "eastus",
+                "device_type": "V100",
             },
             "quota": 4,
         },
         {
             "vm_config_type": {
-                "vm_instance_type": {
-                    "id": 0,
-                    "name": "azure-a100",
-                    "code": "azure-a100",
-                    "vendor": "azure",
-                    "region": "westus2",
-                    "device_type": "A100",
-                },
+                "id": 1,
+                "code": "azure-a100",
+                "vendor": "azure",
+                "region": "westus2",
+                "device_type": "A100",
             },
             "quota": 8,
         },
-    ]
-
-    # List VMs filtered by region
-    assert project_vm_quota_client.list_vm_quotas(region="us-east-1") == [
-        {
-            "vm_config_type": {
-                "vm_instance_type": {
-                    "id": 1,
-                    "name": "aws-a100",
-                    "code": "aws-a100",
-                    "vendor": "aws",
-                    "region": "us-east-1",
-                    "device_type": "A100",
-                },
-            },
-            "quota": 16,
-        }
     ]
 
     # List VMs filtered by device type
     assert project_vm_quota_client.list_vm_quotas(device_type="A100") == [
         {
             "vm_config_type": {
-                "vm_instance_type": {
-                    "id": 0,
-                    "name": "azure-a100",
-                    "code": "azure-a100",
-                    "vendor": "azure",
-                    "region": "westus2",
-                    "device_type": "A100",
-                },
+                "id": 1,
+                "code": "azure-a100",
+                "vendor": "azure",
+                "region": "westus2",
+                "device_type": "A100",
             },
             "quota": 8,
         },
         {
             "vm_config_type": {
-                "vm_instance_type": {
-                    "id": 1,
-                    "name": "aws-a100",
-                    "code": "aws-a100",
-                    "vendor": "aws",
-                    "region": "us-east-1",
-                    "device_type": "A100",
-                },
+                "id": 2,
+                "code": "aws-a100",
+                "vendor": "aws",
+                "region": "us-east-1",
+                "device_type": "A100",
             },
             "quota": 16,
         },
@@ -452,18 +411,15 @@ def test_project_vm_quota_client_list_vm_quotas(
 
     # List VMs filtered by vendor, region and device type
     assert project_vm_quota_client.list_vm_quotas(
-        vendor="azure", region="westus2", device_type="A100"
+        vendor="azure", device_type="A100"
     ) == [
         {
             "vm_config_type": {
-                "vm_instance_type": {
-                    "id": 0,
-                    "name": "azure-a100",
-                    "code": "azure-a100",
-                    "vendor": "azure",
-                    "region": "westus2",
-                    "device_type": "A100",
-                },
+                "id": 1,
+                "code": "azure-a100",
+                "vendor": "azure",
+                "region": "westus2",
+                "device_type": "A100",
             },
             "quota": 8,
         }
@@ -518,13 +474,13 @@ def test_project_vm_config_client_get_active_vm_count(
     requests_mock.get(
         url_template.render(**project_vm_config_client.url_kwargs, vm_config_id=0),
         json=[
-            {"lock_type": "active", "vm_config_id": 0, "job_id": 0},
-            {"lock_type": "active", "vm_config_id": 0, "job_id": 0},
-            {"lock_type": "active", "vm_config_id": 0, "job_id": 1},
-            {"lock_type": "active", "vm_config_id": 0, "job_id": 2},
+            {"status": "active", "vm_config_id": 0, "job_id": 0},
+            {"status": "active", "vm_config_id": 0, "job_id": 0},
+            {"status": "active", "vm_config_id": 0, "job_id": 1},
+            {"status": "active", "vm_config_id": 0, "job_id": 2},
         ],
     )
-    assert project_vm_config_client.get_active_vm_count(0) == 4
+    assert project_vm_config_client.get_vm_count_in_use(0) == 4
 
     # Failed due to HTTP error
     requests_mock.get(
@@ -532,4 +488,4 @@ def test_project_vm_config_client_get_active_vm_count(
         status_code=404,
     )
     with pytest.raises(typer.Exit):
-        project_vm_config_client.get_active_vm_count(0)
+        project_vm_config_client.get_vm_count_in_use(0)

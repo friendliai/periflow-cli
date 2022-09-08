@@ -52,9 +52,10 @@ class JobType(str, Enum):
     CUSTOM = "custom"
 
 
-class LockType(str, Enum):
+class LockStatus(str, Enum):
     ACTIVE = "active"
     STALE = "stale"
+    DELETING = "deleting"
 
 
 class LogType(str, Enum):

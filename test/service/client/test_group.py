@@ -113,12 +113,13 @@ def test_group_client_accept_invite(
     requests_mock: requests_mock.Mocker, group_client: GroupClientService
 ):
     token = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+    key = "123456"
     # Success
     requests_mock.post(
         group_client.url_template.render("invite/confirm"), status_code=204
     )
     try:
-        group_client.accept_invite(token)
+        group_client.accept_invite(token, key)
     except typer.Exit:
         raise pytest.fail("Test accept invite failed.")
 
@@ -127,7 +128,7 @@ def test_group_client_accept_invite(
         group_client.url_template.render("invite/confirm"), status_code=404
     )
     with pytest.raises(typer.Exit):
-        group_client.accept_invite(token)
+        group_client.accept_invite(token, key)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
@@ -142,14 +143,14 @@ def test_group_vm_config_client_get_id_by_name(
                 "id": 0,
                 "name": "azure-v100",
                 "code": "azure-v100",
-                "vm_instance_type": {
-                    "id": 0,
-                    "name": "azure-v100",
-                    "code": "azure-v100",
-                    "vendor": "azure",
-                    "region": "eastus",
-                    "device_type": "V100",
-                },
+                "vendor": "azure",
+                "region": "eastus",
+                "device_type": "V100",
+                "num_devices_per_vm": 8,
+                "per_gpu_memory": 32.,
+                "vcpu": 40,
+                "cpu_memory": 512,
+                "is_spot": False,
             },
         },
         {
@@ -158,14 +159,14 @@ def test_group_vm_config_client_get_id_by_name(
                 "id": 1,
                 "name": "aws-a100",
                 "code": "aws-a100",
-                "vm_instance_type": {
-                    "id": 1,
-                    "name": "aws-a100",
-                    "code": "aws-a100",
-                    "vendor": "aws",
-                    "region": "us-east-1",
-                    "device_type": "A100",
-                },
+                "vendor": "aws",
+                "region": "us-east-1",
+                "device_type": "A100",
+                "num_devices_per_vm": 8,
+                "per_gpu_memory": 40.,
+                "vcpu": 96,
+                "cpu_memory": 1024,
+                "is_spot": False,
             },
         },
     ]
@@ -199,8 +200,8 @@ def test_group_vm_config_client_get_vm_config_id_map(
     requests_mock.get(
         group_vm_config_client.url_template.render(**group_vm_config_client.url_kwargs),
         json=[
-            {"id": 0, "vm_config_type": {"vm_instance_type": {"code": "azure-v100"}}},
-            {"id": 1, "vm_config_type": {"vm_instance_type": {"code": "aws-v100"}}},
+            {"id": 0, "vm_config_type": {"code": "azure-v100"}},
+            {"id": 1, "vm_config_type": {"code": "aws-v100"}},
         ],
     )
     assert group_vm_config_client.get_vm_config_id_map() == {
