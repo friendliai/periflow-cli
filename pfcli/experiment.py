@@ -15,7 +15,6 @@ from pfcli.service.client import (
     build_client,
 )
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.job import job_table
 from pfcli.utils import datetime_to_pretty_str, timedelta_to_pretty_str
 
 app = typer.Typer(
@@ -25,6 +24,43 @@ app = typer.Typer(
 )
 table_formatter = TableFormatter(name="Experiments", fields=["name"], headers=["Name"])
 panel_formatter = PanelFormatter(name="Overview", fields=["name"], headers=["Name"])
+exp_job_table = TableFormatter(
+    name="Jobs",
+    fields=[
+        "id",
+        "project",
+        "name",
+        "status",
+        "vm_config.vm_config_type.code",
+        "vm_config.vm_config_type.device_type",
+        "num_desired_devices",
+        "data_name",
+        "started_at",
+        "duration",
+    ],
+    headers=[
+        "ID",
+        "Project",
+        "Name",
+        "Status",
+        "VM",
+        "Device",
+        "Device Cnt",
+        "Data",
+        "Start",
+        "Duration",
+    ],
+)
+exp_job_table.apply_styling("ID", style="bold")
+exp_job_table.add_substitution_rule("waiting", "[bold]waiting")
+exp_job_table.add_substitution_rule("enqueued", "[bold cyan]enqueued")
+exp_job_table.add_substitution_rule("running", "[bold blue]running")
+exp_job_table.add_substitution_rule("success", "[bold green]success")
+exp_job_table.add_substitution_rule("failed", "[bold red]failed")
+exp_job_table.add_substitution_rule("terminated", "[bold yellow]terminated")
+exp_job_table.add_substitution_rule("terminating", "[bold magenta]terminating")
+exp_job_table.add_substitution_rule("cancelling", "[bold magenta]cancelling")
+exp_job_table.add_substitution_rule("None", "-")
 
 
 @app.command()
@@ -99,7 +135,7 @@ def view(
     else:
         target_job_list = jobs
 
-    job_table.render(target_job_list)
+    exp_job_table.render(target_job_list)
 
 
 @app.command()
