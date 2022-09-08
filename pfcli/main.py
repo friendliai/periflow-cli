@@ -22,7 +22,12 @@ from pfcli import (
 )
 from pfcli.service import ServiceType
 from pfcli.service.auth import get_token, TokenType, update_token
-from pfcli.service.client import UserClientService, UserSignUpService, build_client
+from pfcli.service.client import (
+    UserClientService, 
+    UserSignUpService, 
+    UserMFAService,
+    build_client
+)
 from pfcli.service.formatter import PanelFormatter
 from pfcli.utils import get_uri, secho_error_and_exit
 
@@ -90,7 +95,7 @@ def login(
     resp = r.json()
     if "code" in resp and resp["code"] == "mfa_required":
         mfa_token = resp["mfa_token"]
-       client: UserMFAService = build_client(ServiceType.MFA)
+        client: UserMFAService = build_client(ServiceType.MFA)
         # TODO: MFA type currently defaults to totp, need changes when new options are added
         client.initiate_mfa(mfa_type="totp", mfa_token=mfa_token)
         update_token(token_type=TokenType.MFA, token=mfa_token)
