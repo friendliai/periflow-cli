@@ -11,7 +11,12 @@ import typer
 
 from pfcli.service import GroupRole, ProjectRole, ServiceType
 from pfcli.service.client import build_client
-from pfcli.service.client.user import UserClientService, UserGroupClientService, UserSignUpService
+from pfcli.service.client.user import (
+    UserClientService, 
+    UserGroupClientService,
+    UserMFAService,
+    UserSignUpService
+)
 
 
 @pytest.fixture
@@ -27,6 +32,29 @@ def user_group_client(user_project_group_context) -> UserGroupClientService:
 @pytest.fixture
 def user_sign_up_client(user_project_group_context) -> UserSignUpService:
     return build_client(ServiceType.SIGNUP)
+
+
+@pytest.fixture
+def user_mfa() -> UserMFAService:
+    return build_client(ServiceType.MFA)
+
+
+def test_user_initiate_mfa(
+    requests_mock: requests_mock.Mocker, user_mfa: UserMFAService
+):
+    # Success
+    url_template = deepcopy(user_mfa.url_template)
+    url_template.attach_pattern("challenge/$mfa_type")
+    requests_mock.post(url_template.render(mfa_type="totp"), status_code=204)
+    try:
+        user_mfa.initiate_mfa(mfa_type="totp", mfa_token="MFA_TOKEN")
+    except typer.Exit:
+        raise pytest.fail("Test initiate MFA failed.")
+
+    # Failed
+    requests_mock.post(url_template.render(mfa_type="totp"), status_code=400)
+    with pytest.raises(typer.Exit):
+        user_mfa.initiate_mfa(mfa_type="totp", mfa_token="MFA_TOKEN")
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")

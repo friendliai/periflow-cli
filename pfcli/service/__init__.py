@@ -5,6 +5,7 @@ from typing import Dict
 
 
 class ServiceType(str, Enum):
+    MFA = "MFA"
     SIGNUP = "SIGNUP"
     USER = "USER"
     USER_GROUP = "USER_GROUP"
