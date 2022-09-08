@@ -71,6 +71,7 @@ job_table = TableFormatter(
         "data_name",
         "started_at",
         "duration",
+        "progress",
     ],
     headers=[
         "ID",
@@ -84,6 +85,7 @@ job_table = TableFormatter(
         "Data",
         "Start",
         "Duration",
+        "Progress",
     ],
 )
 job_table.apply_styling("ID", style="bold")
@@ -108,6 +110,7 @@ job_panel = PanelFormatter(
         "data_name",
         "started_at",
         "duration",
+        "progress",
     ],
     headers=[
         "ID",
@@ -119,6 +122,7 @@ job_panel = PanelFormatter(
         "Data",
         "Start",
         "Duration",
+        "Progress",
     ],
 )
 job_panel.add_substitution_rule("waiting", "[bold]waiting")
@@ -347,6 +351,8 @@ def list(
             job["data_store"]["name"] if job["data_store"] is not None else None
         )
         job["experiment"] = job["experiment"]["name"]
+        if job["progress"] is not None:
+            job["progress"] = "{:.2f}%".format(job["progress"])
 
     if tail is not None or head is not None:
         target_job_list = []
@@ -426,6 +432,9 @@ def view(
     job["data_name"] = (
         job["data_store"]["name"] if job["data_store"] is not None else None
     )
+
+    if job["progress"] is not None:
+        job["progress"] = "{:.2f}%".format(job["progress"])
 
     checkpoint_list = []
     for checkpoint in reversed(job_checkpoints):
