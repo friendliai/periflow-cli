@@ -111,7 +111,7 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
                     f"Workspace directory size ({decimal(workspace_size)}) should be 0 < size <= 100MB."
                 )
             tree_formatter = TreeFormatter(
-                name="Workspace Files",
+                name="Job Workspace",
                 root=os.path.join(config["job_setting"]["workspace"]["mount_path"], workspace_dir.name)
             )
             typer.secho(
