@@ -103,6 +103,7 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
     def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
         job_request = safe_request(self.post, err_prefix="Failed to run job.")
         if workspace_dir is not None:
+            typer.secho("Preparing workspace directory...", fg=typer.colors.MAGENTA)
             workspace_dir = workspace_dir.resolve()
             workspace_files = get_workspace_files(workspace_dir)
             workspace_size = sum(f.stat().st_size for f in workspace_files)
@@ -115,8 +116,8 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
                 root=os.path.join(config["job_setting"]["workspace"]["mount_path"], workspace_dir.name)
             )
             typer.secho(
-                "Workspace is uploaded and will be mounted as the following structure.",
-                fg=typer.colors.BLUE
+                "Workspace is prepared and will be mounted as the following structure.",
+                fg=typer.colors.MAGENTA
             )
             tree_formatter.render(
                 [

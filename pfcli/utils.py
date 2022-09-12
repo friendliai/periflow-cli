@@ -131,7 +131,6 @@ def datetime_to_simple_string(dt: datetime) -> str:
 
 @contextmanager
 def zip_dir(base_path: Path, target_files: List[Path], zip_path: Path):
-    typer.secho("Preparing workspace directory...", fg=typer.colors.MAGENTA)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zip_file:
         for file in target_files:
             zip_file.write(file, file.relative_to(base_path.parent))
