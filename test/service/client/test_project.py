@@ -178,7 +178,13 @@ def test_project_job_client_run_job(
         with open(ws_dir / "large_file", "wb") as f:
             f.seek(500 * 1024)  # 500KB
             f.write(b"0")
-        assert project_job_client.run_job({"k": "v"}, ws_dir) == {"id": 1}
+        assert project_job_client.run_job(
+            {
+                "job_setting": {
+                    "workspace": {
+                        "mount_path": "/workspace"
+                }
+            }, "k": "v"}, ws_dir) == {"id": 1}
 
     # Failed due to large workspace dir exceeding the size limit
     with TemporaryDirectory() as dir:

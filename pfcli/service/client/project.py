@@ -4,12 +4,14 @@
 
 
 import json
+import os
 import uuid
 from pathlib import Path
 from string import Template
 from typing import List, Optional
 from requests import HTTPError
 
+import typer
 from rich.filesize import decimal
 
 from pfcli.service import (
@@ -26,6 +28,7 @@ from pfcli.service.client.base import (
     T,
     safe_request,
 )
+from pfcli.service.formatter import TreeFormatter
 from pfcli.utils import (
     get_workspace_files,
     paginated_get,
@@ -107,6 +110,22 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
                 secho_error_and_exit(
                     f"Workspace directory size ({decimal(workspace_size)}) should be 0 < size <= 100MB."
                 )
+            tree_formatter = TreeFormatter(
+                name="Workspace Files",
+                root=os.path.join(config["job_setting"]["workspace"]["mount_path"], workspace_dir.name)
+            )
+            typer.secho(
+                "Workspace is uploaded and will be mounted as the following structure.",
+                fg=typer.colors.BLUE
+            )
+            tree_formatter.render(
+                [
+                    {
+                        'path': f.relative_to(workspace_dir),
+                        'size': f.stat().st_size
+                    } for f in workspace_files
+                ]
+            )
             workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
             with zip_dir(workspace_dir, workspace_files, workspace_zip) as zip_file:
                 files = {"workspace_zip": ("workspace.zip", zip_file)}
