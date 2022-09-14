@@ -4,12 +4,14 @@
 
 
 import json
+import os
 import uuid
 from pathlib import Path
 from string import Template
 from typing import List, Optional
 from requests import HTTPError
 
+import typer
 from rich.filesize import decimal
 
 from pfcli.service import (
@@ -26,6 +28,7 @@ from pfcli.service.client.base import (
     T,
     safe_request,
 )
+from pfcli.service.formatter import TreeFormatter
 from pfcli.utils import (
     get_workspace_files,
     paginated_get,
@@ -100,6 +103,7 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
     def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
         job_request = safe_request(self.post, err_prefix="Failed to run job.")
         if workspace_dir is not None:
+            typer.secho("Preparing workspace directory...", fg=typer.colors.MAGENTA)
             workspace_dir = workspace_dir.resolve()
             workspace_files = get_workspace_files(workspace_dir)
             workspace_size = sum(f.stat().st_size for f in workspace_files)
@@ -107,6 +111,22 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
                 secho_error_and_exit(
                     f"Workspace directory size ({decimal(workspace_size)}) should be 0 < size <= 100MB."
                 )
+            tree_formatter = TreeFormatter(
+                name="Job Workspace",
+                root=os.path.join(config["job_setting"]["workspace"]["mount_path"], workspace_dir.name)
+            )
+            typer.secho(
+                "Workspace is prepared and will be mounted as the following structure.",
+                fg=typer.colors.MAGENTA
+            )
+            tree_formatter.render(
+                [
+                    {
+                        'path': f.relative_to(workspace_dir),
+                        'size': f.stat().st_size
+                    } for f in workspace_files
+                ]
+            )
             workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
             with zip_dir(workspace_dir, workspace_files, workspace_zip) as zip_file:
                 files = {"workspace_zip": ("workspace.zip", zip_file)}

@@ -3,6 +3,7 @@
 """PeriFlow CLI Output Formatter"""
 
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from typing import (
@@ -212,8 +213,9 @@ def find_and_insert(parent: Tree, edges: List[Edge]) -> None:
 class TreeFormatter(Formatter):
     """Tree formatter for visualizing file tree."""
 
-    def __post_init__(self):
-        super().__post_init__()
+    def __init__(self, name: str, root: str = ""):
+        super().__init__(name=name)
+        self._root = "/" + root.lstrip("/")
 
     def render(self, data: List[dict]) -> None:
         self._build_renderable(data)
@@ -225,7 +227,10 @@ class TreeFormatter(Formatter):
 
     def _build_tree(self, data: List[dict]) -> Tree:
         root = Tree("/")
-        paths = [f"/{d['path'].lstrip()}" for d in data]
+        paths = [
+            f"{d['path']}" if os.path.isabs(d['path']) \
+            else f"{os.path.join(self._root, d['path'])}" for d in data
+        ]
         sizes = [d["size"] for d in data]
         for path, size in zip(paths, sizes):
             edges = []
