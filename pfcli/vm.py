@@ -36,9 +36,17 @@ formatter = TableFormatter(
         "quota",
         "vm_config_type.is_spot",
     ],
-    headers=["VM", "Cloud", "GPU", "GPU COUNT",
-             "Per GPU Memory [GiB]", "vCPU", "CPU Memory [GiB]",
-             "Quota (Available / Total)", "Spot"],
+    headers=[
+        "VM",
+        "Cloud",
+        "GPU",
+        "GPU COUNT",
+        "Per GPU Memory [GiB]",
+        "vCPU",
+        "CPU Memory [GiB]",
+        "Quota (Available / Total)",
+        "Spot",
+    ],
 )
 
 
@@ -62,9 +70,7 @@ def list(
         ServiceType.GROUP_VM_CONFIG
     )
 
-    vm_dict_list = vm_quota_client.list_vm_quotas(
-        vendor=cloud, device_type=device_type
-    )
+    vm_dict_list = vm_quota_client.list_vm_quotas(vendor=cloud, device_type=device_type)
     vm_id_map = group_vm_config_client.get_vm_config_id_map()
     available_vm_dict_list = []
     for vm_dict in vm_dict_list:
@@ -81,7 +87,7 @@ def list(
         available_vm_dict_list.append(vm_dict)
 
     available_vm_dict_list = sorted(
-        available_vm_dict_list, key=lambda d: d['vm_config_type']['code']
+        available_vm_dict_list, key=lambda d: d["vm_config_type"]["code"]
     )
 
     formatter.render(available_vm_dict_list)

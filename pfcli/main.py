@@ -21,12 +21,12 @@ from pfcli import (
     vm,
 )
 from pfcli.service import ServiceType
-from pfcli.service.auth import get_token, TokenType, update_token
+from pfcli.service.auth import clear_tokens, get_token, TokenType, update_token
 from pfcli.service.client import (
     UserClientService,
     UserMFAService,
     UserSignUpService,
-    build_client
+    build_client,
 )
 from pfcli.service.formatter import PanelFormatter
 from pfcli.utils import get_uri, secho_error_and_exit
@@ -102,7 +102,13 @@ def login(
         typer.run(_mfa_verify)
     else:
         _handle_login_response(r, False)
-        
+
+
+@app.command(help="Sign out PeriFlow")
+def logout():
+    clear_tokens()
+    typer.secho("Successfully signed out.", fg=typer.colors.BLUE)
+
 
 @app.command(help="Change your password")
 def passwd(
@@ -129,7 +135,7 @@ def passwd(
 def _verify(
     _,
     token: str = typer.Option(..., prompt="Enter verification code"),
-    key: str = typer.Option(..., prompt="Enter verification key")
+    key: str = typer.Option(..., prompt="Enter verification key"),
 ):
     client: UserSignUpService = build_client(ServiceType.SIGNUP)
     client.verify(token, key)
@@ -143,9 +149,7 @@ def _mfa_verify(_, code: str = typer.Option(..., prompt="Enter MFA Code")):
     # TODO: MFA type currently defaults to totp, need changes when new options are added
     mfa_type = "totp"
     username = f"mfa://{mfa_type}/{mfa_token}"
-    r = requests.post(
-        get_uri("token/"), data={"username": username, "password": code}
-    )
+    r = requests.post(get_uri("token/"), data={"username": username, "password": code})
     _handle_login_response(r, True)
 
 
@@ -167,4 +171,6 @@ def _handle_login_response(r: Response, mfa: bool):
         if mfa:
             secho_error_and_exit("Login failed... Invalid MFA Code.")
         else:
-            secho_error_and_exit("Login failed... Please check your username and password.")
+            secho_error_and_exit(
+                "Login failed... Please check your username and password."
+            )

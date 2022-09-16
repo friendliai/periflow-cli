@@ -39,11 +39,7 @@ class GroupClientService(ClientService):
 
     def accept_invite(self, token: str, key: str) -> None:
         safe_request(self.post, err_prefix="Invalid code... Please Try again.")(
-            path="invite/confirm",
-            json={
-                "email_token": token,
-                "key": key
-            }
+            path="invite/confirm", json={"email_token": token, "key": key}
         )
 
     def get_user(self, pf_group_id: uuid.UUID, username: str) -> dict:
@@ -93,9 +89,7 @@ class GroupVMConfigClientService(ClientService, GroupRequestMixin):
     def get_vm_config_id_map(self) -> Dict[str, T]:
         id_map = {}
         for vm_config in self.list_vm_configs():
-            id_map[vm_config["vm_config_type"]["code"]] = vm_config[
-                "id"
-            ]
+            id_map[vm_config["vm_config_type"]["code"]] = vm_config["id"]
         return id_map
 
     def get_id_by_name(self, name: str) -> Optional[T]:

@@ -22,6 +22,13 @@ class TokenType(str, Enum):
     MFA = "MFA"
 
 
+token_path_map = {
+    TokenType.ACCESS: access_token_path,
+    TokenType.REFRESH: refresh_token_path,
+    TokenType.MFA: mfa_token_path,
+}
+
+
 def get_auth_header() -> dict:
     return {"Authorization": f"Bearer {get_token(TokenType.ACCESS)}"}
 
@@ -35,18 +42,24 @@ def get_token(token_type: TokenType) -> Union[str, None]:
         if token_type == TokenType.MFA:
             return mfa_token_path.read_text()
         else:
-            secho_error_and_exit("token_type should be one of 'access' or 'refresh' or 'mfa'.")
+            secho_error_and_exit(
+                "token_type should be one of 'access' or 'refresh' or 'mfa'."
+            )
     except FileNotFoundError:
         return None
 
 
 def update_token(token_type: TokenType, token: str) -> None:
-    if token_type == TokenType.ACCESS:
-        access_token_path.write_text(token)
-    elif token_type == TokenType.REFRESH:
-        refresh_token_path.write_text(token)
-    elif token_type == TokenType.MFA:
-        mfa_token_path.write_text(token)
+    token_path_map[token_type].write_text(token)
+
+
+def delete_token(token_type: TokenType) -> None:
+    token_path_map[token_type].unlink(missing_ok=True)
+
+
+def clear_tokens() -> None:
+    for e in TokenType:
+        delete_token(e)
 
 
 def auto_token_refresh(
