@@ -41,9 +41,7 @@ table_formatter = TableFormatter(
         "name",
         "model_category",
         "forms[0].vendor",
-        "forms[0].storage_name",
         "iteration",
-        "forms[0].form_category",
         "created_at",
     ],
     headers=[
@@ -51,9 +49,7 @@ table_formatter = TableFormatter(
         "Name",
         "Category",
         "Cloud",
-        "Storage Name",
         "Iteration",
-        "Format",
         "Created At",
     ],
 )
