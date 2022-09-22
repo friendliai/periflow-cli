@@ -113,18 +113,18 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
                 )
             tree_formatter = TreeFormatter(
                 name="Job Workspace",
-                root=os.path.join(config["job_setting"]["workspace"]["mount_path"], workspace_dir.name)
+                root=os.path.join(
+                    config["job_setting"]["workspace"]["mount_path"], workspace_dir.name
+                ),
             )
             typer.secho(
                 "Workspace is prepared and will be mounted as the following structure.",
-                fg=typer.colors.MAGENTA
+                fg=typer.colors.MAGENTA,
             )
             tree_formatter.render(
                 [
-                    {
-                        'path': f.relative_to(workspace_dir),
-                        'size': f.stat().st_size
-                    } for f in workspace_files
+                    {"path": f.relative_to(workspace_dir), "size": f.stat().st_size}
+                    for f in workspace_files
                 ]
             )
             workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
@@ -197,16 +197,14 @@ class ProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
         if vendor is not None:
             vm_dict_list = list(
                 filter(
-                    lambda info: info["vm_config_type"]["vendor"]
-                    == vendor,
+                    lambda info: info["vm_config_type"]["vendor"] == vendor,
                     vm_dict_list,
                 )
             )
         if device_type is not None:
             vm_dict_list = list(
                 filter(
-                    lambda info: info["vm_config_type"]["device_type"]
-                    == device_type,
+                    lambda info: info["vm_config_type"]["device_type"] == device_type,
                     vm_dict_list,
                 )
             )
@@ -246,7 +244,9 @@ class ProjectVMConfigClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_vm_locks(self, vm_config_id: T, lock_status_list: List[LockStatus]) -> List[dict]:
+    def list_vm_locks(
+        self, vm_config_id: T, lock_status_list: List[LockStatus]
+    ) -> List[dict]:
         status_param = ",".join(lock_status_list)
         response = safe_request(self.list, err_prefix="Failed to inspect locked VMs.")(
             path=f"{vm_config_id}/vm_lock/", params={"status": status_param}
@@ -254,5 +254,7 @@ class ProjectVMConfigClientService(ClientService, ProjectRequestMixin):
         return response.json()
 
     def get_vm_count_in_use(self, vm_config_id: T) -> int:
-        vm_locks = self.list_vm_locks(vm_config_id, [LockStatus.ACTIVE, LockStatus.DELETING])
+        vm_locks = self.list_vm_locks(
+            vm_config_id, [LockStatus.ACTIVE, LockStatus.DELETING]
+        )
         return len(vm_locks)
