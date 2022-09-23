@@ -33,6 +33,7 @@ class ServiceType(str, Enum):
     JOB_WS = "JOB_WS"
     SERVE = "SERVE"
     BILLING_SUMMARY = "BILLING_SUMMARY"
+    METRIC = "METRIC"
 
 
 class GroupRole(str, Enum):

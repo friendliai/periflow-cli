@@ -25,13 +25,14 @@ from pfcli.service import CloudType, StorageType, storage_region_map, cloud_regi
 
 # Variables
 periflow_directory = Path.home() / ".periflow"
-periflow_api_server = "https://api-staging.friendli.ai/api/"
-periflow_ws_server = "wss://api-ws-staging.friendli.ai/ws/"
-periflow_discuss_url = "https://discuss-staging.friendli.ai/"
-periflow_mr_server = "https://pfmodelregistry-staging.friendli.ai/"
+periflow_api_server = "https://api-dev.friendli.ai/api/"
+periflow_ws_server = "wss://api-ws-dev.friendli.ai/ws/"
+periflow_discuss_url = "https://discuss-dev.friendli.ai/"
+periflow_mr_server = "https://pfmodelregistry-dev.friendli.ai/"
 periflow_serve_server = "http://0.0.0.0:8000/"
-periflow_auth_server = "https://pfauth-staging.friendli.ai/"
-periflow_meter_server = "https://pfmeter-staging.friendli.ai/"
+periflow_auth_server = "https://pfauth-dev.friendli.ai/"
+periflow_meter_server = "https://pfmeter-dev.friendli.ai/"
+periflow_observatory_server = "https://pfo-dev.friendli.ai/"
 
 
 def get_periflow_directory() -> Path:
@@ -110,6 +111,10 @@ def get_mr_uri(path: str) -> str:
 
 def get_meter_uri(path: str) -> str:
     return urljoin(periflow_meter_server, path)
+
+
+def get_observatory_uri(path: str) -> str:
+    return urljoin(periflow_observatory_server, path)
 
 
 def secho_error_and_exit(text: str, color: str = typer.colors.RED):
