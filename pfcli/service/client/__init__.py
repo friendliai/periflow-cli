@@ -7,7 +7,7 @@ from pfcli.service import ServiceType
 from pfcli.service.client.base import ClientService
 from pfcli.service.client.billing import BillingClientService
 from pfcli.service.client.checkpoint import CheckpointClientService
-from pfcli.service.client.metric import MetricClientService
+from pfcli.service.client.metrics import MetricsClientService
 from pfcli.service.client.credential import (
     CredentialClientService,
     CredentialTypeClientService,
@@ -140,8 +140,8 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         BillingClientService,
         Template(get_meter_uri("training/instances/price/")),
     ),
-    ServiceType.METRIC: (
-        MetricClientService,
+    ServiceType.METRICS: (
+        MetricsClientService,
         Template(get_observatory_uri("graphql")),
     ),
 }

@@ -11,7 +11,7 @@ from dateutil.parser import parse
 from datetime import datetime
 
 import tabulate
-from pfcli.service.client.metric import MetricClientService
+from pfcli.service.client.metrics import MetricsClientService
 import typer
 import yaml
 import ruamel.yaml
@@ -55,14 +55,14 @@ template_app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,
 )
-metric_app = typer.Typer(
+metrics_app = typer.Typer(
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,
 )
 
 app.add_typer(template_app, name="template", help="Manage job templates.")
-app.add_typer(metric_app, name="metric", help="Show job metrics.")
+app.add_typer(metrics_app, name="metrics", help="Show job metrics.")
 
 job_table = TableFormatter(
     name="Jobs",
@@ -151,12 +151,12 @@ artifact_table = TableFormatter(
     fields=["id", "name", "path", "mtime", "mime_type"],
     headers=["ID", "Name", "Path", "Mtime", "Media Type"],
 )
-metric_list_table = TableFormatter(
-    name="Metric List",
+metrics_list_table = TableFormatter(
+    name="Metrics List",
     fields=["name"],
     headers=["Name"],
 )
-metric_table = TableFormatter(
+metrics_table = TableFormatter(
     name="Metrics",
     fields=["name", "created", "value"],
     headers=["Name", "Created", "Value"],
@@ -621,23 +621,23 @@ def log(
             secho_error_and_exit(f"Keyboard Interrupt...", color=typer.colors.MAGENTA)
 
 
-@metric_app.command("list")
-def metric_list(
+@metrics_app.command("list")
+def metrics_list(
     job_id: int = typer.Argument(..., help="ID of job"),
 ):
     """Show all available metric names"""
-    client: MetricClientService = build_client(ServiceType.METRIC)
+    client: MetricClientService = build_client(ServiceType.METRICS)
     results = client.list_metrics(job_id=job_id)
-    metric_list_table.render(results)
+    metrics_list_table.render(results)
 
 
-@metric_app.command("show")
-def show_metric(
+@metrics_app.command("show")
+def show_metrics(
     job_id: int = typer.Argument(..., help="ID of job"),
-    metric_name: List[str] = typer.Option(..., help="metric name"),
+    name: List[str] = typer.Option(..., help="metrics name"),
 ):
     """Create a job configuration YAML file"""
-    client: MetricClientService = build_client(ServiceType.METRIC)
-    for metric in metric_name:
-        results = client.get_metric_values(job_id, metric)
-        metric_table.render(results)
+    client: MetricClientService = build_client(ServiceType.METRICS)
+    for metrics in name:
+        results = client.get_metric_values(job_id, metrics)
+        metrics_table.render(results)

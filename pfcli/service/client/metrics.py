@@ -1,6 +1,6 @@
 # Copyright (C) 2022 FriendliAI
 
-"""PeriFlow MetricClient Service"""
+"""PeriFlow MetricsClient Service"""
 
 import json
 from typing import List
@@ -8,14 +8,14 @@ from typing import List
 from pfcli.service.client.base import ClientService, safe_request
 
 
-class MetricClientService(ClientService):
-    """PeriFlow MetricClientService class"""
+class MetricsClientService(ClientService):
+    """PeriFlow MetricsClientService class"""
 
     def list_metrics(
         self,
         job_id: int,
     ) -> List[str]:
-        """Show available metric names."""
+        """Show available metrics."""
         fields = f'task: "{job_id}", telemetry: null, start: null, until: null'
         query = "{ sampleQuery(fields: {" + fields + "}) {name} }"
         resp = safe_request(
@@ -28,14 +28,14 @@ class MetricClientService(ClientService):
         names = set(sample.get("name", None) for sample in data)
         return [{"name": name} for name in names if name]
 
-    def get_metric_values(
+    def get_metrics_values(
         self,
         job_id: int,
-        metric_name: str,
+        name: str,
         limit: int = 10,
     ) -> dict[str, str]:
         fields = (
-            f'task: "{job_id}", telemetry: "{metric_name}", limit: {limit}, goal: LAST'
+            f'task: "{job_id}", telemetry: "{name}", limit: {limit}, goal: LAST'
         )
         query = "{ representativeSamples(fields: {" + fields + "}) {created, value} }"
         resp = safe_request(
@@ -51,5 +51,5 @@ class MetricClientService(ClientService):
             created = sample.get("created", None)
             value_json = sample.get("value", None)
             value = json.loads(value_json).get("data", None)
-            metrics.append({"name": metric_name, "created": created, "value": value})
+            metrics.append({"name": name, "created": created, "value": value})
         return metrics
