@@ -625,8 +625,8 @@ def log(
 def metrics_list(
     job_id: int = typer.Argument(..., help="ID of job"),
 ):
-    """Show all available metric names"""
-    client: MetricClientService = build_client(ServiceType.METRICS)
+    """Show available metrics"""
+    client: MetricsClientService = build_client(ServiceType.METRICS)
     results = client.list_metrics(job_id=job_id)
     metrics_list_table.render(results)
 
@@ -636,8 +636,8 @@ def show_metrics(
     job_id: int = typer.Argument(..., help="ID of job"),
     name: List[str] = typer.Option(..., help="metrics name"),
 ):
-    """Create a job configuration YAML file"""
-    client: MetricClientService = build_client(ServiceType.METRICS)
+    """Show metrics values"""
+    client: MetricsClientService = build_client(ServiceType.METRICS)
     for metrics in name:
-        results = client.get_metric_values(job_id, metrics)
+        results = client.get_metrics_values(job_id, metrics)
         metrics_table.render(results)
