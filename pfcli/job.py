@@ -4,43 +4,43 @@
 
 import asyncio
 import re
-from pathlib import Path
-from typing import Dict, Generator, Optional, List, Tuple
-from dateutil import parser
-from dateutil.parser import parse
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, Generator, List, Optional, Tuple
 
+import ruamel.yaml
 import tabulate
-from pfcli.service.client.metrics import MetricsClientService
 import typer
 import yaml
-import ruamel.yaml
 from click import Choice
+from dateutil import parser
+from dateutil.parser import parse
 
 from pfcli.service import JobType, ServiceType, storage_type_map_inv
 from pfcli.service.client import (
-    ProjectDataClientService,
-    ProjectExperimentClientService,
-    ProjectJobClientService,
     GroupVMConfigClientService,
     JobArtifactClientService,
     JobCheckpointClientService,
     JobClientService,
     JobTemplateClientService,
     JobWebSocketClientService,
+    ProjectDataClientService,
+    ProjectExperimentClientService,
+    ProjectJobClientService,
     build_client,
 )
+from pfcli.service.client.metrics import MetricsClientService
 from pfcli.service.client.project import ProjectClientService
 from pfcli.service.config import build_job_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import (
+    datetime_to_pretty_str,
+    datetime_to_simple_string,
     get_default_editor,
     open_editor,
     secho_error_and_exit,
-    datetime_to_pretty_str,
     timedelta_to_pretty_str,
     utc_to_local,
-    datetime_to_simple_string,
 )
 
 tabulate.PRESERVE_WHITESPACE = True
@@ -638,6 +638,6 @@ def show_metrics(
 ):
     """Show metrics values"""
     client: MetricsClientService = build_client(ServiceType.METRICS)
-    for metrics in name:
-        results = client.get_metrics_values(job_id, metrics)
-        metrics_table.render(results)
+    for metric_name in name:
+        metrics = client.get_metrics_values(job_id, metric_name)
+        metrics_table.render(metrics)

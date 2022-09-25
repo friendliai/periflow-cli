@@ -3,9 +3,11 @@
 """PeriFlow MetricsClient Service"""
 
 import json
-from typing import List
+from typing import List, TypeVar
 
 from pfcli.service.client.base import ClientService, safe_request
+
+MetricsType = TypeVar("MetricsType")
 
 
 class MetricsClientService(ClientService):
@@ -14,7 +16,7 @@ class MetricsClientService(ClientService):
     def list_metrics(
         self,
         job_id: int,
-    ) -> List[str]:
+    ) -> List[dict[str, str]]:
         """Show available metrics."""
         fields = f'task: "{job_id}", telemetry: null, start: null, until: null'
         query = "{ sampleQuery(fields: {" + fields + "}) {name} }"
@@ -33,10 +35,8 @@ class MetricsClientService(ClientService):
         job_id: int,
         name: str,
         limit: int = 10,
-    ) -> dict[str, str]:
-        fields = (
-            f'task: "{job_id}", telemetry: "{name}", limit: {limit}, goal: LAST'
-        )
+    ) -> List[dict[str, MetricsType]]:
+        fields = f'task: "{job_id}", telemetry: "{name}", limit: {limit}, goal: LAST'
         query = "{ representativeSamples(fields: {" + fields + "}) {created, value} }"
         resp = safe_request(
             self.post, err_prefix=f"Failed to get metrics of ({job_id})."
