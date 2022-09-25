@@ -152,7 +152,7 @@ artifact_table = TableFormatter(
     headers=["ID", "Name", "Path", "Mtime", "Media Type"],
 )
 metric_list_table = TableFormatter(
-    name="Metrics",
+    name="Metric List",
     fields=["name"],
     headers=["Name"],
 )
@@ -630,12 +630,14 @@ def metric_list(
     results = client.list_metrics(job_id=job_id)
     metric_list_table.render(results)
 
+
 @metric_app.command("show")
 def show_metric(
     job_id: int = typer.Argument(..., help="ID of job"),
-    metric_name: str = typer.Argument(..., help="metric name"),
+    metric_name: List[str] = typer.Option(..., help="metric name"),
 ):
     """Create a job configuration YAML file"""
     client: MetricClientService = build_client(ServiceType.METRIC)
-    results = client.get_metric_values(job_id, metric_name)
-    metric_table.render(results)
+    for metric in metric_name:
+        results = client.get_metric_values(job_id, metric)
+        metric_table.render(results)
