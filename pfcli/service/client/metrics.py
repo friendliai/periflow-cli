@@ -3,9 +3,11 @@
 """PeriFlow MetricsClient Service"""
 
 import json
+from datetime import datetime
 from typing import List, TypeVar
 
 from pfcli.service.client.base import ClientService, safe_request
+from pfcli.utils import datetime_to_simple_string, utc_to_local
 
 MetricsType = TypeVar("MetricsType")
 
@@ -19,7 +21,7 @@ class MetricsClientService(ClientService):
     ) -> List[dict[str, str]]:
         """Show available metrics."""
         fields = f'task: "{job_id}", telemetry: null, start: null, until: null'
-        query = "{ sampleQuery(fields: {" + fields + "}) {name} }"
+        query = f"{{ sampleQuery(fields: {{ {fields} }}) {{name}} }}"
         resp = safe_request(
             self.post, err_prefix=f"Failed to get metrics of ({job_id})."
         )(
@@ -37,7 +39,8 @@ class MetricsClientService(ClientService):
         limit: int = 10,
     ) -> List[dict[str, MetricsType]]:
         fields = f'task: "{job_id}", telemetry: "{name}", limit: {limit}, goal: LAST'
-        query = "{ representativeSamples(fields: {" + fields + "}) {created, value} }"
+        output_type = "created, value, labels {key, value}"
+        query = f"{{ representativeSamples(fields:{{ {fields} }}){{ {output_type} }} }}"
         resp = safe_request(
             self.post, err_prefix=f"Failed to get metrics of ({job_id})."
         )(
@@ -48,8 +51,25 @@ class MetricsClientService(ClientService):
 
         metrics = []
         for sample in samples:
-            created = sample.get("created", None)
+            created = utc_to_local(datetime.fromisoformat(sample.get("created", None)))
+
             value_json = sample.get("value", None)
             value = json.loads(value_json).get("data", None)
-            metrics.append({"name": name, "created": created, "value": value})
+            if isinstance(value, float):
+                value = "{:.3f}".format(value).rstrip("0").rstrip(".")
+
+            labels = sample.get("labels", [])
+            iteration = None
+            for label in labels:
+                if label["key"] == "iteration":
+                    iteration = label["value"]
+
+            metrics.append(
+                {
+                    "name": name,
+                    "iteration": iteration,
+                    "created": datetime_to_simple_string(created),
+                    "value": value,
+                }
+            )
         return metrics

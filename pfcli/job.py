@@ -158,8 +158,8 @@ metrics_list_table = TableFormatter(
 )
 metrics_table = TableFormatter(
     name="Metrics",
-    fields=["name", "created", "value"],
-    headers=["Name", "Created", "Value"],
+    fields=["name", "iteration", "created", "value"],
+    headers=["Name", "Iteration", "Created", "Value"],
 )
 
 
@@ -635,9 +635,15 @@ def metrics_list(
 def show_metrics(
     job_id: int = typer.Argument(..., help="ID of job"),
     name: List[str] = typer.Option(..., help="metrics name"),
+    limit: int = typer.Option(10, help="Number of metrics to show"),
 ):
-    """Show metrics values"""
+    """Show latest metrics values"""
+    if limit <= 0 or limit > 1000:
+        secho_error_and_exit(
+            "'limit' should be a positive integer, equal or smaller than 1000"
+        )
+
     client: MetricsClientService = build_client(ServiceType.METRICS)
     for metric_name in name:
-        metrics = client.get_metrics_values(job_id, metric_name)
+        metrics = client.get_metrics_values(job_id, metric_name, limit)
         metrics_table.render(metrics)
