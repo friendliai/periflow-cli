@@ -644,6 +644,14 @@ def show_metrics(
         )
 
     client: MetricsClientService = build_client(ServiceType.METRICS)
+    metrics_set = []
     for metric_name in name:
         metrics = client.get_metrics_values(job_id, metric_name, limit)
+        if not len(metrics):
+            secho_error_and_exit(
+                f"There is no available metrics with name '{metric_name}'."
+            )
+        metrics_set.append(metrics)
+
+    for metrics in metrics_set:
         metrics_table.render(metrics)
