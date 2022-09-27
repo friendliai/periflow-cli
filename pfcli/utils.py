@@ -32,6 +32,7 @@ periflow_mr_server = "https://pfmodelregistry-staging.friendli.ai/"
 periflow_serve_server = "http://0.0.0.0:8000/"
 periflow_auth_server = "https://pfauth-staging.friendli.ai/"
 periflow_meter_server = "https://pfmeter-staging.friendli.ai/"
+periflow_observatory_server = "https://pfo-staging.friendli.ai/"
 
 
 def get_periflow_directory() -> Path:
@@ -110,6 +111,10 @@ def get_mr_uri(path: str) -> str:
 
 def get_meter_uri(path: str) -> str:
     return urljoin(periflow_meter_server, path)
+
+
+def get_observatory_uri(path: str) -> str:
+    return urljoin(periflow_observatory_server, path)
 
 
 def secho_error_and_exit(text: str, color: str = typer.colors.RED):

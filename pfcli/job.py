@@ -4,42 +4,43 @@
 
 import asyncio
 import re
-from pathlib import Path
-from typing import Dict, Generator, Optional, List, Tuple
-from dateutil import parser
-from dateutil.parser import parse
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, Generator, List, Optional, Tuple
 
+import ruamel.yaml
 import tabulate
 import typer
 import yaml
-import ruamel.yaml
 from click import Choice
+from dateutil import parser
+from dateutil.parser import parse
 
 from pfcli.service import JobType, ServiceType, storage_type_map_inv
 from pfcli.service.client import (
-    ProjectDataClientService,
-    ProjectExperimentClientService,
-    ProjectJobClientService,
     GroupVMConfigClientService,
     JobArtifactClientService,
     JobCheckpointClientService,
     JobClientService,
     JobTemplateClientService,
     JobWebSocketClientService,
+    ProjectDataClientService,
+    ProjectExperimentClientService,
+    ProjectJobClientService,
     build_client,
 )
+from pfcli.service.client.metrics import MetricsClientService
 from pfcli.service.client.project import ProjectClientService
 from pfcli.service.config import build_job_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import (
+    datetime_to_pretty_str,
+    datetime_to_simple_string,
     get_default_editor,
     open_editor,
     secho_error_and_exit,
-    datetime_to_pretty_str,
     timedelta_to_pretty_str,
     utc_to_local,
-    datetime_to_simple_string,
 )
 
 tabulate.PRESERVE_WHITESPACE = True
@@ -54,8 +55,14 @@ template_app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,
 )
+metrics_app = typer.Typer(
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False,
+)
 
 app.add_typer(template_app, name="template", help="Manage job templates.")
+app.add_typer(metrics_app, name="metrics", help="Show job metrics.")
 
 job_table = TableFormatter(
     name="Jobs",
@@ -143,6 +150,16 @@ artifact_table = TableFormatter(
     name="Artifacts",
     fields=["id", "name", "path", "mtime", "mime_type"],
     headers=["ID", "Name", "Path", "Mtime", "Media Type"],
+)
+metrics_list_table = TableFormatter(
+    name="Metrics List",
+    fields=["name"],
+    headers=["Name"],
+)
+metrics_table = TableFormatter(
+    name="Metrics",
+    fields=["name", "iteration", "created", "value"],
+    headers=["Name", "Iteration", "Created", "Value"],
 )
 
 
@@ -602,3 +619,39 @@ def log(
             )
         except KeyboardInterrupt:
             secho_error_and_exit(f"Keyboard Interrupt...", color=typer.colors.MAGENTA)
+
+
+@metrics_app.command("list")
+def metrics_list(
+    job_id: int = typer.Argument(..., help="ID of job"),
+):
+    """Show available metrics"""
+    client: MetricsClientService = build_client(ServiceType.METRICS)
+    results = client.list_metrics(job_id=job_id)
+    metrics_list_table.render(results)
+
+
+@metrics_app.command("show")
+def show_metrics(
+    job_id: int = typer.Argument(..., help="ID of job"),
+    name: List[str] = typer.Option(..., help="metrics name"),
+    limit: int = typer.Option(10, help="Number of metrics to show"),
+):
+    """Show latest metrics values"""
+    if limit <= 0 or limit > 1000:
+        secho_error_and_exit(
+            "'limit' should be a positive integer, equal or smaller than 1000"
+        )
+
+    client: MetricsClientService = build_client(ServiceType.METRICS)
+    metrics_set = []
+    for metric_name in name:
+        metrics = client.get_metrics_values(job_id, metric_name, limit)
+        if not len(metrics):
+            secho_error_and_exit(
+                f"There is no available metrics with name '{metric_name}'."
+            )
+        metrics_set.append(metrics)
+
+    for metrics in metrics_set:
+        metrics_table.render(metrics)

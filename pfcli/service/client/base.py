@@ -96,48 +96,42 @@ class ClientService:
     def list(self, path: Optional[str] = None, **kwargs) -> Response:
         return requests.get(
             self.url_template.render(path=path, **self.url_kwargs),
-            headers=get_auth_header(),
-            **kwargs,
+            **{"headers": get_auth_header(), **kwargs},
         )
 
     @auto_token_refresh
     def retrieve(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         return requests.get(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
-            headers=get_auth_header(),
-            **kwargs,
+            **{"headers": get_auth_header(), **kwargs},
         )
 
     @auto_token_refresh
     def post(self, path: Optional[str] = None, **kwargs) -> Response:
         return requests.post(
             self.url_template.render(path=path, **self.url_kwargs),
-            headers=get_auth_header(),
-            **kwargs,
+            **{"headers": get_auth_header(), **kwargs},
         )
 
     @auto_token_refresh
     def partial_update(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         return requests.patch(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
-            headers=get_auth_header(),
-            **kwargs,
+            **{"headers": get_auth_header(), **kwargs},
         )
 
     @auto_token_refresh
     def delete(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         return requests.delete(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
-            headers=get_auth_header(),
-            **kwargs,
+            **{"headers": get_auth_header(), **kwargs},
         )
 
     @auto_token_refresh
     def update(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         return requests.put(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
-            headers=get_auth_header(),
-            **kwargs,
+            **{"headers": get_auth_header(), **kwargs},
         )
 
     def bare_post(self, path: Optional[str] = None, **kwargs) -> Response:

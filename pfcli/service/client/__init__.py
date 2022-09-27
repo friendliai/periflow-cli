@@ -26,6 +26,7 @@ from pfcli.service.client.job import (
     JobTemplateClientService,
     JobWebSocketClientService,
 )
+from pfcli.service.client.metrics import MetricsClientService
 from pfcli.service.client.project import (
     ProjectClientService,
     ProjectCredentialClientService,
@@ -47,6 +48,7 @@ from pfcli.utils import (
     get_auth_uri,
     get_meter_uri,
     get_mr_uri,
+    get_observatory_uri,
     get_pfs_uri,
     get_uri,
     get_wss_uri,
@@ -137,6 +139,10 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.BILLING_SUMMARY: (
         BillingClientService,
         Template(get_meter_uri("training/instances/price/")),
+    ),
+    ServiceType.METRICS: (
+        MetricsClientService,
+        Template(get_observatory_uri("graphql")),
     ),
 }
 
