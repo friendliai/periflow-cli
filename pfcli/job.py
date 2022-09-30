@@ -118,6 +118,7 @@ job_panel = PanelFormatter(
         "started_at",
         "duration",
         "progress",
+        "error_message",
     ],
     headers=[
         "ID",
@@ -130,6 +131,7 @@ job_panel = PanelFormatter(
         "Start",
         "Duration",
         "Progress",
+        "Error",
     ],
 )
 job_panel.add_substitution_rule("waiting", "[bold]waiting")
@@ -524,6 +526,8 @@ def _format_log_string(
                 line in ("Job completed successfully.", "Job failed.")
                 and node_rank == -1
             )
+            if node_rank == -1:
+                line = typer.style(line, fg=typer.colors.MAGENTA)
             if show_machine_id:
                 line = node_rank_str + line
             if show_time:
