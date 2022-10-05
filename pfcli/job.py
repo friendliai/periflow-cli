@@ -68,28 +68,26 @@ job_table = TableFormatter(
     name="Jobs",
     fields=[
         "id",
-        "project",
-        "experiment",
         "name",
         "status",
         "vm_config.vm_config_type.code",
         "vm_config.vm_config_type.device_type",
         "num_desired_devices",
         "data_name",
+        "user.username",
         "started_at",
         "duration",
         "progress",
     ],
     headers=[
         "ID",
-        "Project",
-        "Experiment",
         "Name",
         "Status",
         "VM",
         "Device",
         "Device Cnt",
         "Data",
+        "Created by",
         "Start",
         "Duration",
         "Progress",
@@ -336,8 +334,6 @@ def list(
     else:
         client: JobClientService = build_client(ServiceType.JOB)
     jobs = client.list_jobs()
-    project_client: ProjectClientService = build_client(ServiceType.PROJECT)
-    project_name_cache: Dict[str, str] = {}
 
     for job in jobs:
         started_at = job.get("started_at")
@@ -355,21 +351,11 @@ def list(
         else:
             duration = None
 
-        project_id = job.get("project_id")
-        if project_id is not None:
-            if project_id in project_name_cache:
-                job["project"] = project_name_cache[project_id]
-            else:
-                job["project"] = project_client.get_project(pf_project_id=project_id)[
-                    "name"
-                ]
-                project_name_cache[project_id] = job["project"]
         job["started_at"] = start
         job["duration"] = duration
         job["data_name"] = (
             job["data_store"]["name"] if job["data_store"] is not None else None
         )
-        job["experiment"] = job["experiment"]["name"]
         if job["progress"] is not None:
             job["progress"] = "{:.2f}%".format(job["progress"])
 
