@@ -41,6 +41,7 @@ from pfcli.utils import (
     secho_error_and_exit,
     timedelta_to_pretty_str,
     utc_to_local,
+    validate_datetime_format,
 )
 
 tabulate.PRESERVE_WHITESPACE = True
@@ -327,13 +328,42 @@ def list(
         "-p",
         help="Show all jobs in my project including jobs launched by other users",
     ),
+    since: str = typer.Option(
+        None,
+        "--since",
+        help="Filter jobs by creation time. The format should be {YYYY}-{MM}-{DD}T{HH}:{MM}:{SS}. "
+        "The local timezone will be used by default.",
+        callback=validate_datetime_format,
+    ),
+    until: str = typer.Option(
+        None,
+        "--until",
+        help="Filter jobs by creation time. The format should be {YYYY}-{MM}-{DD}T{HH}:{MM}:{SS}. "
+        "The local timezone will be used by default.",
+        callback=validate_datetime_format,
+    ),
+    job_name: str = typer.Option(
+        None,
+        "--job-name",
+        help="Filter jobs by job name",
+    ),
+    vm: str = typer.Option(
+        None,
+        "--vm",
+        help="Filter jobs by vm name",
+    ),
 ):
     """List all jobs."""
     if show_project_job:
         client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
     else:
         client: JobClientService = build_client(ServiceType.JOB)
-    jobs = client.list_jobs()
+    jobs = client.list_jobs(
+        since=since,
+        until=until,
+        job_name=job_name,
+        vm=vm,
+    )
 
     for job in jobs:
         started_at = job.get("started_at")

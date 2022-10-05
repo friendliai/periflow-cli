@@ -19,8 +19,23 @@ from pfcli.utils import paginated_get, secho_error_and_exit
 
 
 class JobClientService(ClientService):
-    def list_jobs(self) -> List[dict]:
-        return paginated_get(safe_request(self.list, err_prefix="Failed to list jobs."))
+    def list_jobs(
+        self,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        job_name: Optional[str] = None,
+        vm: Optional[str] = None,
+    ) -> List[dict]:
+        params = {
+            "created_at.since": since,
+            "created_at.until": until,
+            "job_name": job_name,
+            "vm_code": vm,
+        }
+        return paginated_get(
+            safe_request(self.list, err_prefix="Failed to list jobs."),
+            **params,
+        )
 
     def delete_job(self, job_id: int) -> None:
         safe_request(self.delete, err_prefix=f"Failed to delete job ({job_id}).")(

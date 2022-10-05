@@ -95,9 +95,22 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_jobs(self) -> List[dict]:
+    def list_jobs(
+        self,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        job_name: Optional[str] = None,
+        vm: Optional[str] = None,
+    ) -> List[dict]:
+        params = {
+            "created_at.since": since,
+            "created_at.until": until,
+            "job_name": job_name,
+            "vm_code": vm,
+        }
         return paginated_get(
-            safe_request(self.list, err_prefix="Failed to list jobs in project.")
+            safe_request(self.list, err_prefix="Failed to list jobs in project."),
+            **params,
         )
 
     def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
