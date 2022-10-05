@@ -31,7 +31,7 @@ app = typer.Typer(
     add_completion=False,
 )
 project_table_formatter = TableFormatter(
-    name="Project", fields=["id", "name"], headers=["ID", "Name"]
+    name="Project", fields=["name", "id"], headers=["Name", "ID"]
 )
 project_panel_formatter = PanelFormatter(
     name="Project Detail",
@@ -71,6 +71,14 @@ def list(
         client = build_client(ServiceType.USER_GROUP_PROJECT)
 
     projects = client.list_projects()
+    current_project_id = get_current_project_id()
+
+    for project in projects:
+        if current_project_id is not None and project["id"] == str(current_project_id):
+            project["name"] = f"[bold green]* {project['name']}"
+            project["id"] = f"[bold green]{project['id']}"
+        else:
+            project["name"] = f"  {project['name']}"
 
     if tail is not None or head is not None:
         target_project_list = []

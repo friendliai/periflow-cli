@@ -15,6 +15,7 @@ from typing import (
     Union,
 )
 
+from rich import box
 from rich.table import Table
 from rich.panel import Panel
 from rich.tree import Tree
@@ -105,7 +106,7 @@ class TableFormatter(ListFormatter):
     caption: Optional[str] = None
 
     def _init(self, show_detail: bool):
-        self._table = Table(title=self.name, caption=self.caption)
+        self._table = Table(title=self.name, caption=self.caption, box=box.SIMPLE)
         self._make_header(show_detail)
 
     def render(self, data: List[dict], show_detail: bool = False) -> None:
