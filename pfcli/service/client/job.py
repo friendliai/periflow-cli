@@ -12,7 +12,7 @@ import websockets
 from websockets.client import WebSocketClientProtocol
 from websockets.exceptions import ConnectionClosed
 
-from pfcli.service import LogType
+from pfcli.service import JobStatus, LogType
 from pfcli.service.auth import TokenType, auto_token_refresh, get_auth_header, get_token
 from pfcli.service.client.base import ClientService, safe_request
 from pfcli.utils import paginated_get, secho_error_and_exit
@@ -25,12 +25,14 @@ class JobClientService(ClientService):
         until: Optional[str] = None,
         job_name: Optional[str] = None,
         vm: Optional[str] = None,
+        status: Optional[JobStatus] = None,
     ) -> List[dict]:
         params = {
             "created_at.since": since,
             "created_at.until": until,
             "job_name": job_name,
             "vm_code": vm,
+            "status": status.value if status is not None else None,
         }
         return paginated_get(
             safe_request(self.list, err_prefix="Failed to list jobs."),

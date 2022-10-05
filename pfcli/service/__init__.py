@@ -48,6 +48,18 @@ class ProjectRole(str, Enum):
     GUEST = "guest"
 
 
+class JobStatus(str, Enum):
+    WAITING = "waiting"
+    ENQUEUED = "enqueued"
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILED = "failed"
+    TERMINATED = "terminated"
+    TERMINATING = "terminating"
+    CANCELLED = "cancelled"
+    CANCELLING = "cancelling"
+
+
 class JobType(str, Enum):
     PREDEFINED = "predefined"
     CUSTOM = "custom"

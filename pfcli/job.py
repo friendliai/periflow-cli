@@ -6,7 +6,7 @@ import asyncio
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Generator, List, Optional, Tuple
 
 import ruamel.yaml
 import tabulate
@@ -16,7 +16,7 @@ from click import Choice
 from dateutil import parser
 from dateutil.parser import parse
 
-from pfcli.service import JobType, ServiceType, storage_type_map_inv
+from pfcli.service import JobStatus, JobType, ServiceType, storage_type_map_inv
 from pfcli.service.client import (
     GroupVMConfigClientService,
     JobArtifactClientService,
@@ -102,6 +102,7 @@ job_table.add_substitution_rule("success", "[bold green]success")
 job_table.add_substitution_rule("failed", "[bold red]failed")
 job_table.add_substitution_rule("terminated", "[bold yellow]terminated")
 job_table.add_substitution_rule("terminating", "[bold magenta]terminating")
+job_table.add_substitution_rule("cancelled", "[bold yellow]cancelled")
 job_table.add_substitution_rule("cancelling", "[bold magenta]cancelling")
 job_table.add_substitution_rule("None", "-")
 job_panel = PanelFormatter(
@@ -140,6 +141,7 @@ job_panel.add_substitution_rule("success", "[bold green]success")
 job_panel.add_substitution_rule("failed", "[bold red]failed")
 job_panel.add_substitution_rule("terminated", "[bold yellow]terminated")
 job_panel.add_substitution_rule("terminating", "[bold magenta]terminating")
+job_table.add_substitution_rule("cancelled", "[bold yellow]cancelled")
 job_panel.add_substitution_rule("cancelling", "[bold magenta]cancelling")
 job_panel.add_substitution_rule("None", "-")
 ckpt_table = TableFormatter(
@@ -352,6 +354,11 @@ def list(
         "--vm",
         help="Filter jobs by vm name",
     ),
+    status: JobStatus = typer.Option(
+        None,
+        "--status",
+        help="Filter jobs by job status",
+    )
 ):
     """List all jobs."""
     if show_project_job:
@@ -363,6 +370,7 @@ def list(
         until=until,
         job_name=job_name,
         vm=vm,
+        status=status,
     )
 
     for job in jobs:
