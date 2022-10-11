@@ -22,23 +22,12 @@ from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
 
 from pfcli.service import CloudType, StorageType, storage_region_map, cloud_region_map
-
-# Variables
-periflow_directory = Path.home() / ".periflow"
-periflow_api_server = "https://api-staging.friendli.ai/api/"
-periflow_ws_server = "wss://api-ws-staging.friendli.ai/ws/"
-periflow_discuss_url = "https://discuss-staging.friendli.ai/"
-periflow_mr_server = "https://pfmodelregistry-staging.friendli.ai/"
-periflow_serve_server = "http://0.0.0.0:8000/"
-periflow_auth_server = "https://pfauth-staging.friendli.ai/"
-periflow_meter_server = "https://pfmeter-staging.friendli.ai/"
-periflow_observatory_server = "https://pfo-staging.friendli.ai/"
+from pfcli.settings import settings
 
 
 def get_periflow_directory() -> Path:
-    periflow_directory.mkdir(exist_ok=True)
-    return periflow_directory
-
+    settings.periflow_directory.mkdir(exist_ok=True)
+    return settings.periflow_directory
 
 def datetime_to_pretty_str(past: Optional[datetime], long_list: bool = False):
     cur = datetime.now().astimezone()
@@ -90,31 +79,31 @@ def timedelta_to_pretty_str(start: datetime, finish: datetime, long_list: bool =
 
 
 def get_auth_uri(path: str) -> str:
-    return urljoin(periflow_auth_server, path)
+    return urljoin(settings.periflow_auth_server, path)
 
 
 def get_uri(path: str) -> str:
-    return urljoin(periflow_api_server, path)
+    return urljoin(settings.periflow_api_server, path)
 
 
 def get_wss_uri(path: str) -> str:
-    return urljoin(periflow_ws_server, path)
+    return urljoin(settings.periflow_ws_server, path)
 
 
 def get_pfs_uri(path: str) -> str:
-    return urljoin(periflow_serve_server, path)
+    return urljoin(settings.periflow_serve_server, path)
 
 
 def get_mr_uri(path: str) -> str:
-    return urljoin(periflow_mr_server, path)
+    return urljoin(settings.periflow_mr_server, path)
 
 
 def get_meter_uri(path: str) -> str:
-    return urljoin(periflow_meter_server, path)
+    return urljoin(settings.periflow_meter_server, path)
 
 
 def get_observatory_uri(path: str) -> str:
-    return urljoin(periflow_observatory_server, path)
+    return urljoin(settings.periflow_observatory_server, path)
 
 
 def secho_error_and_exit(text: str, color: str = typer.colors.RED):
@@ -297,11 +286,11 @@ def download_file(url: str, out: str) -> None:
 def decode_http_err(exc: HTTPError) -> str:
     try:
         if exc.response.status_code == 500:
-            error_str = f"Internal Server Error: Please contact to system admin via {periflow_discuss_url}"
+            error_str = f"Internal Server Error: Please contact to system admin via {settings.periflow_discuss_url}"
         elif exc.response.status_code == 404:
             error_str = (
                 "Not Found: The requested resource is not found. Please check it again. "
-                f"If you cannot find out why this error occurs, please visit {periflow_discuss_url}."
+                f"If you cannot find out why this error occurs, please visit {settings.periflow_discuss_url}."
             )
         else:
             response = exc.response

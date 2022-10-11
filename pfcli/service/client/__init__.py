@@ -53,6 +53,7 @@ from pfcli.utils import (
     get_uri,
     get_wss_uri,
 )
+from pfcli.settings import settings
 
 client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.MFA: (
@@ -119,7 +120,9 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ),
     ServiceType.PROJECT_VM_QUOTA: (
         ProjectVMQuotaClientService,
-        Template(get_uri("project/$project_id/vm_quota/")),
+        Template(get_uri("project/$project_id/vm_quota/"))
+        if not settings.pfs_only
+        else Template(get_pfs_uri("project/$project_id/vm_quota/")),
     ),
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_mr_uri("models/"))),
     ServiceType.GROUP_PROJECT_CHECKPOINT: (
@@ -128,17 +131,23 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ),  # pylint: disable=line-too-long
     ServiceType.PROJECT_VM_CONFIG: (
         ProjectVMConfigClientService,
-        Template(get_uri("project/$project_id/vm_config/")),
+        Template(get_uri("project/$project_id/vm_config/"))
+        if not settings.pfs_only
+        else Template(get_pfs_uri("project/$project_id/vm_config/")),
     ),
     ServiceType.GROUP_VM_CONFIG: (
         GroupVMConfigClientService,
-        Template(get_uri("group/$group_id/vm_config/")),
+        Template(get_uri("group/$group_id/vm_config/"))
+        if not settings.pfs_only
+        else Template(get_pfs_uri("group/$group_id/vm_config/")),
     ),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri("job/"))),
     ServiceType.SERVE: (ServeClientService, Template(get_pfs_uri("deployment/"))),
     ServiceType.BILLING_SUMMARY: (
         BillingClientService,
-        Template(get_meter_uri("training/instances/price/")),
+        Template(get_meter_uri("training/instances/price/")) 
+        if not settings.pfs_only
+        else Template(get_meter_uri("serving/instances/price/")),
     ),
     ServiceType.METRICS: (
         MetricsClientService,

@@ -15,6 +15,7 @@ from pfcli.service.client import (
 from pfcli.service.client.project import ProjectVMConfigClientService
 from pfcli.service.formatter import TableFormatter
 from pfcli.utils import validate_cloud_region
+from pfcli.settings import settings
 
 
 app = typer.Typer(
@@ -59,35 +60,39 @@ def list(
         None, "--device-type", "-d", help="Filter list by device type."
     ),
 ):
-    """List all VM quota information."""
-    vm_quota_client: ProjectVMQuotaClientService = build_client(
-        ServiceType.PROJECT_VM_QUOTA
-    )
-    vm_config_client: ProjectVMConfigClientService = build_client(
-        ServiceType.PROJECT_VM_CONFIG
-    )
-    group_vm_config_client: GroupVMConfigClientService = build_client(
-        ServiceType.GROUP_VM_CONFIG
-    )
+    if not settings.pfs_only:
+        """List all VM quota information."""
+        vm_quota_client: ProjectVMQuotaClientService = build_client(
+            ServiceType.PROJECT_VM_QUOTA
+        )
+        vm_config_client: ProjectVMConfigClientService = build_client(
+            ServiceType.PROJECT_VM_CONFIG
+        )
+        group_vm_config_client: GroupVMConfigClientService = build_client(
+            ServiceType.GROUP_VM_CONFIG
+        )
 
-    vm_dict_list = vm_quota_client.list_vm_quotas(vendor=cloud, device_type=device_type)
-    vm_id_map = group_vm_config_client.get_vm_config_id_map()
-    available_vm_dict_list = []
-    for vm_dict in vm_dict_list:
-        vm_instance_name = vm_dict["vm_config_type"]["code"]
-        try:
-            vm_count_in_use = vm_config_client.get_vm_count_in_use(
-                vm_id_map[vm_instance_name]
-            )
-            vm_dict[
-                "quota"
-            ] = f"{vm_dict['quota'] - vm_count_in_use} / {vm_dict['quota']}"
-        except KeyError:
-            continue
-        available_vm_dict_list.append(vm_dict)
+        vm_dict_list = vm_quota_client.list_vm_quotas(vendor=cloud, device_type=device_type)
+        vm_id_map = group_vm_config_client.get_vm_config_id_map()
+        available_vm_dict_list = []
+        for vm_dict in vm_dict_list:
+            vm_instance_name = vm_dict["vm_config_type"]["code"]
+            try:
+                vm_count_in_use = vm_config_client.get_vm_count_in_use(
+                    vm_id_map[vm_instance_name]
+                )
+                vm_dict[
+                    "quota"
+                ] = f"{vm_dict['quota'] - vm_count_in_use} / {vm_dict['quota']}"
+            except KeyError:
+                continue
+            available_vm_dict_list.append(vm_dict)
 
-    available_vm_dict_list = sorted(
-        available_vm_dict_list, key=lambda d: d["vm_config_type"]["code"]
-    )
+        available_vm_dict_list = sorted(
+            available_vm_dict_list, key=lambda d: d["vm_config_type"]["code"]
+        )
 
-    formatter.render(available_vm_dict_list)
+        formatter.render(available_vm_dict_list)
+    else:
+        #TODO: PFS vm list
+        pass
