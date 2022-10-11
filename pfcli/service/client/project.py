@@ -8,7 +8,7 @@ import os
 import uuid
 from pathlib import Path
 from string import Template
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from requests import HTTPError
 
 import typer
@@ -102,14 +102,14 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
         until: Optional[str] = None,
         job_name: Optional[str] = None,
         vm: Optional[str] = None,
-        status: Optional[JobStatus] = None,
+        statuses: Optional[Tuple[JobStatus]] = None,
     ) -> List[dict]:
         params = {
             "created_at.since": since,
             "created_at.until": until,
             "job_name": job_name,
             "vm_code": vm,
-            "status": status.value if status is not None else None,
+            "status": ",".join(statuses) if statuses is not None else None,
         }
         return paginated_get(
             safe_request(self.list, err_prefix="Failed to list jobs in project."),
