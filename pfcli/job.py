@@ -6,7 +6,7 @@ import asyncio
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Generator, List, Optional, Tuple
 
 import ruamel.yaml
 import tabulate
@@ -16,7 +16,15 @@ from click import Choice
 from dateutil import parser
 from dateutil.parser import parse
 
-from pfcli.service import JobType, ServiceType, storage_type_map_inv
+from pfcli.service import (
+    JobStatus,
+    job_status_map,
+    job_status_map_inv,
+    JobType,
+    ServiceType,
+    SimpleJobStatus,
+    storage_type_map_inv,
+)
 from pfcli.service.client import (
     GroupVMConfigClientService,
     JobArtifactClientService,
@@ -41,6 +49,7 @@ from pfcli.utils import (
     secho_error_and_exit,
     timedelta_to_pretty_str,
     utc_to_local,
+    validate_datetime_format,
 )
 
 tabulate.PRESERVE_WHITESPACE = True
@@ -68,28 +77,26 @@ job_table = TableFormatter(
     name="Jobs",
     fields=[
         "id",
-        "project",
-        "experiment",
         "name",
         "status",
         "vm_config.vm_config_type.code",
         "vm_config.vm_config_type.device_type",
         "num_desired_devices",
         "data_name",
+        "user.username",
         "started_at",
         "duration",
         "progress",
     ],
     headers=[
         "ID",
-        "Project",
-        "Experiment",
         "Name",
         "Status",
         "VM",
         "Device",
         "Device Cnt",
         "Data",
+        "Created by",
         "Start",
         "Duration",
         "Progress",
@@ -97,13 +104,13 @@ job_table = TableFormatter(
 )
 job_table.apply_styling("ID", style="bold")
 job_table.add_substitution_rule("waiting", "[bold]waiting")
-job_table.add_substitution_rule("enqueued", "[bold cyan]enqueued")
+job_table.add_substitution_rule("allocating", "[bold cyan]allocating")
+job_table.add_substitution_rule("preparing", "[bold cyan]preparing")
 job_table.add_substitution_rule("running", "[bold blue]running")
 job_table.add_substitution_rule("success", "[bold green]success")
 job_table.add_substitution_rule("failed", "[bold red]failed")
-job_table.add_substitution_rule("terminated", "[bold yellow]terminated")
-job_table.add_substitution_rule("terminating", "[bold magenta]terminating")
-job_table.add_substitution_rule("cancelling", "[bold magenta]cancelling")
+job_table.add_substitution_rule("stopping", "[bold magenta]stopping")
+job_table.add_substitution_rule("stopped", "[bold yellow]stopped")
 job_table.add_substitution_rule("None", "-")
 job_panel = PanelFormatter(
     name="Overview",
@@ -141,6 +148,7 @@ job_panel.add_substitution_rule("success", "[bold green]success")
 job_panel.add_substitution_rule("failed", "[bold red]failed")
 job_panel.add_substitution_rule("terminated", "[bold yellow]terminated")
 job_panel.add_substitution_rule("terminating", "[bold magenta]terminating")
+job_table.add_substitution_rule("cancelled", "[bold yellow]cancelled")
 job_panel.add_substitution_rule("cancelling", "[bold magenta]cancelling")
 job_panel.add_substitution_rule("None", "-")
 ckpt_table = TableFormatter(
@@ -329,15 +337,50 @@ def list(
         "-p",
         help="Show all jobs in my project including jobs launched by other users",
     ),
+    since: str = typer.Option(
+        None,
+        "--since",
+        help="Filter jobs by creation time. The format should be {YYYY}-{MM}-{DD}T{HH}:{MM}:{SS}. "
+        "The local timezone will be used by default.",
+        callback=validate_datetime_format,
+    ),
+    until: str = typer.Option(
+        None,
+        "--until",
+        help="Filter jobs by creation time. The format should be {YYYY}-{MM}-{DD}T{HH}:{MM}:{SS}. "
+        "The local timezone will be used by default.",
+        callback=validate_datetime_format,
+    ),
+    job_name: str = typer.Option(
+        None,
+        "--job-name",
+        help="Filter jobs by job name",
+    ),
+    vm: str = typer.Option(
+        None,
+        "--vm",
+        help="Filter jobs by vm name",
+    ),
+    status: SimpleJobStatus = typer.Option(
+        None,
+        "--status",
+        help="Filter jobs by job status",
+    )
 ):
     """List all jobs."""
     if show_project_job:
         client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
     else:
         client: JobClientService = build_client(ServiceType.JOB)
-    jobs = client.list_jobs()
-    project_client: ProjectClientService = build_client(ServiceType.PROJECT)
-    project_name_cache: Dict[str, str] = {}
+    
+    real_statuses = job_status_map_inv[status] if status is not None else None
+    jobs = client.list_jobs(
+        since=since,
+        until=until,
+        job_name=job_name,
+        vm=vm,
+        statuses=real_statuses,
+    )
 
     for job in jobs:
         started_at = job.get("started_at")
@@ -348,30 +391,21 @@ def list(
             start = None
         if started_at is not None and finished_at is not None:
             duration = timedelta_to_pretty_str(parse(started_at), parse(finished_at))
-        elif started_at is not None and job["status"] == "running":
+        elif started_at is not None and job["status"] == JobStatus.RUNNING:
             start_time = parse(started_at)
             curr_time = datetime.now(start_time.tzinfo)
             duration = timedelta_to_pretty_str(start_time, curr_time)
         else:
             duration = None
 
-        project_id = job.get("project_id")
-        if project_id is not None:
-            if project_id in project_name_cache:
-                job["project"] = project_name_cache[project_id]
-            else:
-                job["project"] = project_client.get_project(pf_project_id=project_id)[
-                    "name"
-                ]
-                project_name_cache[project_id] = job["project"]
         job["started_at"] = start
         job["duration"] = duration
         job["data_name"] = (
             job["data_store"]["name"] if job["data_store"] is not None else None
         )
-        job["experiment"] = job["experiment"]["name"]
         if job["progress"] is not None:
             job["progress"] = "{:.2f}%".format(job["progress"])
+        job["status"] = job_status_map[job["status"]].value
 
     if tail is not None or head is not None:
         target_job_list = []
@@ -391,9 +425,15 @@ def stop(job_id: int = typer.Argument(..., help="ID of job to stop")):
     client: JobClientService = build_client(ServiceType.JOB)
     job_status = client.get_job(job_id)["status"]
 
-    if job_status == "waiting":
+    if job_status == JobStatus.WAITING:
         client.cancel_job(job_id)
-    elif job_status in ("running", "enqueued"):
+    elif job_status in (
+        JobStatus.ENQUEUED,
+        JobStatus.STARTED,
+        JobStatus.ALLOCATING,
+        JobStatus.PREPARING,
+        JobStatus.RUNNING
+    ):
         client.terminate_job(job_id)
     else:
         secho_error_and_exit(f"No need to stop {job_status} job...")
@@ -439,7 +479,7 @@ def view(
         start = None
     if started_at is not None and finished_at is not None:
         duration = timedelta_to_pretty_str(parse(started_at), parse(finished_at))
-    elif started_at is not None and job["status"] == "running":
+    elif started_at is not None and job["status"] == JobStatus.RUNNING:
         start_time = parse(started_at)
         curr_time = datetime.now(start_time.tzinfo)
         duration = timedelta_to_pretty_str(start_time, curr_time)
@@ -451,9 +491,9 @@ def view(
     job["data_name"] = (
         job["data_store"]["name"] if job["data_store"] is not None else None
     )
-
     if job["progress"] is not None:
         job["progress"] = "{:.2f}%".format(job["progress"])
+    job["status"] = job_status_map[job["status"]].value
 
     checkpoint_list = []
     for checkpoint in reversed(job_checkpoints):

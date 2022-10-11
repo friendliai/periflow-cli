@@ -1,7 +1,7 @@
 # Copyright (C) 2021 FriendliAI
 
 from enum import Enum
-from typing import Dict
+from typing import Dict, Tuple
 
 
 class ServiceType(str, Enum):
@@ -46,6 +46,65 @@ class ProjectRole(str, Enum):
     MAINTAIN = "maintain"
     DEVELOP = "develop"
     GUEST = "guest"
+
+
+class JobStatus(str, Enum):
+    WAITING = "waiting"
+    ENQUEUED = "enqueued"
+    STARTED = "started"
+    ALLOCATING = "allocating"
+    PREPARING = "preparing"
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILED = "failed"
+    TERMINATED = "terminated"
+    TERMINATING = "terminating"
+    CANCELLED = "cancelled"
+    CANCELLING = "cancelling"
+
+
+class SimpleJobStatus(str, Enum):
+    """Simplified job status delivered to users"""
+    WAITING = "waiting"
+    ALLOCATING = "allocating"
+    PREPARING = "preparing"
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILED = "failed"
+    STOPPING = "stopping"
+    STOPPED = "stopped"
+
+
+job_status_map: Dict[JobStatus, SimpleJobStatus] = {
+    JobStatus.WAITING: SimpleJobStatus.WAITING,
+    JobStatus.ENQUEUED: SimpleJobStatus.WAITING,
+    JobStatus.STARTED: SimpleJobStatus.WAITING,
+    JobStatus.ALLOCATING: SimpleJobStatus.ALLOCATING,
+    JobStatus.PREPARING: SimpleJobStatus.PREPARING,
+    JobStatus.RUNNING: SimpleJobStatus.RUNNING,
+    JobStatus.SUCCESS: SimpleJobStatus.SUCCESS,
+    JobStatus.FAILED: SimpleJobStatus.FAILED,
+    JobStatus.TERMINATED: SimpleJobStatus.STOPPED,
+    JobStatus.TERMINATING: SimpleJobStatus.STOPPING,
+    JobStatus.CANCELLED: SimpleJobStatus.STOPPED,
+    JobStatus.CANCELLING: SimpleJobStatus.STOPPING,
+}
+
+
+job_status_map_inv: Dict[SimpleJobStatus, Tuple[JobStatus]] = {
+    SimpleJobStatus.WAITING: (
+        JobStatus.WAITING,
+        JobStatus.ENQUEUED,
+        JobStatus.STARTED,
+    ),
+    SimpleJobStatus.ALLOCATING: (JobStatus.ALLOCATING,),
+    SimpleJobStatus.PREPARING: (JobStatus.PREPARING,),
+    SimpleJobStatus.RUNNING: (JobStatus.RUNNING,),
+    SimpleJobStatus.SUCCESS: (JobStatus.SUCCESS,),
+    SimpleJobStatus.FAILED: (JobStatus.FAILED,),
+    SimpleJobStatus.STOPPING: (JobStatus.TERMINATING, JobStatus.CANCELLING,),
+    SimpleJobStatus.STOPPED: (JobStatus.TERMINATED, JobStatus.CANCELLED,),
+}
 
 
 class JobType(str, Enum):

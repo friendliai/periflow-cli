@@ -30,7 +30,7 @@ app = typer.Typer(
 
 
 org_table_formatter = TableFormatter(
-    name="Organization", fields=["id", "name"], headers=["ID", "Name"]
+    name="Organization", fields=["name", "id"], headers=["Name", "ID"]
 )
 org_panel_formatter = PanelFormatter(
     name="Organization Detail",
@@ -48,6 +48,15 @@ member_table_formatter = TableFormatter(
 def list():
     client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
     orgs = client.get_group_info()
+    current_org_id = get_current_group_id()
+
+    for org in orgs:
+        if current_org_id is not None and org["id"] == str(current_org_id):
+            org["name"] = f"[bold green]* {org['name']}"
+            org["id"] = f"[bold green]{org['id']}"
+        else:
+            org["name"] = f"  {org['name']}"
+
     org_table_formatter.render(orgs)
 
 

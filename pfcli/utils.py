@@ -334,3 +334,15 @@ def paginated_get(
         next_cursor = response_dict["next_cursor"]
 
     return items
+
+
+def validate_datetime_format(datetime_str: Optional[str]) -> Optional[str]:
+    if datetime_str is None:
+        return
+
+    try:
+        datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%S")
+    except ValueError as exc:
+        raise typer.BadParameter(
+            "The datetime format should be {YYYY}-{MM}-{DD}T{HH}:{MM}:{SS}") from exc
+    return datetime_str

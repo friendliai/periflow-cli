@@ -5,22 +5,39 @@
 import json
 import requests
 from contextlib import asynccontextmanager
-from typing import Iterator, List, Optional
+from typing import Iterator, List, Optional, Tuple
 from requests.models import Response
 
 import websockets
 from websockets.client import WebSocketClientProtocol
 from websockets.exceptions import ConnectionClosed
 
-from pfcli.service import LogType
+from pfcli.service import JobStatus, LogType
 from pfcli.service.auth import TokenType, auto_token_refresh, get_auth_header, get_token
 from pfcli.service.client.base import ClientService, safe_request
 from pfcli.utils import paginated_get, secho_error_and_exit
 
 
 class JobClientService(ClientService):
-    def list_jobs(self) -> List[dict]:
-        return paginated_get(safe_request(self.list, err_prefix="Failed to list jobs."))
+    def list_jobs(
+        self,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        job_name: Optional[str] = None,
+        vm: Optional[str] = None,
+        statuses: Optional[Tuple[JobStatus]] = None,
+    ) -> List[dict]:
+        params = {
+            "created_at.since": since,
+            "created_at.until": until,
+            "job_name": job_name,
+            "vm_code": vm,
+            "status": ",".join(statuses) if statuses is not None else None,
+        }
+        return paginated_get(
+            safe_request(self.list, err_prefix="Failed to list jobs."),
+            **params,
+        )
 
     def delete_job(self, job_id: int) -> None:
         safe_request(self.delete, err_prefix=f"Failed to delete job ({job_id}).")(

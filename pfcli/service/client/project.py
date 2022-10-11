@@ -8,7 +8,7 @@ import os
 import uuid
 from pathlib import Path
 from string import Template
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from requests import HTTPError
 
 import typer
@@ -17,6 +17,7 @@ from rich.filesize import decimal
 from pfcli.service import (
     CloudType,
     CredType,
+    JobStatus,
     LockStatus,
     StorageType,
     cred_type_map,
@@ -95,9 +96,24 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_jobs(self) -> List[dict]:
+    def list_jobs(
+        self,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        job_name: Optional[str] = None,
+        vm: Optional[str] = None,
+        statuses: Optional[Tuple[JobStatus]] = None,
+    ) -> List[dict]:
+        params = {
+            "created_at.since": since,
+            "created_at.until": until,
+            "job_name": job_name,
+            "vm_code": vm,
+            "status": ",".join(statuses) if statuses is not None else None,
+        }
         return paginated_get(
-            safe_request(self.list, err_prefix="Failed to list jobs in project.")
+            safe_request(self.list, err_prefix="Failed to list jobs in project."),
+            **params,
         )
 
     def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
