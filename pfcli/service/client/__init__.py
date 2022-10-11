@@ -17,6 +17,7 @@ from pfcli.service.client.group import (
     GroupClientService,
     GroupProjectCheckpointClientService,
     GroupProjectClientService,
+    GroupProjectVMQuotaClientService,
     GroupVMConfigClientService,
 )
 from pfcli.service.client.job import (
@@ -114,6 +115,10 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.PROJECT_DATA: (
         ProjectDataClientService,
         Template(get_uri("project/$project_id/datastore/")),
+    ),
+    ServiceType.GROUP_VM_QUOTA:(
+        GroupProjectVMQuotaClientService,
+        Template(get_uri("group/$group_id/vm_quota/")),
     ),
     ServiceType.PROJECT_VM_QUOTA: (
         ProjectVMQuotaClientService,

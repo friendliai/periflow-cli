@@ -162,3 +162,34 @@ class GroupProjectCheckpointClientService(
             json=request_data
         )
         return response.json()
+
+
+class GroupProjectVMQuotaClientService(ClientService, GroupRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
+        super().__init__(template, group_id=self.group_id, **kwargs)
+
+    def create_project_quota(
+        self,
+        vm_config_id: int,
+        project_id: T,
+        quota: int
+    ):
+        response = safe_request(self.post, err_prefix="Failed to create project quota.")(
+            json={
+                "vm_config_id": vm_config_id,
+                "project_id": project_id,
+                "quota": quota
+            }
+        )
+        return response.json()
+
+    def update_project_quota(self, quota_id: T, new_quota: int):
+        response = safe_request(self.post, err_prefix=f"Failed to update project quota to {new_quota}.")(
+            pk=quota_id,
+            json={"quota": new_quota}
+        )
+        return response.json()
+
+    def delete_quota(self, quota_id: T):
+        safe_request(self.delete, err_prefix="Failed to delete project quota.")(pk=quota_id)

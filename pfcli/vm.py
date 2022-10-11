@@ -13,8 +13,8 @@ from pfcli.service.client import (
     build_client,
 )
 from pfcli.service.client.project import ProjectVMConfigClientService
-from pfcli.service.formatter import TableFormatter
-from pfcli.utils import validate_cloud_region
+from pfcli.service.formatter import PanelFormatter, TableFormatter
+from pfcli.utils import secho_error_and_exit
 
 
 app = typer.Typer(
@@ -22,6 +22,13 @@ app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,
 )
+quota_app = typer.Typer(
+    no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False,
+)
+
+app.add_typer(quota_app, name="quota", help="Manage quota.")
 
 formatter = TableFormatter(
     name="VM Instances",
@@ -46,6 +53,21 @@ formatter = TableFormatter(
         "CPU Memory [GiB]",
         "Quota (Available / Total)",
         "Spot",
+    ],
+)
+quota_detail_panel = PanelFormatter(
+    name="VM Quota",
+    fields=[
+        "code",
+        "in_use",
+        "project_limit",
+        "organization_limit",
+    ],
+    headers=[
+        "VM",
+        "In Use",
+        "Project Limit",
+        "Organization Limit",
     ],
 )
 
@@ -91,3 +113,45 @@ def list(
     )
 
     formatter.render(available_vm_dict_list)
+
+
+@quota_app.command("view", help="view quota detail of a VM")
+def view(
+    vm_instance_name: str = typer.Argument(..., help="vm type"),
+):
+    vm_quota_client: ProjectVMQuotaClientService = build_client(
+        ServiceType.PROJECT_VM_QUOTA
+    )
+    vm_config_client: ProjectVMConfigClientService = build_client(
+        ServiceType.PROJECT_VM_CONFIG
+    )
+    group_vm_config_client: GroupVMConfigClientService = build_client(
+        ServiceType.GROUP_VM_CONFIG
+    )
+
+    vm_dict_list = vm_quota_client.list_vm_quotas()
+    vm_id_map = group_vm_config_client.get_vm_config_id_map()
+    for vm_dict in vm_dict_list:
+        if vm_instance_name == vm_dict["vm_config_type"]["code"]:
+            vm_count_in_use = vm_config_client.get_vm_count_in_use(
+                vm_id_map[vm_instance_name]
+            )
+            panel_dict = {
+                "code": vm_instance_name,
+                "in_use": vm_count_in_use,
+                "project_limit": "-" if vm_dict["quota"] == vm_dict["global_quota"] else vm_dict["quota"],
+                "organization_limit": vm_dict["global_quota"]
+            }
+            quota_detail_panel.render(panel_dict)
+            return
+
+    secho_error_and_exit(f"VM instance {vm_instance_name} does not exist")
+
+
+@quota_app.command("create")
+def create(
+    vm_instance_name: str = typer.Argument(..., help="vm type"),
+    project_name: str = typer.Argument(..., help="name of the project where quota will be created"),
+    quota: int = typer.Argument(..., help="number of VM quota"),
+):
+    pass
