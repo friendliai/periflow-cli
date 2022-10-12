@@ -3,8 +3,6 @@
 """Test ProjectClient Service"""
 
 from copy import deepcopy
-from pathlib import Path
-from tempfile import TemporaryDirectory
 
 import pytest
 import requests_mock
@@ -16,7 +14,6 @@ from pfcli.service.client.project import (
     ProjectCredentialClientService,
     ProjectDataClientService,
     ProjectExperimentClientService,
-    ProjectJobClientService,
     ProjectVMConfigClientService,
     ProjectVMQuotaClientService,
 )
@@ -27,11 +24,6 @@ def project_experiment_client(
     user_project_group_context,
 ) -> ProjectExperimentClientService:
     return build_client(ServiceType.PROJECT_EXPERIMENT)
-
-
-@pytest.fixture
-def project_job_client(user_project_group_context) -> ProjectJobClientService:
-    return build_client(ServiceType.PROJECT_JOB)
 
 
 @pytest.fixture
@@ -139,75 +131,6 @@ def test_project_experiment_client_create_experiment(
     )
     with pytest.raises(typer.Exit):
         project_experiment_client.create_experiment("exp-0")
-
-
-@pytest.mark.usefixtures("patch_auto_token_refresh")
-def test_project_job_client_list_jobs(
-    requests_mock: requests_mock.Mocker, project_job_client: ProjectJobClientService
-):
-    # Success
-    requests_mock.get(
-        project_job_client.url_template.render(**project_job_client.url_kwargs),
-        json={"results": [{"id": 0}, {"id": 1}], "next_cursor": None},
-    )
-    assert project_job_client.list_jobs() == [{"id": 0}, {"id": 1}]
-
-    # Failed due to HTTP error
-    requests_mock.get(
-        project_job_client.url_template.render(**project_job_client.url_kwargs),
-        status_code=404,
-    )
-    with pytest.raises(typer.Exit):
-        project_job_client.list_jobs()
-
-
-@pytest.mark.usefixtures("patch_auto_token_refresh")
-def test_project_job_client_run_job(
-    requests_mock: requests_mock.Mocker, project_job_client: ProjectJobClientService
-):
-    # Success wo workspace dir
-    requests_mock.post(
-        project_job_client.url_template.render(**project_job_client.url_kwargs),
-        json={"id": 1},
-    )
-    assert project_job_client.run_job({"k": "v"}, None) == {"id": 1}
-
-    # Success w workspace dir
-    with TemporaryDirectory() as dir:
-        ws_dir = Path(dir)
-        with open(ws_dir / "large_file", "wb") as f:
-            f.seek(500 * 1024)  # 500KB
-            f.write(b"0")
-        assert project_job_client.run_job(
-            {
-                "job_setting": {
-                    "workspace": {
-                        "mount_path": "/workspace"
-                }
-            }, "k": "v"}, ws_dir) == {"id": 1}
-
-    # Failed due to large workspace dir exceeding the size limit
-    with TemporaryDirectory() as dir:
-        ws_dir = Path(dir)
-        with open(ws_dir / "large_file", "wb") as f:
-            f.seek(2 * 1024 * 1024 * 1024)  # 2GB
-            f.write(b"0")
-        with pytest.raises(typer.Exit):
-            project_job_client.run_job({"k": "v"}, ws_dir)
-
-    # Failed due to empty workspace dir
-    with TemporaryDirectory() as dir:
-        ws_dir = Path(dir)
-        with pytest.raises(typer.Exit):
-            project_job_client.run_job({"k": "v"}, ws_dir)
-
-    # Failed due to HTTP error
-    requests_mock.post(
-        project_job_client.url_template.render(**project_job_client.url_kwargs),
-        status_code=500,
-    )
-    with pytest.raises(typer.Exit):
-        project_job_client.run_job({"k": "v"}, None)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
