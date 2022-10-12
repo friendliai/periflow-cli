@@ -36,7 +36,7 @@ from pfcli.service.client.project import (
     ProjectVMConfigClientService,
     ProjectVMQuotaClientService,
 )
-from pfcli.service.client.serve import ServeClientService
+from pfcli.service.client.deployment import DeploymentClientService
 from pfcli.service.client.user import (
     UserClientService,
     UserGroupClientService,
@@ -122,7 +122,7 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         ProjectVMQuotaClientService,
         Template(get_uri("project/$project_id/vm_quota/"))
         if not settings.pfs_only
-        else Template(get_pfs_uri("project/$project_id/vm_quota/")),
+        else Template(get_pfs_uri("project/$project_id/vm_quota/")),  # FIXME: fix this path after vm impl in pfs
     ),
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_mr_uri("models/"))),
     ServiceType.GROUP_PROJECT_CHECKPOINT: (
@@ -133,16 +133,16 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         ProjectVMConfigClientService,
         Template(get_uri("project/$project_id/vm_config/"))
         if not settings.pfs_only
-        else Template(get_pfs_uri("project/$project_id/vm_config/")),
+        else Template(get_pfs_uri("project/$project_id/vm_config/")),  # FIXME: fix this path after vm impl in pfs
     ),
     ServiceType.GROUP_VM_CONFIG: (
         GroupVMConfigClientService,
         Template(get_uri("group/$group_id/vm_config/"))
         if not settings.pfs_only
-        else Template(get_pfs_uri("group/$group_id/vm_config/")),
+        else Template(get_pfs_uri("group/$group_id/vm_config/")),  # FIXME: fix this path after vm impl in pfs
     ),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri("job/"))),
-    ServiceType.SERVE: (ServeClientService, Template(get_pfs_uri("deployment/"))),
+    ServiceType.DEPLOYMENT: (DeploymentClientService, Template(get_pfs_uri("deployment/"))),
     ServiceType.BILLING_SUMMARY: (
         BillingClientService,
         Template(get_meter_uri("training/instances/price/")) 

@@ -13,7 +13,7 @@ class Settings():
     periflow_ws_server = "wss://api-ws-staging.friendli.ai/ws/"
     periflow_discuss_url = "https://discuss-staging.friendli.ai/"
     periflow_mr_server = "https://pfmodelregistry-staging.friendli.ai/"
-    periflow_serve_server = "http://0.0.0.0:8000/"
+    periflow_serving_server = "http://0.0.0.0:8000/"
     periflow_auth_server = "https://pfauth-staging.friendli.ai/"
     periflow_meter_server = "https://pfmeter-staging.friendli.ai/"
     periflow_observatory_server = "https://pfo-staging.friendli.ai/"

@@ -17,7 +17,7 @@ from pfcli import (
     group,
     job,
     project,
-    serve,
+    deployment,
     vm,
 )
 from pfcli.service import ServiceType
@@ -43,7 +43,7 @@ app.add_typer(credential.app, name="credential", help="Manage credentials")
 app.add_typer(checkpoint.app, name="checkpoint", help="Manage checkpoints")
 app.add_typer(vm.app, name="vm", help="Manage VMs")
 app.add_typer(experiment.app, name="experiment", help="Manage experiments")
-app.add_typer(serve.app, name="serve", help="Manage serves")
+app.add_typer(deployment.app, name="deployment", help="Manage deployments")
 app.add_typer(project.app, name="project", help="Manage projects")
 app.add_typer(group.app, name="org", help="Manage organizations")
 app.add_typer(billing.app, name="billing", help="Manage billing")
