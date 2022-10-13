@@ -2,8 +2,7 @@
 
 """PeriFlow Project CLI"""
 
-import uuid
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import typer
 
@@ -21,6 +20,7 @@ from pfcli.service.client import (
     UserGroupProjectClientService,
     build_client,
 )
+from pfcli.service.client.project import find_project_id
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import secho_error_and_exit
 
@@ -43,13 +43,6 @@ member_table_formatter = TableFormatter(
     fields=["id", "username", "name", "email", "access_level"],
     headers=["ID", "Username", "Name", "Email", "Role"],
 )
-
-
-def _find_project_id(projects: List[dict], project_name: str) -> uuid.UUID:
-    for project in projects:
-        if project["name"] == project_name:
-            return uuid.UUID(project["id"])
-    secho_error_and_exit(f"No project exists with name {project_name}.")
 
 
 @app.command(help="list all accessible projects")
@@ -121,7 +114,7 @@ def switch(
     )
     project_client: ProjectClientService = build_client(ServiceType.PROJECT)
 
-    project_id = _find_project_id(user_group_project_client.list_projects(), name)
+    project_id = find_project_id(user_group_project_client.list_projects(), name)
     if project_client.check_project_membership(pf_project_id=project_id):
         set_current_project_id(project_id)
         typer.secho(f"Project switched to {name}.", fg=typer.colors.BLUE)
@@ -142,7 +135,7 @@ def delete(
     user_group_project_client: UserGroupProjectClientService = build_client(
         ServiceType.USER_GROUP_PROJECT
     )
-    project_id = _find_project_id(user_group_project_client.list_projects(), name)
+    project_id = find_project_id(user_group_project_client.list_projects(), name)
     project_client.delete_project(pf_project_id=project_id)
     if project_id == get_current_project_id():
         project_context_path.unlink()

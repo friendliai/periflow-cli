@@ -28,6 +28,13 @@ from pfcli.utils import (
 )
 
 
+def find_project_id(projects: List[dict], project_name: str) -> uuid.UUID:
+    for project in projects:
+        if project["name"] == project_name:
+            return uuid.UUID(project["id"])
+    secho_error_and_exit(f"No project exists with name {project_name}.")
+
+
 class ProjectClientService(ClientService):
     def get_project(self, pf_project_id: uuid.UUID) -> dict:
         response = safe_request(self.retrieve, err_prefix="Failed to get a project.")(

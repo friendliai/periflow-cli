@@ -8,11 +8,14 @@ import typer
 
 from pfcli.service import CloudType, ServiceType
 from pfcli.service.client import (
+    GroupProjectClientService,
+    GroupProjectVMQuotaClientService,
     GroupVMConfigClientService,
+    ProjectVMConfigClientService,
     ProjectVMQuotaClientService,
     build_client,
 )
-from pfcli.service.client.project import ProjectVMConfigClientService
+from pfcli.service.client.project import find_project_id
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import secho_error_and_exit
 
@@ -148,10 +151,75 @@ def view(
     secho_error_and_exit(f"VM instance {vm_instance_name} does not exist")
 
 
-@quota_app.command("create")
+@quota_app.command("create", help="Create quota limitation of the project")
 def create(
     vm_instance_name: str = typer.Argument(..., help="vm type"),
     project_name: str = typer.Argument(..., help="name of the project where quota will be created"),
     quota: int = typer.Argument(..., help="number of VM quota"),
 ):
-    pass
+    project_client: GroupProjectClientService = build_client(
+        ServiceType.GROUP_PROJECT
+    )
+    project_id = find_project_id(project_client.list_projects(), project_name)
+
+    vm_quota_client: GroupProjectVMQuotaClientService = build_client(
+        ServiceType.GROUP_VM_QUOTA
+    )
+
+    vm_quota_client.create_project_quota(vm_instance_name, project_id, quota)
+    typer.secho(
+        f"VM quota of VM {vm_instance_name} in project {project_name} is set to {quota}!",
+        fg=typer.colors.BLUE
+    )
+
+
+@quota_app.command("update", help="Update quota limitation of the project")
+def update(
+    vm_instance_name: str = typer.Argument(..., help="vm type"),
+    project_name: str = typer.Argument(..., help="name of the project where quota will be created"),
+    quota: int = typer.Argument(..., help="number of VM quota"),
+):
+    project_client: GroupProjectClientService = build_client(
+        ServiceType.GROUP_PROJECT
+    )
+    project_id = find_project_id(project_client.list_projects(), project_name)
+
+    vm_quota_client: GroupProjectVMQuotaClientService = build_client(
+        ServiceType.GROUP_VM_QUOTA
+    )
+    quotas = vm_quota_client.list_quota(vm_instance_name, project_id)
+    if not quotas:
+        secho_error_and_exit(f"Cannot find project quota of vm {vm_instance_name}")
+
+    # unique
+    quota_id = quotas[0]["id"]
+    vm_quota_client.update_project_quota(quota_id, quota)
+    typer.secho(
+        f"VM quota of VM {vm_instance_name} in project {project_name} is updated to {quota}!",
+        fg=typer.colors.BLUE
+    )
+
+
+@quota_app.command("delete", help="Delete quota limitation of the project")
+def delete(
+    vm_instance_name: str = typer.Argument(..., help="vm type"),
+    project_name: str = typer.Argument(..., help="name of the project where quota will be created"),
+):
+    project_client: GroupProjectClientService = build_client(
+        ServiceType.GROUP_PROJECT
+    )
+    project_id = find_project_id(project_client.list_projects(), project_name)
+    vm_quota_client: GroupProjectVMQuotaClientService = build_client(
+        ServiceType.GROUP_VM_QUOTA
+    )
+    quotas = vm_quota_client.list_quota(vm_instance_name, project_id)
+    if not quotas:
+        secho_error_and_exit(f"Cannot find project quota of vm {vm_instance_name}")
+
+    # unique
+    quota_id = quotas[0]["id"]
+    vm_quota_client.delete_quota(quota_id)
+    typer.secho(
+        f"VM quota of VM {vm_instance_name} in project {project_name} is deleted!",
+        fg=typer.colors.BLUE
+    )
