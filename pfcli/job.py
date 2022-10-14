@@ -318,7 +318,7 @@ def run(
     job_data = client.run_job(config, workspace_dir)
 
     typer.secho(
-        f"Job ({job_data['id']}) started successfully. Use 'pf job log {job_data['id']}' to see the job logs.",
+        f"Job ({job_data['number']}) started successfully. Use 'pf job log {job_data['number']}' to see the job logs.",
         fg=typer.colors.BLUE,
     )
 
@@ -662,7 +662,7 @@ def log(
         try:
             # Subscribe job log
             asyncio.run(
-                monitor_logs(job_id, None, machines, show_time, show_machine_id)
+                monitor_logs(job_number, None, machines, show_time, show_machine_id)
             )
         except KeyboardInterrupt:
             secho_error_and_exit(f"Keyboard Interrupt...", color=typer.colors.MAGENTA)
