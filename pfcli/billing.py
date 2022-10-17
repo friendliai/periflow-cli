@@ -11,7 +11,7 @@ from pfcli.service import ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.billing import BillingClientService, TimeGranularity
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import utc_to_local
+from pfcli.utils import datetime_to_simple_string, utc_to_local
 
 
 tabulate.PRESERVE_WHITESPACE = True
@@ -75,7 +75,12 @@ def summary(
 
     total_price = 0
     for price_info in prices:
-        price_info["start_time"] = utc_to_local(datetime.strptime(price_info["start_time"], "%Y-%m-%dT%H:%M:%SZ"))
+        price_info["start_time"] = datetime_to_simple_string(
+            utc_to_local(datetime.strptime(price_info["start_time"], "%Y-%m-%dT%H:%M:%SZ"))
+        )
+        price_info["end_time"] = datetime_to_simple_string(
+            utc_to_local(datetime.strptime(price_info["end_time"], "%Y-%m-%dT%H:%M:%SZ"))
+        )
         price_info["price"] = round(
             reduce(lambda acc, x: acc + x["price"], price_info["price_list"], 0.0), 2
         )

@@ -33,7 +33,6 @@ class BillingClientService(ClientService, GroupRequestMixin, ProjectRequestMixin
         agg_by: str = "user_id",
         time_granularity: Optional[TimeGranularity] = None,
     ) -> List[dict]:
-        print(start_date, end_date)
         params = {
             "organization_id": str(self.group_id),
             "project_id": str(self.project_id),

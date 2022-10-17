@@ -126,10 +126,6 @@ def get_remaining_terminal_columns(occupied: int) -> int:
     return os.get_terminal_size().columns - occupied
 
 
-def local_to_utc(dt: datetime) -> datetime:
-    return dt.replace(tzinfo=None).astimezone(tz=timezone.utc)
-
-
 def utc_to_local(dt: datetime) -> datetime:
     return dt.replace(tzinfo=timezone.utc).astimezone(tz=None)
 
