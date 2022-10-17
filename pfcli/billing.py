@@ -63,7 +63,9 @@ def summary(
     try:
         if day is None:
             start_date = datetime(year, month, 1).astimezone()
-            end_date = (datetime(year, (month + 1) % 12, 1) - timedelta(days=1)).astimezone()
+            end_date = (
+                datetime(year + int(month == 12), (month + 1) if month < 12 else 1, 1) - timedelta(days=1)
+            ).astimezone()
         else:
             start_date = datetime(year, month, day).astimezone()
             end_date = datetime(year, month, day).astimezone()
