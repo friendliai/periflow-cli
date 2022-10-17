@@ -48,7 +48,8 @@ def summary(
         None, "--time-granularity", "-t", help="View within the given time granularity."
     ),
 ):
-    "Summarize the billing information for the given time range"
+    """Summarize the billing information for the given time range
+    """
     client: BillingClientService = build_client(ServiceType.BILLING_SUMMARY)
 
     agg_by = "user_id"
