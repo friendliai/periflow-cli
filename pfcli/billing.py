@@ -68,7 +68,9 @@ def summary(
             ).astimezone()
         else:
             start_date = datetime(year, month, day).astimezone()
-            end_date = datetime(year, month, day).astimezone()
+            end_date = (
+                datetime(year, month, day) + timedelta(days=1)
+            ).astimezone()
     except ValueError as exc:
         secho_error_and_exit(f"Failed to parse datetime: {exc}")
 
