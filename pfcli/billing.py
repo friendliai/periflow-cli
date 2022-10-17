@@ -11,7 +11,7 @@ from pfcli.service import ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.billing import BillingClientService, TimeGranularity
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import local_to_utc, utc_to_local
+from pfcli.utils import utc_to_local
 
 
 tabulate.PRESERVE_WHITESPACE = True
@@ -60,15 +60,15 @@ def summary(
         agg_by = "organization_id"
 
     if day is None:
-        start_date = datetime(year, month, 1)
-        end_date = datetime(year, (month + 1) % 12, 1) - timedelta(days=1)
+        start_date = datetime(year, month, 1).astimezone()
+        end_date = (datetime(year, (month + 1) % 12, 1) - timedelta(days=1)).astimezone()
     else:
-        start_date = datetime(year, month, day)
-        end_date = datetime(year, month, day)
+        start_date = datetime(year, month, day).astimezone()
+        end_date = datetime(year, month, day).astimezone()
 
     prices = client.list_prices(
-        start_date=local_to_utc(start_date).isoformat(),
-        end_date=local_to_utc(end_date).isoformat(),
+        start_date=start_date.isoformat(),
+        end_date=end_date.isoformat(),
         agg_by=agg_by,
         time_granularity=time_granularity
     )
