@@ -11,7 +11,7 @@ from pfcli.service import ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.billing import BillingClientService, TimeGranularity
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import datetime_to_simple_string, utc_to_local
+from pfcli.utils import datetime_to_simple_string, secho_error_and_exit, utc_to_local
 
 
 tabulate.PRESERVE_WHITESPACE = True
@@ -59,12 +59,15 @@ def summary(
     if view_organization:
         agg_by = "organization_id"
 
-    if day is None:
-        start_date = datetime(year, month, 1).astimezone()
-        end_date = (datetime(year, (month + 1) % 12, 1) - timedelta(days=1)).astimezone()
-    else:
-        start_date = datetime(year, month, day).astimezone()
-        end_date = datetime(year, month, day).astimezone()
+    try:
+        if day is None:
+            start_date = datetime(year, month, 1).astimezone()
+            end_date = (datetime(year, (month + 1) % 12, 1) - timedelta(days=1)).astimezone()
+        else:
+            start_date = datetime(year, month, day).astimezone()
+            end_date = datetime(year, month, day).astimezone()
+    except ValueError as exc:
+        secho_error_and_exit(f"Failed to parse datetime: {exc}")
 
     prices = client.list_prices(
         start_date=start_date.isoformat(),
