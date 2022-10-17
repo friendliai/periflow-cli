@@ -85,10 +85,9 @@ def summary(
         price_info["end_time"] = datetime_to_simple_string(
             utc_to_local(datetime.strptime(price_info["end_time"], "%Y-%m-%dT%H:%M:%SZ"))
         )
-        price_info["price"] = round(
-            reduce(lambda acc, x: acc + x["price"], price_info["price_list"], 0.0), 2
-        )
-        total_price += price_info["price"]
+        aggregated_price = reduce(lambda acc, x: acc + x["price"], price_info["price_list"], 0.0)
+        price_info["price"] = round(aggregated_price, 2)
+        total_price += aggregated_price
 
     table_formatter.render(prices)
     panel_formatter.render([{"price": round(total_price, 2)}])
