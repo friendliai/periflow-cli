@@ -2,7 +2,6 @@
 
 from copy import deepcopy
 from datetime import datetime, timedelta
-import uuid
 
 import pytest
 import requests_mock
