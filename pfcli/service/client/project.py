@@ -142,7 +142,7 @@ class ProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
         self,
         vendor: Optional[CloudType] = None,
         device_type: Optional[str] = None,
-    ) -> Optional[List[dict]]:
+    ) -> List[dict]:
         response = safe_request(self.list, err_prefix="Failed to list VM quota info.")()
         vm_dict_list = response.json()
         if vendor is not None:

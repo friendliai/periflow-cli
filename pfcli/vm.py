@@ -153,9 +153,9 @@ def view(
 
 @quota_app.command("create", help="Create quota limitation of the project")
 def create(
-    vm_instance_name: str = typer.Argument(..., help="vm type"),
-    project_name: str = typer.Argument(..., help="name of the project where quota will be created"),
-    quota: int = typer.Argument(..., help="number of VM quota"),
+    vm_instance_name: str = typer.Option(..., help="vm type"),
+    project_name: str = typer.Option(..., help="name of the project where quota will be created"),
+    quota: int = typer.Option(..., help="number of VM quota"),
 ):
     project_client: GroupProjectClientService = build_client(
         ServiceType.GROUP_PROJECT
@@ -175,9 +175,9 @@ def create(
 
 @quota_app.command("update", help="Update quota limitation of the project")
 def update(
-    vm_instance_name: str = typer.Argument(..., help="vm type"),
-    project_name: str = typer.Argument(..., help="name of the project where quota will be created"),
-    quota: int = typer.Argument(..., help="number of VM quota"),
+    vm_instance_name: str = typer.Option(..., help="vm type"),
+    project_name: str = typer.Option(..., help="name of the project where quota will be created"),
+    quota: int = typer.Option(..., help="number of VM quota"),
 ):
     project_client: GroupProjectClientService = build_client(
         ServiceType.GROUP_PROJECT
@@ -202,8 +202,8 @@ def update(
 
 @quota_app.command("delete", help="Delete quota limitation of the project")
 def delete(
-    vm_instance_name: str = typer.Argument(..., help="vm type"),
-    project_name: str = typer.Argument(..., help="name of the project where quota will be created"),
+    vm_instance_name: str = typer.Option(..., help="vm type"),
+    project_name: str = typer.Option(..., help="name of the project where quota will be created"),
 ):
     project_client: GroupProjectClientService = build_client(
         ServiceType.GROUP_PROJECT
