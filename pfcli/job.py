@@ -27,18 +27,16 @@ from pfcli.service import (
 )
 from pfcli.service.client import (
     GroupVMConfigClientService,
-    JobArtifactClientService,
-    JobCheckpointClientService,
-    JobClientService,
     JobTemplateClientService,
     JobWebSocketClientService,
     ProjectDataClientService,
     ProjectExperimentClientService,
     ProjectJobClientService,
+    UserClientService,
     build_client,
 )
+from pfcli.service.client.job import ProjectJobArtifactClientService, ProjectJobCheckpointClientService
 from pfcli.service.client.metrics import MetricsClientService
-from pfcli.service.client.project import ProjectClientService
 from pfcli.service.config import build_job_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils import (
@@ -76,7 +74,7 @@ app.add_typer(metrics_app, name="metrics", help="Show job metrics.")
 job_table = TableFormatter(
     name="Jobs",
     fields=[
-        "id",
+        "number",
         "name",
         "status",
         "vm_config.vm_config_type.code",
@@ -89,7 +87,7 @@ job_table = TableFormatter(
         "progress",
     ],
     headers=[
-        "ID",
+        "Number",
         "Name",
         "Status",
         "VM",
@@ -116,6 +114,7 @@ job_panel = PanelFormatter(
     name="Overview",
     fields=[
         "id",
+        "number",
         "name",
         "status",
         "vm_config.vm_config_type.code",
@@ -129,6 +128,7 @@ job_panel = PanelFormatter(
     ],
     headers=[
         "ID",
+        "Number",
         "Name",
         "Status",
         "VM",
@@ -310,15 +310,15 @@ def run(
     if workspace_dir is not None:
         workspace_dir = workspace_dir.resolve()  # ensure absolute path
         if not workspace_dir.exists():
-            secho_error_and_exit(f"Specified workspace does not exist...")
+            secho_error_and_exit("Specified workspace does not exist...")
         if not workspace_dir.is_dir():
-            secho_error_and_exit(f"Specified workspace is not directory...")
+            secho_error_and_exit("Specified workspace is not directory...")
 
     client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
     job_data = client.run_job(config, workspace_dir)
 
     typer.secho(
-        f"Job ({job_data['id']}) started successfully. Use 'pf job log {job_data['id']}' to see the job logs.",
+        f"Job ({job_data['number']}) started successfully. Use 'pf job log {job_data['number']}' to see the job logs.",
         fg=typer.colors.BLUE,
     )
 
@@ -331,10 +331,10 @@ def list(
     head: Optional[int] = typer.Option(
         None, "--head", help="The number of job list to view at the head"
     ),
-    show_project_job: bool = typer.Option(
+    show_all: bool = typer.Option(
         False,
-        "--project",
-        "-p",
+        "--all",
+        "-a",
         help="Show all jobs in my project including jobs launched by other users",
     ),
     since: str = typer.Option(
@@ -368,11 +368,13 @@ def list(
     )
 ):
     """List all jobs."""
-    if show_project_job:
-        client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
-    else:
-        client: JobClientService = build_client(ServiceType.JOB)
-    
+    client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
+
+    user_ids = None
+    if not show_all:
+        user_client: UserClientService = build_client(ServiceType.USER)
+        user_ids = [user_client.get_current_user_id()]
+
     real_statuses = job_status_map_inv[status] if status is not None else None
     jobs = client.list_jobs(
         since=since,
@@ -380,6 +382,7 @@ def list(
         job_name=job_name,
         vm=vm,
         statuses=real_statuses,
+        user_ids=user_ids,
     )
 
     for job in jobs:
@@ -420,13 +423,13 @@ def list(
 
 
 @app.command()
-def stop(job_id: int = typer.Argument(..., help="ID of job to stop")):
+def stop(job_number: int = typer.Argument(..., help="Job number to be stopped")):
     """Termiate/cancel a running/enqueued job."""
-    client: JobClientService = build_client(ServiceType.JOB)
-    job_status = client.get_job(job_id)["status"]
+    client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
+    job_status = client.get_job(job_number)["status"]
 
     if job_status == JobStatus.WAITING:
-        client.cancel_job(job_id)
+        client.cancel_job(job_number)
     elif job_status in (
         JobStatus.ENQUEUED,
         JobStatus.STARTED,
@@ -434,40 +437,40 @@ def stop(job_id: int = typer.Argument(..., help="ID of job to stop")):
         JobStatus.PREPARING,
         JobStatus.RUNNING
     ):
-        client.terminate_job(job_id)
+        client.terminate_job(job_number)
     else:
         secho_error_and_exit(f"No need to stop {job_status} job...")
 
 
 @app.command()
 def delete(
-    job_id: int = typer.Argument(..., help="ID of job to delete"),
+    job_number: int = typer.Argument(..., help="Job number to be deleted"),
 ):
     """Delete a job."""
     do_delete = typer.confirm("Are your sure to delete job?")
     if not do_delete:
         raise typer.Abort()
 
-    client: JobClientService = build_client(ServiceType.JOB)
-    client.delete_job(job_id)
+    client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
+    client.delete_job(job_number)
 
-    typer.secho(f"Job ({job_id}) deleted successfully!", fg=typer.colors.BLUE)
+    typer.secho(f"Job ({job_number}) deleted successfully!", fg=typer.colors.BLUE)
 
 
 @app.command()
 def view(
-    job_id: int = typer.Argument(..., help="ID of job to view detail"),
+    job_number: int = typer.Argument(..., help="Job number to view detail"),
 ):
     """Show job detail."""
-    job_client: JobClientService = build_client(ServiceType.JOB)
-    job_checkpoint_client: JobCheckpointClientService = build_client(
-        ServiceType.JOB_CHECKPOINT, job_id=job_id
+    job_client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
+    job_checkpoint_client: ProjectJobCheckpointClientService = build_client(
+        ServiceType.PROJECT_JOB_CHECKPOINT, job_number=job_number
     )
-    job_artifact_client: JobArtifactClientService = build_client(
-        ServiceType.JOB_ARTIFACT, job_id=job_id
+    job_artifact_client: ProjectJobArtifactClientService = build_client(
+        ServiceType.PROJECT_JOB_ARTIFACT, job_number=job_number
     )
 
-    job = job_client.get_job(job_id)
+    job = job_client.get_job(job_number)
     job_checkpoints = job_checkpoint_client.list_checkpoints()
     job_artifacts = job_artifact_client.list_artifacts()
 
@@ -576,7 +579,7 @@ def _format_log_string(
 
 
 async def monitor_logs(
-    job_id: int,
+    job_number: int,
     log_types: Optional[List[str]],
     machines: Optional[List[int]],
     show_time: bool,
@@ -585,7 +588,7 @@ async def monitor_logs(
     ws_client: JobWebSocketClientService = build_client(ServiceType.JOB_WS)
 
     job_finished = False
-    async with ws_client.open_connection(job_id, log_types, machines):
+    async with ws_client.open_connection(job_number, log_types, machines):
         async for response in ws_client:
             for line, job_finished in _format_log_string(
                 response, show_time, show_machine_id
@@ -598,7 +601,7 @@ async def monitor_logs(
 # TODO: Implement since/until if necessary
 @app.command()
 def log(
-    job_id: int = typer.Argument(..., help="ID of job to view log"),
+    job_number: int = typer.Argument(..., help="Job number to view log"),
     num_records: int = typer.Option(
         100, "--num-records", "-n", help="The number of recent records to view"
     ),
@@ -637,8 +640,8 @@ def log(
     if export_path is not None and follow:
         secho_error_and_exit("'follow' cannot be set when 'export_path' is given")
 
-    client: JobClientService = build_client(ServiceType.JOB)
-    logs = client.get_text_logs(job_id, num_records, head, None, machines, content)
+    client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
+    logs = client.get_text_logs(job_number, num_records, head, None, machines, content)
 
     job_finished = False
     if export_path is not None:
@@ -659,7 +662,7 @@ def log(
         try:
             # Subscribe job log
             asyncio.run(
-                monitor_logs(job_id, None, machines, show_time, show_machine_id)
+                monitor_logs(job_number, None, machines, show_time, show_machine_id)
             )
         except KeyboardInterrupt:
             secho_error_and_exit(f"Keyboard Interrupt...", color=typer.colors.MAGENTA)
@@ -667,9 +670,13 @@ def log(
 
 @metrics_app.command("list")
 def metrics_list(
-    job_id: int = typer.Argument(..., help="ID of job"),
+    job_number: int = typer.Argument(..., help="Job number"),
 ):
     """Show available metrics"""
+    job_client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
+    job = job_client.get_job(job_number)
+    job_id = job["id"]
+
     client: MetricsClientService = build_client(ServiceType.METRICS)
     results = client.list_metrics(job_id=job_id)
     metrics_list_table.render(results)
@@ -677,7 +684,7 @@ def metrics_list(
 
 @metrics_app.command("show")
 def show_metrics(
-    job_id: int = typer.Argument(..., help="ID of job"),
+    job_number: int = typer.Argument(..., help="Job number"),
     name: List[str] = typer.Option(..., help="metrics name"),
     limit: int = typer.Option(10, help="Number of metrics to show"),
 ):
@@ -686,12 +693,15 @@ def show_metrics(
         secho_error_and_exit(
             "'limit' should be a positive integer, equal or smaller than 1000"
         )
+    job_client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
+    job = job_client.get_job(job_number)
+    job_id = job["id"]
 
     client: MetricsClientService = build_client(ServiceType.METRICS)
     metrics_set = []
     for metric_name in name:
         metrics = client.get_metrics_values(job_id, metric_name, limit)
-        if not len(metrics):
+        if not metrics:
             secho_error_and_exit(
                 f"There is no available metrics with name '{metric_name}'."
             )

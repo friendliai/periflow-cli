@@ -1,28 +1,47 @@
 # Copyright (C) 2022 FriendliAI
 
-from typing import List
+from enum import Enum
+from string import Template
+from typing import List, Optional
 
-from pfcli.service.client.base import ClientService, T, safe_request
-from pfcli.utils import paginated_get
+from pfcli.service.client.base import (
+    ClientService,
+    GroupRequestMixin,
+    ProjectRequestMixin,
+    UserRequestMixin,
+    safe_request
+)
 
 
-class BillingClientService(ClientService):
+class TimeGranularity(str, Enum):
+    hour = "hour"
+    day = "day"
+    week = "week"
+
+
+class BillingClientService(ClientService, GroupRequestMixin, ProjectRequestMixin, UserRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_group()
+        self.initialize_project()
+        self.initialize_user()
+        super().__init__(template, **kwargs)
+
     def list_prices(
         self,
-        year: int,
-        month: int,
-        day: int = None,
-        group_id: T = None,
-        project_id: T = None,
+        start_date: str,
+        end_date: str,
+        agg_by: str = "user_id",
+        time_granularity: Optional[TimeGranularity] = None,
     ) -> List[dict]:
         params = {
-            "group_id": str(group_id) if group_id else None,
-            "project_id": str(project_id) if project_id else None,
-            "year": year,
-            "month": month,
-            "day": day,
+            "organization_id": str(self.group_id),
+            "project_id": str(self.project_id),
+            "user_id": str(self.user_id),
+            "start_date": start_date,
+            "end_date": end_date,
+            "time_unit": time_granularity,
+            "agg_by": agg_by,
         }
-        get_response_dict = safe_request(
+        return safe_request(
             self.list, err_prefix=f"Failed to get billing summary."
-        )
-        return paginated_get(get_response_dict, **params)
+        )(params=params).json()["results"]
