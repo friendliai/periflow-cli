@@ -30,7 +30,6 @@ from pfcli.service.client import (
     JobTemplateClientService,
     JobWebSocketClientService,
     ProjectDataClientService,
-    ProjectExperimentClientService,
     ProjectJobClientService,
     UserClientService,
     build_client,
@@ -177,7 +176,6 @@ def refine_config(
     config: dict,
     vm_name: Optional[str],
     num_devices: Optional[int],
-    experiment_name: Optional[str],
     job_name: Optional[str],
 ) -> None:
     assert "job_setting" in config
@@ -196,32 +194,11 @@ def refine_config(
     ):
         config["job_setting"]["workspace"] = {"mount_path": "/workspace"}
 
-    experiment_client: ProjectExperimentClientService = build_client(
-        ServiceType.PROJECT_EXPERIMENT
-    )
     data_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
     vm_client: GroupVMConfigClientService = build_client(ServiceType.GROUP_VM_CONFIG)
     job_template_client: JobTemplateClientService = build_client(
         ServiceType.JOB_TEMPLATE
     )
-
-    experiment_name = experiment_name or config["experiment"]
-    experiment_id = experiment_client.get_id_by_name(experiment_name)
-    if experiment_id is None:
-        create_new = typer.confirm(
-            f"Experiment with the name ({experiment_name}) is not found.\n"
-            "Do you want to proceed with creating a new experiment? "
-            f"If yes, a new experiment will be created with the name: {experiment_name}",
-            prompt_suffix="\n>> ",
-        )
-        if not create_new:
-            typer.echo("Please run the job after creating an experiment first.")
-            raise typer.Abort()
-        experiment_id = experiment_client.create_experiment(experiment_name)["id"]
-        typer.echo(f"A new experiment ({experiment_name}) is created.")
-
-    del config["experiment"]
-    config["experiment_id"] = experiment_id
 
     vm_name = vm_name or config["vm"]
     vm_config_id = vm_client.get_id_by_name(vm_name)
@@ -274,13 +251,6 @@ def run(
         "-w",
         help="Path to workspace directory in your local file system",
     ),
-    experiment_name: Optional[str] = typer.Option(
-        None,
-        "--experiment",
-        "-e",
-        help="The name of experiment. "
-        "If not provided, the value in the config file will be used.",
-    ),
     job_name: Optional[str] = typer.Option(
         None,
         "--name",
@@ -305,7 +275,7 @@ def run(
     except yaml.YAMLError as e:
         secho_error_and_exit(f"Error occurred while parsing config file... {e}")
 
-    refine_config(config, vm_name, num_devices, experiment_name, job_name)
+    refine_config(config, vm_name, num_devices, job_name)
 
     if workspace_dir is not None:
         workspace_dir = workspace_dir.resolve()  # ensure absolute path

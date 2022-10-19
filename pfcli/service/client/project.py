@@ -62,31 +62,6 @@ class ProjectClientService(ClientService):
         return paginated_get(get_response_dict, path=f"{pf_project_id}/pf_user")
 
 
-class ProjectExperimentClientService(ClientService, ProjectRequestMixin):
-    def __init__(self, template: Template, **kwargs):
-        self.initialize_project()
-        super().__init__(template, project_id=self.project_id, **kwargs)
-
-    def list_experiments(self) -> List[dict]:
-        response = safe_request(self.list, err_prefix="Failed to list experiments.")()
-        return response.json()
-
-    def get_id_by_name(self, name: str) -> Optional[T]:
-        response = safe_request(
-            self.list, err_prefix="Failed to get experiment info."
-        )()
-        for experiment in response.json():
-            if experiment["name"] == name:
-                return experiment["id"]
-        return None
-
-    def create_experiment(self, name: str) -> dict:
-        response = safe_request(self.post, err_prefix="Failed to post new experiment.")(
-            data={"name": name}
-        )
-        return response.json()
-
-
 class ProjectDataClientService(ClientService, ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_project()

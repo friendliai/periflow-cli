@@ -12,7 +12,6 @@ from pfcli.service.client.credential import (
     CredentialTypeClientService,
 )
 from pfcli.service.client.data import DataClientService
-from pfcli.service.client.experiment import ExperimentClientService
 from pfcli.service.client.group import (
     GroupClientService,
     GroupProjectCheckpointClientService,
@@ -32,7 +31,6 @@ from pfcli.service.client.project import (
     ProjectClientService,
     ProjectCredentialClientService,
     ProjectDataClientService,
-    ProjectExperimentClientService,
     ProjectVMConfigClientService,
     ProjectVMQuotaClientService,
 )
@@ -78,11 +76,6 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         GroupProjectClientService,
         Template(get_auth_uri("pf_group/$pf_group_id/pf_project")),
     ),
-    ServiceType.EXPERIMENT: (ExperimentClientService, Template(get_uri("experiment/"))),
-    ServiceType.PROJECT_EXPERIMENT: (
-        ProjectExperimentClientService,
-        Template(get_uri("project/$project_id/experiment/")),
-    ),  # pylint: disable=line-too-long
     ServiceType.PROJECT_JOB_CHECKPOINT: (
         ProjectJobCheckpointClientService,
         Template(get_uri("project/$project_id/job/$job_number/checkpoint/")),

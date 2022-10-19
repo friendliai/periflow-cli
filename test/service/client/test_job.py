@@ -111,7 +111,7 @@ def test_job_client_cancel_job(
     try:
         project_job_client.cancel_job(1)
     except typer.Exit as exc:
-        raise pytest.failed(f"Test failed: {exc!r}") from exc
+        raise pytest.fail(f"Test failed: {exc!r}") from exc
 
     # Failed
     requests_mock.post(url_template.render(
@@ -137,7 +137,7 @@ def test_job_client_terminate_job(
     try:
         project_job_client.terminate_job(1)
     except typer.Exit as exc:
-        raise pytest.failed(f"Test failed: {exc!r}") from exc
+        raise pytest.fail(f"Test failed: {exc!r}") from exc
 
     # Failed
     requests_mock.post(url_template.render(
