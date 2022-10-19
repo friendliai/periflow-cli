@@ -126,9 +126,6 @@ Do you want to open an editor to configure the job YAML file? (default editor: n
 Then, the configuration template file will be saved at `/path/to/config.yaml` with the following content.
 
 ```yaml
-# The name of experiment
-experiment:
-
 # The name of job
 name:
 

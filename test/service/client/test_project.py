@@ -13,17 +13,9 @@ from pfcli.service.client import build_client
 from pfcli.service.client.project import (
     ProjectCredentialClientService,
     ProjectDataClientService,
-    ProjectExperimentClientService,
     ProjectVMConfigClientService,
     ProjectVMQuotaClientService,
 )
-
-
-@pytest.fixture
-def project_experiment_client(
-    user_project_group_context,
-) -> ProjectExperimentClientService:
-    return build_client(ServiceType.PROJECT_EXPERIMENT)
 
 
 @pytest.fixture
@@ -48,89 +40,6 @@ def project_vm_config_client(
     user_project_group_context,
 ) -> ProjectVMConfigClientService:
     return build_client(ServiceType.PROJECT_VM_CONFIG)
-
-
-@pytest.mark.usefixtures("patch_auto_token_refresh")
-def test_project_experiment_client_list_experiments(
-    requests_mock: requests_mock.Mocker,
-    project_experiment_client: ProjectExperimentClientService,
-):
-    # Success
-    requests_mock.get(
-        project_experiment_client.url_template.render(
-            **project_experiment_client.url_kwargs
-        ),
-        json=[{"id": 0, "name": "exp-0"}, {"id": 1, "name": "exp-1"}],
-    )
-    assert project_experiment_client.list_experiments() == [
-        {"id": 0, "name": "exp-0"},
-        {"id": 1, "name": "exp-1"},
-    ]
-
-    # Failed due to HTTP error
-    requests_mock.get(
-        project_experiment_client.url_template.render(
-            **project_experiment_client.url_kwargs
-        ),
-        status_code=404,
-    )
-    with pytest.raises(typer.Exit):
-        project_experiment_client.list_experiments()
-
-
-@pytest.mark.usefixtures("patch_auto_token_refresh")
-def test_project_experiment_client_get_id_by_name(
-    requests_mock: requests_mock.Mocker,
-    project_experiment_client: ProjectExperimentClientService,
-):
-    # Success
-    requests_mock.get(
-        project_experiment_client.url_template.render(
-            **project_experiment_client.url_kwargs
-        ),
-        json=[{"id": 0, "name": "exp-0"}, {"id": 1, "name": "exp-1"}],
-    )
-    assert project_experiment_client.get_id_by_name("exp-0") == 0
-    assert project_experiment_client.get_id_by_name("exp-1") == 1
-    assert project_experiment_client.get_id_by_name("exp-2") is None
-
-    # Failed due to HTTP error
-    requests_mock.get(
-        project_experiment_client.url_template.render(
-            **project_experiment_client.url_kwargs
-        ),
-        status_code=404,
-    )
-    with pytest.raises(typer.Exit):
-        project_experiment_client.get_id_by_name("exp-3")
-
-
-@pytest.mark.usefixtures("patch_auto_token_refresh")
-def test_project_experiment_client_create_experiment(
-    requests_mock: requests_mock.Mocker,
-    project_experiment_client: ProjectExperimentClientService,
-):
-    # Success
-    requests_mock.post(
-        project_experiment_client.url_template.render(
-            **project_experiment_client.url_kwargs
-        ),
-        json={"id": 0, "name": "exp-0"},
-    )
-    assert project_experiment_client.create_experiment("exp-0") == {
-        "id": 0,
-        "name": "exp-0",
-    }
-
-    # Failed due to HTTP error
-    requests_mock.post(
-        project_experiment_client.url_template.render(
-            **project_experiment_client.url_kwargs
-        ),
-        status_code=400,
-    )
-    with pytest.raises(typer.Exit):
-        project_experiment_client.create_experiment("exp-0")
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")

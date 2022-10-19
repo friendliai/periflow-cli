@@ -39,9 +39,6 @@ from pfcli.utils import get_default_editor, open_editor, secho_error_and_exit
 
 
 DEFAULT_TEMPLATE_CONFIG = """\
-# The name of experiment
-experiment:
-
 # The name of job
 name:
 

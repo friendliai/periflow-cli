@@ -104,9 +104,6 @@ CIFAR-100 데이터셋(`my-cifar-100`)을 업로드 했고, 로컬에 SDK가 적
 ```yaml
 # pf-template.yml
 
-# The name of experiment
-experiment: computer-vision
-
 # The name of job
 name: cifar-job
 
@@ -160,7 +157,6 @@ data:
 
 각 필드가 무엇을 의미 하는지 살펴보도록 하겠습니다.
 
-- `experiment`: 내가 돌릴 Job의 Experiment(i.e., 여러 Job의 묶음, Job의 tag)를 설정합니다. Experiment는 `pf experiment create` 명령어를 통해 생성이 가능하며, 만약 존재하지 않는 Experiment를 사용하려고 하면 `pf job run` 명령어 실행시에 새로운 Experiment를 생성할 수도 있습니다.
 - `name`: **[Optional]** Job의 이름입니다. Job의 이름은 중복이 가능합니다.
 - `vm`: Job에서 사용할 클라우드 머신의 유형을 입력합니다. 사용 가능한 머신의 유형은 `pf vm list` 명령어를 통해 확인이 가능합니다.
 
