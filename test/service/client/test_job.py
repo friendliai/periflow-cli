@@ -234,14 +234,16 @@ async def test_job_ws_client(job_ws_client: JobWebSocketClientService):
 
         resp_list = []
         async with job_ws_client.open_connection(
-            job_number=1, log_types=["stdout", "stderr", "vmlog"], machines=[0]
+            job_id="33333333-3333-3333-3333-333333333333",
+            log_types=["stdout", "stderr", "vmlog"],
+            machines=[0]
         ):
             async for resp in job_ws_client:
                 resp_list.append(resp)
 
         get_token_mock.assert_called_once_with(TokenType.ACCESS)
         ws_connect_mock.assert_called_once_with(
-            f"{job_ws_client.url_template.render(**job_ws_client.url_kwargs, pk=1,)}?token=ACCESS_TOKEN"
+            f"{job_ws_client.url_template.render(**job_ws_client.url_kwargs, pk='33333333-3333-3333-3333-333333333333')}?token=ACCESS_TOKEN"
         )
         ws_connect_mock.return_value.__aenter__.assert_awaited_once()
         ws_connect_mock.return_value.__aexit__.assert_awaited_once()
@@ -285,7 +287,9 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
         ws_mock.recv.side_effect = ["not_a_json"]
         with pytest.raises(typer.Exit):
             async with job_ws_client.open_connection(
-                job_number=1, log_types=None, machines=None
+                job_id="33333333-3333-3333-3333-333333333333",
+                log_types=None,
+                machines=None
             ):
                 pass
 
@@ -300,7 +304,9 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
         ]
         with pytest.raises(typer.Exit):
             async with job_ws_client.open_connection(
-                job_number=1, log_types=None, machines=None
+                job_id="33333333-3333-3333-3333-333333333333",
+                log_types=None,
+                machines=None
             ):
                 pass
 
@@ -315,7 +321,9 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
         ]
         with pytest.raises(typer.Exit):
             async with job_ws_client.open_connection(
-                job_number=1, log_types=[LogType.STDOUT], machines=None
+                job_id="33333333-3333-3333-3333-333333333333",
+                log_types=[LogType.STDOUT],
+                machines=None
             ):
                 pass
 
@@ -331,7 +339,9 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
         ]
         with pytest.raises(typer.Exit):
             async with job_ws_client.open_connection(
-                job_number=1, log_types=None, machines=None
+                job_id="33333333-3333-3333-3333-333333333333",
+                log_types=None,
+                machines=None
             ):
                 async for _ in job_ws_client:
                     pass

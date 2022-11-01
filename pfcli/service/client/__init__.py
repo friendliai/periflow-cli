@@ -130,7 +130,7 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         GroupVMConfigClientService,
         Template(get_uri("group/$group_id/vm_config/")),
     ),
-    ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri("project/$project_id/job/"))),
+    ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri("job/"))),
     ServiceType.SERVE: (ServeClientService, Template(get_pfs_uri("deployment/"))),
     ServiceType.BILLING_SUMMARY: (
         BillingClientService,

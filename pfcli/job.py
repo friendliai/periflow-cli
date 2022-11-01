@@ -549,7 +549,7 @@ def _format_log_string(
 
 
 async def monitor_logs(
-    job_number: int,
+    job_id: str,
     log_types: Optional[List[str]],
     machines: Optional[List[int]],
     show_time: bool,
@@ -558,7 +558,7 @@ async def monitor_logs(
     ws_client: JobWebSocketClientService = build_client(ServiceType.JOB_WS)
 
     job_finished = False
-    async with ws_client.open_connection(job_number, log_types, machines):
+    async with ws_client.open_connection(job_id, log_types, machines):
         async for response in ws_client:
             for line, job_finished in _format_log_string(
                 response, show_time, show_machine_id
@@ -629,10 +629,12 @@ def log(
                 typer.echo(line, nl=False)
 
     if not job_finished and follow:
+        job_client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
+        job_id = job_client.get_job(job_number)["id"]
         try:
             # Subscribe job log
             asyncio.run(
-                monitor_logs(job_number, None, machines, show_time, show_machine_id)
+                monitor_logs(job_id, None, machines, show_time, show_machine_id)
             )
         except KeyboardInterrupt:
             secho_error_and_exit(f"Keyboard Interrupt...", color=typer.colors.MAGENTA)

@@ -26,15 +26,11 @@ from pfcli.service.formatter import TreeFormatter
 from pfcli.utils import get_workspace_files, paginated_get, secho_error_and_exit, zip_dir
 
 
-class JobWebSocketClientService(ClientService, ProjectRequestMixin):
-    def __init__(self, template: Template, **kwargs):
-        self.initialize_project()
-        super().__init__(template, project_id=self.project_id, **kwargs)
-
+class JobWebSocketClientService(ClientService):
     @asynccontextmanager
-    async def _connect(self, job_number: int) -> Iterator[WebSocketClientProtocol]:
+    async def _connect(self, job_id: str) -> Iterator[WebSocketClientProtocol]:
         access_token = get_token(TokenType.ACCESS)
-        base_url = self.url_template.render(**self.url_kwargs, pk=job_number)
+        base_url = self.url_template.render(**self.url_kwargs, pk=job_id)
         url = f"{base_url}?token={access_token}"
         async with websockets.connect(url) as websocket:
             yield websocket
@@ -64,7 +60,7 @@ class JobWebSocketClientService(ClientService, ProjectRequestMixin):
 
     @asynccontextmanager
     async def open_connection(
-        self, job_number: int, log_types: Optional[List[str]], machines: Optional[List[int]]
+        self, job_id: str, log_types: Optional[List[str]], machines: Optional[List[int]]
     ):
         if log_types is None:
             sources = [f"process.{x.value}" for x in LogType]
@@ -76,7 +72,7 @@ class JobWebSocketClientService(ClientService, ProjectRequestMixin):
         else:
             node_ranks = machines
 
-        async with self._connect(job_number) as websocket:
+        async with self._connect(job_id) as websocket:
             websocket: WebSocketClientProtocol
             await self._subscribe(websocket, sources, node_ranks)
             self._websocket = websocket
