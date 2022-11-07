@@ -24,6 +24,7 @@ from pfcli.service import (
     JobType,
     ServiceType,
     CredType,
+    EngineType,
     cred_type_map_inv,
     storage_region_map,
 )
@@ -151,6 +152,38 @@ SLACK_PLUGIN_CONFIG = """\
   slack:
     credential_id:
     channel:
+"""
+
+
+INFERENCE_SERVER_CONFIG = """
+# Inference server type config
+inference_server_type:
+  name:
+  repo:
+  tag:
+"""
+
+ORCA_CONFIG = """
+# Orca engine config
+orca_config:
+  max_batch_size:
+  max_token_count:
+  kv_cache_size:
+"""
+
+CKPT_CONFIG = """
+# Orca ckeckpoint config
+ckpt_config:
+  version:
+  catagory:
+  data_type:
+"""
+
+SCALER_CONFIG = """
+# Keda scaler config
+scaler_config:
+  min_deployment_count:
+  max_deployment_count:
 """
 
 
@@ -547,6 +580,55 @@ class CustomDataConfigService(DataConfigService):
         self.ready = True
 
 
+@dataclass
+class DeploymentConfigService(InteractiveConfigMixin):
+    """Deployment template configuration service."""
+    ready: bool = False
+    use_specific_image: bool = False
+    use_ckpt_config: bool = False
+
+    def _render(self) -> str:
+        yaml_str = ""
+        if self.use_specific_image:
+            yaml_str += INFERENCE_SERVER_CONFIG
+        if self.use_ckpt_config:
+            yaml_str += CKPT_CONFIG
+
+        return yaml_str
+
+
+@dataclass
+class OrcaDeploymentConfigService(DeploymentConfigService):
+    """Orca deployment template configuration service"""
+
+    use_scaler: bool = False
+
+    def start_interaction(self):
+        self.use_specific_image = typer.confirm(
+            "Will you use specific orca docker image?",
+            prompt_suffix="\n>> ",
+        )
+        self.use_ckpt_config = typer.confirm(
+            "Will you use checkpoint config?",
+            prompt_suffix="\n>> ",
+        )
+        self.use_scaler = typer.confirm(
+            "Will you use keda autoscaler?",
+            prompt_suffix="\n>> ",
+        )
+        self.ready = True
+    
+    def render(self) -> str:
+        assert self.ready
+
+        yaml_str = ORCA_CONFIG
+        yaml_str += self._render()
+        if self.use_scaler:
+            yaml_str += SCALER_CONFIG
+
+        return yaml_str
+
+
 def build_job_configurator(job_type: str) -> J:
     if job_type == "custom":
         configurator = CustomJobConfigService()
@@ -567,5 +649,14 @@ def build_data_configurator(job_type: JobType) -> D:
     else:
         secho_error_and_exit("Invalid job type...!")
 
+    configurator.start_interaction()
+    return configurator
+
+
+def build_deployment_configurator(engine_type: EngineType) -> DeploymentConfigService:
+    if engine_type == EngineType.ORCA:
+        configurator = OrcaDeploymentConfigService()
+    else:
+        secho_error_and_exit("Only orca engine type is supported!")
     configurator.start_interaction()
     return configurator

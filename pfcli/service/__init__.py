@@ -149,6 +149,11 @@ class GpuType(str, Enum):
     V100 = "v100"
 
 
+class EngineType(str, Enum):
+    ORCA = "orca"
+    TRITON = "triton"
+
+
 storage_type_map: Dict[StorageType, str] = {
     StorageType.S3: "aws",
     StorageType.BLOB: "azure.blob",

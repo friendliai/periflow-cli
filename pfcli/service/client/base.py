@@ -3,6 +3,7 @@
 """PeriFlow Client Service"""
 
 import copy
+import typer
 import requests
 from dataclasses import dataclass
 from functools import partial, wraps
@@ -35,6 +36,7 @@ def safe_request(
         try:
             return func(*args, **kwargs)
         except requests.HTTPError as exc:
+            # typer.secho(exc.response.content)
             secho_error_and_exit(err_prefix + decode_http_err(exc))
 
     return wrapper
