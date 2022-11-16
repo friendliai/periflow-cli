@@ -27,6 +27,7 @@ from pfcli.utils.format import secho_error_and_exit
 from pfcli.utils.fs import get_workspace_files, zip_dir
 from pfcli.utils.request import paginated_get
 
+
 class JobWebSocketClientService(ClientService):
     @asynccontextmanager
     async def _connect(self, job_id: UUID) -> Iterator[WebSocketClientProtocol]:
@@ -61,7 +62,10 @@ class JobWebSocketClientService(ClientService):
 
     @asynccontextmanager
     async def open_connection(
-        self, job_id: UUID, log_types: Optional[List[str]], machines: Optional[List[int]]
+        self,
+        job_id: UUID,
+        log_types: Optional[List[str]],
+        machines: Optional[List[int]],
     ):
         if log_types is None:
             sources = [f"process.{x.value}" for x in LogType]
@@ -165,7 +169,9 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
             "job_name": job_name,
             "vm_code": vm,
             "status": ",".join(statuses) if statuses is not None else None,
-            "user_ids": ",".join(str(user_id) for user_id in user_ids) if user_ids is not None else None,
+            "user_ids": ",".join(str(user_id) for user_id in user_ids)
+            if user_ids is not None
+            else None,
         }
         return paginated_get(
             safe_request(self.list, err_prefix="Failed to list jobs in project."),
@@ -213,9 +219,9 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
         )
 
     def get_job(self, job_number: int) -> dict:
-        response = safe_request(self.retrieve, err_prefix=f"Failed to get job ({job_number}).")(
-            pk=job_number
-        )
+        response = safe_request(
+            self.retrieve, err_prefix=f"Failed to get job ({job_number})."
+        )(pk=job_number)
         return response.json()
 
     def cancel_job(self, job_number: int) -> None:
@@ -252,7 +258,10 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
             )
 
         logs = paginated_get(
-            safe_request(self.list, err_prefix=f"Failed to fetch text logs of job ({job_number})."),
+            safe_request(
+                self.list,
+                err_prefix=f"Failed to fetch text logs of job ({job_number}).",
+            ),
             path=f"{job_number}/text_log/",
             **request_data,
         )

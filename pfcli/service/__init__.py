@@ -63,6 +63,7 @@ class JobStatus(str, Enum):
 
 class SimpleJobStatus(str, Enum):
     """Simplified job status delivered to users"""
+
     WAITING = "waiting"
     ALLOCATING = "allocating"
     PREPARING = "preparing"
@@ -100,8 +101,14 @@ job_status_map_inv: Dict[SimpleJobStatus, Tuple[JobStatus, ...]] = {
     SimpleJobStatus.RUNNING: (JobStatus.RUNNING,),
     SimpleJobStatus.SUCCESS: (JobStatus.SUCCESS,),
     SimpleJobStatus.FAILED: (JobStatus.FAILED,),
-    SimpleJobStatus.STOPPING: (JobStatus.TERMINATING, JobStatus.CANCELLING,),
-    SimpleJobStatus.STOPPED: (JobStatus.TERMINATED, JobStatus.CANCELLED,),
+    SimpleJobStatus.STOPPING: (
+        JobStatus.TERMINATING,
+        JobStatus.CANCELLING,
+    ),
+    SimpleJobStatus.STOPPED: (
+        JobStatus.TERMINATED,
+        JobStatus.CANCELLED,
+    ),
 }
 
 

@@ -109,7 +109,7 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         ProjectDataClientService,
         Template(get_uri("project/$project_id/datastore/")),
     ),
-    ServiceType.GROUP_VM_QUOTA:(
+    ServiceType.GROUP_VM_QUOTA: (
         GroupProjectVMQuotaClientService,
         Template(get_uri("group/$group_id/vm_quota/")),
     ),

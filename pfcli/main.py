@@ -161,10 +161,10 @@ def _handle_login_response(r: Response, mfa: bool):
         typer.echo("\n\nLogin success!")
         typer.echo("Welcome back to...")
         typer.echo(" _____          _  _____ _")
-        typer.echo("|  __ \___ _ __(_)|  ___| | _____      __") # type: ignore
-        typer.echo("|  ___/ _ \ '__| || |__ | |/ _ \ \ /\ / /") # type: ignore
+        typer.echo("|  __ \___ _ __(_)|  ___| | _____      __")  # type: ignore
+        typer.echo("|  ___/ _ \ '__| || |__ | |/ _ \ \ /\ / /")  # type: ignore
         typer.echo("| |  |  __/ |  | ||  __|| | (_) | V  V / ")
-        typer.echo("|_|   \___|_|  |_||_|   |_|\___/ \_/\_/  ") # type: ignore
+        typer.echo("|_|   \___|_|  |_||_|   |_|\___/ \_/\_/  ")  # type: ignore
         typer.echo("\n\n")
     except HTTPError:
         if mfa:

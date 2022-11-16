@@ -35,7 +35,10 @@ from pfcli.service.client import (
     UserClientService,
     build_client,
 )
-from pfcli.service.client.job import ProjectJobArtifactClientService, ProjectJobCheckpointClientService
+from pfcli.service.client.job import (
+    ProjectJobArtifactClientService,
+    ProjectJobCheckpointClientService,
+)
 from pfcli.service.client.metrics import MetricsClientService
 from pfcli.service.config import build_job_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
@@ -336,7 +339,7 @@ def list(
         None,
         "--status",
         help="Filter jobs by job status",
-    )
+    ),
 ):
     """List all jobs."""
     client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
@@ -406,7 +409,7 @@ def stop(job_number: int = typer.Argument(..., help="Job number to be stopped"))
         JobStatus.STARTED,
         JobStatus.ALLOCATING,
         JobStatus.PREPARING,
-        JobStatus.RUNNING
+        JobStatus.RUNNING,
     ):
         client.terminate_job(job_number)
     else:

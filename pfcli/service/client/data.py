@@ -304,9 +304,9 @@ def _upload_file(file_path: str, url: str, ctx: tqdm) -> None:
             s = Session()
             req = Request("PUT", url, data=wrapped_object)
             prep = req.prepare()
-            prep.headers[
-                "Content-Length"
-            ] = str(total_file_size)  # necessary to use ``CallbackIOWrapper``
+            prep.headers["Content-Length"] = str(
+                total_file_size
+            )  # necessary to use ``CallbackIOWrapper``
             response = s.send(prep)
             if response.status_code != 200:
                 secho_error_and_exit(

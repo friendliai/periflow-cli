@@ -26,6 +26,7 @@ def validate_cloud_region(vendor: CloudType, region: str):
             f"'{region}' is not supported region for {vendor}. Please choose another one in {available_regions}."
         )
 
+
 def validate_datetime_format(datetime_str: Optional[str]) -> Optional[str]:
     if datetime_str is None:
         return
@@ -34,11 +35,14 @@ def validate_datetime_format(datetime_str: Optional[str]) -> Optional[str]:
         datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%S")
     except ValueError as exc:
         raise typer.BadParameter(
-            "The datetime format should be {YYYY}-{MM}-{DD}T{HH}:{MM}:{SS}") from exc
+            "The datetime format should be {YYYY}-{MM}-{DD}T{HH}:{MM}:{SS}"
+        ) from exc
     return datetime_str
 
 
 def validate_cloud_storage_type(val: StorageType) -> StorageType:
     if val is StorageType.FAI:
-        secho_error_and_exit("Checkpoint creation with FAI storage is not supported now.")
+        secho_error_and_exit(
+            "Checkpoint creation with FAI storage is not supported now."
+        )
     return val

@@ -131,10 +131,8 @@ def view(
 
     dataset_id = project_client.get_id_by_name(name)
     if dataset_id is None:
-        secho_error_and_exit(
-            f"Dataset with name ({name}) is not found."
-        )
-    dataset = client.get_dataset(dataset_id)    # type: ignore
+        secho_error_and_exit(f"Dataset with name ({name}) is not found.")
+    dataset = client.get_dataset(dataset_id)  # type: ignore
     dataset["vendor"] = storage_type_map_inv[dataset["vendor"]].value
     panel_formatter.render([dataset], show_detail=True)
     tree_formatter.render(dataset["files"])
@@ -289,9 +287,7 @@ def upload(
             else []
         )
 
-        client.upload_files(
-            dataset_id, spu_url_dicts, mpu_url_dicts, src_path, expand
-        )
+        client.upload_files(dataset_id, spu_url_dicts, mpu_url_dicts, src_path, expand)
 
         files = [
             get_file_info(url_info["path"], src_path, expand)
@@ -339,9 +335,7 @@ def edit(
     project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
     dataset_id = project_client.get_id_by_name(name)
     if dataset_id is None:
-        secho_error_and_exit(
-            f"Dataset with name ({name}) is not found."
-        )
+        secho_error_and_exit(f"Dataset with name ({name}) is not found.")
 
     metadata = None
     if metadata_file is not None:

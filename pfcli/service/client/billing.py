@@ -9,7 +9,7 @@ from pfcli.service.client.base import (
     GroupRequestMixin,
     ProjectRequestMixin,
     UserRequestMixin,
-    safe_request
+    safe_request,
 )
 
 
@@ -19,7 +19,9 @@ class TimeGranularity(str, Enum):
     week = "week"
 
 
-class BillingClientService(ClientService, GroupRequestMixin, ProjectRequestMixin, UserRequestMixin):
+class BillingClientService(
+    ClientService, GroupRequestMixin, ProjectRequestMixin, UserRequestMixin
+):
     def __init__(self, template: Template, **kwargs):
         self.initialize_group()
         self.initialize_project()
@@ -42,6 +44,6 @@ class BillingClientService(ClientService, GroupRequestMixin, ProjectRequestMixin
             "time_unit": time_granularity,
             "agg_by": agg_by,
         }
-        return safe_request(
-            self.list, err_prefix=f"Failed to get billing summary."
-        )(params=params).json()["results"]
+        return safe_request(self.list, err_prefix=f"Failed to get billing summary.")(
+            params=params
+        ).json()["results"]

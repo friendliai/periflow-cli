@@ -212,7 +212,9 @@ def create(
             f"{cred_type_map_inv[credential['type']]} and {cloud_storage.value}."
         )
 
-    storage_helper = build_storage_helper(cloud_storage, credential_json=credential["value"])
+    storage_helper = build_storage_helper(
+        cloud_storage, credential_json=credential["value"]
+    )
     if storage_path is not None:
         storage_path = storage_path.strip("/")
     files = storage_helper.list_storage_files(storage_name, storage_path)

@@ -142,8 +142,10 @@ def view(
             panel_dict = {
                 "code": vm_instance_name,
                 "in_use": vm_count_in_use,
-                "project_limit": "-" if vm_dict["quota"] == vm_dict["global_quota"] else vm_dict["quota"],
-                "organization_limit": vm_dict["global_quota"]
+                "project_limit": "-"
+                if vm_dict["quota"] == vm_dict["global_quota"]
+                else vm_dict["quota"],
+                "organization_limit": vm_dict["global_quota"],
             }
             quota_detail_panel.render(panel_dict)
             return
@@ -154,12 +156,12 @@ def view(
 @quota_app.command("create", help="Create quota limitation of the project")
 def create(
     vm_instance_name: str = typer.Option(..., help="vm type"),
-    project_name: str = typer.Option(..., help="name of the project where quota will be created"),
+    project_name: str = typer.Option(
+        ..., help="name of the project where quota will be created"
+    ),
     quota: int = typer.Option(..., help="number of VM quota"),
 ):
-    project_client: GroupProjectClientService = build_client(
-        ServiceType.GROUP_PROJECT
-    )
+    project_client: GroupProjectClientService = build_client(ServiceType.GROUP_PROJECT)
     project_id = find_project_id(project_client.list_projects(), project_name)
 
     vm_quota_client: GroupProjectVMQuotaClientService = build_client(
@@ -169,19 +171,19 @@ def create(
     vm_quota_client.create_project_quota(vm_instance_name, project_id, quota)
     typer.secho(
         f"VM quota of VM {vm_instance_name} in project {project_name} is set to {quota}!",
-        fg=typer.colors.BLUE
+        fg=typer.colors.BLUE,
     )
 
 
 @quota_app.command("update", help="Update quota limitation of the project")
 def update(
     vm_instance_name: str = typer.Option(..., help="vm type"),
-    project_name: str = typer.Option(..., help="name of the project where quota will be created"),
+    project_name: str = typer.Option(
+        ..., help="name of the project where quota will be created"
+    ),
     quota: int = typer.Option(..., help="number of VM quota"),
 ):
-    project_client: GroupProjectClientService = build_client(
-        ServiceType.GROUP_PROJECT
-    )
+    project_client: GroupProjectClientService = build_client(ServiceType.GROUP_PROJECT)
     project_id = find_project_id(project_client.list_projects(), project_name)
 
     vm_quota_client: GroupProjectVMQuotaClientService = build_client(
@@ -196,18 +198,18 @@ def update(
     vm_quota_client.update_project_quota(quota_id, quota)
     typer.secho(
         f"VM quota of VM {vm_instance_name} in project {project_name} is updated to {quota}!",
-        fg=typer.colors.BLUE
+        fg=typer.colors.BLUE,
     )
 
 
 @quota_app.command("delete", help="Delete quota limitation of the project")
 def delete(
     vm_instance_name: str = typer.Option(..., help="vm type"),
-    project_name: str = typer.Option(..., help="name of the project where quota will be created"),
+    project_name: str = typer.Option(
+        ..., help="name of the project where quota will be created"
+    ),
 ):
-    project_client: GroupProjectClientService = build_client(
-        ServiceType.GROUP_PROJECT
-    )
+    project_client: GroupProjectClientService = build_client(ServiceType.GROUP_PROJECT)
     project_id = find_project_id(project_client.list_projects(), project_name)
     vm_quota_client: GroupProjectVMQuotaClientService = build_client(
         ServiceType.GROUP_VM_QUOTA
@@ -221,5 +223,5 @@ def delete(
     vm_quota_client.delete_quota(quota_id)
     typer.secho(
         f"VM quota of VM {vm_instance_name} in project {project_name} is deleted!",
-        fg=typer.colors.BLUE
+        fg=typer.colors.BLUE,
     )
