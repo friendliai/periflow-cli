@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 import requests_mock
 
-from pfcli.utils import get_uri
+from pfcli.utils.url import get_uri
 
 
 @pytest.fixture

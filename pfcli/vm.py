@@ -17,7 +17,7 @@ from pfcli.service.client import (
 )
 from pfcli.service.client.project import find_project_id
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import secho_error_and_exit
+from pfcli.utils.format import secho_error_and_exit
 
 
 app = typer.Typer(

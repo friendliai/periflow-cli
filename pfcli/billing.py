@@ -11,7 +11,11 @@ from pfcli.service import ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.billing import BillingClientService, TimeGranularity
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import datetime_to_simple_string, secho_error_and_exit, utc_to_local
+from pfcli.utils.format import (
+    datetime_to_simple_string,
+    secho_error_and_exit,
+    utc_to_local,
+)
 
 
 tabulate.PRESERVE_WHITESPACE = True

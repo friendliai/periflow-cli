@@ -2,6 +2,8 @@
 
 """PeriFlow Group (Organization) CLI"""
 
+from uuid import UUID
+
 import typer
 
 from pfcli.context import (
@@ -19,7 +21,7 @@ from pfcli.service.client import (
     build_client,
 )
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import secho_error_and_exit
+from pfcli.utils.format import secho_error_and_exit
 
 
 app = typer.Typer(
@@ -119,7 +121,7 @@ def switch(
 def invite(email: str = typer.Argument(..., help="Invitation recipient email address")):
     group_client: GroupClientService = build_client(ServiceType.GROUP)
 
-    org = _get_current_org()
+    org = get_current_org()
 
     if org["privilege_level"] != "owner":
         secho_error_and_exit("Only the owner of the organization can invite/set-role.")
@@ -145,7 +147,7 @@ def set_role(
 ):
     user_client: UserClientService = build_client(ServiceType.USER)
 
-    org = _get_current_org()
+    org = get_current_org()
 
     if org["privilege_level"] != "owner":
         secho_error_and_exit(
@@ -159,16 +161,16 @@ def set_role(
     )
 
 
-def _get_org_user_id_by_name(org_id: str, username: str) -> str:
+def _get_org_user_id_by_name(org_id: UUID, username: str) -> UUID:
     group_client: GroupClientService = build_client(ServiceType.GROUP)
-    users = group_client.get_user(org_id, username)
+    users = group_client.get_users(org_id, username)
     for user in users:
         if user["username"] == username:
-            return user["id"]
+            return UUID(user["id"])
     secho_error_and_exit(f"{username} is not a member of this organization.")
 
 
-def _get_current_org() -> dict:
+def get_current_org() -> dict:
     user_group_client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
 
     curr_org_id = get_current_group_id()

@@ -89,7 +89,7 @@ job_status_map: Dict[JobStatus, SimpleJobStatus] = {
 }
 
 
-job_status_map_inv: Dict[SimpleJobStatus, Tuple[JobStatus]] = {
+job_status_map_inv: Dict[SimpleJobStatus, Tuple[JobStatus, ...]] = {
     SimpleJobStatus.WAITING: (
         JobStatus.WAITING,
         JobStatus.ENQUEUED,
@@ -155,7 +155,7 @@ storage_type_map: Dict[StorageType, str] = {
 }
 
 
-storage_type_map_inv: Dict[StorageType, str] = {
+storage_type_map_inv: Dict[str, StorageType] = {
     "aws": StorageType.S3,
     "azure.blob": StorageType.BLOB,
     "gcp": StorageType.GCS,
@@ -187,7 +187,7 @@ cred_type_map: Dict[CredType, str] = {
 }
 
 
-cred_type_map_inv: Dict[CredType, str] = {
+cred_type_map_inv: Dict[str, CredType] = {
     "docker": CredType.DOCKER,
     "aws": CredType.S3,
     "azure.blob": CredType.BLOB,

@@ -5,11 +5,13 @@
 import os
 from dateutil.parser import parse
 from typing import Optional, List
+from uuid import UUID
 
 import typer
 
 from pfcli.service import (
     CheckpointCategory,
+    CredType,
     ModelFormCategory,
     ServiceType,
     StorageType,
@@ -25,7 +27,9 @@ from pfcli.service.client import (
 )
 from pfcli.service.cloud import build_storage_helper
 from pfcli.service.formatter import PanelFormatter, TableFormatter, TreeFormatter
-from pfcli.utils import datetime_to_pretty_str, download_file, secho_error_and_exit
+from pfcli.utils.format import datetime_to_pretty_str, secho_error_and_exit
+from pfcli.utils.fs import download_file
+from pfcli.utils.validate import validate_cloud_storage_type
 
 
 app = typer.Typer(
@@ -112,7 +116,7 @@ def list(
 
 @app.command()
 def view(
-    checkpoint_id: str = typer.Argument(
+    checkpoint_id: UUID = typer.Argument(
         ..., help="UUID of checkpoint to inspect detail."
     )
 ):
@@ -138,11 +142,12 @@ def create(
         "--format",
         help="The format of your checkpoint",
     ),
-    cloud: StorageType = typer.Option(
+    cloud_storage: StorageType = typer.Option(
         ...,
-        "--cloud",
+        "--cloud-storage",
         "-c",
-        help="The cloud storage vendor type where the checkpoint is uploaded.",
+        help="The cloud storage vendor where the checkpoint is uploaded.",
+        callback=validate_cloud_storage_type,
     ),
     region: str = typer.Option(
         ...,
@@ -162,7 +167,7 @@ def create(
         "-p",
         help="File or direcotry path of cloud storage. The root of the storage will be used by default.",
     ),
-    credential_id: str = typer.Option(
+    credential_id: UUID = typer.Option(
         ...,
         "--credential-id",
         "-i",
@@ -201,12 +206,13 @@ def create(
 
     credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     credential = credential_client.get_credential(credential_id)
-    if credential["type"] != cred_type_map[cloud]:
+    if credential["type"] != cred_type_map[CredType(cloud_storage.value)]:
         secho_error_and_exit(
-            f"Credential type and cloud vendor mismatch: {cred_type_map_inv[credential['type']]} and {cloud}."
+            "Credential type and cloud vendor mismatch: "
+            f"{cred_type_map_inv[credential['type']]} and {cloud_storage.value}."
         )
 
-    storage_helper = build_storage_helper(cloud, credential_json=credential["value"])
+    storage_helper = build_storage_helper(cloud_storage, credential_json=credential["value"])
     if storage_path is not None:
         storage_path = storage_path.strip("/")
     files = storage_helper.list_storage_files(storage_name, storage_path)
@@ -219,7 +225,7 @@ def create(
     ckpt = checkpoint_client.create_checkpoint(
         name=name,
         model_form_category=format,
-        vendor=cloud,
+        vendor=cloud_storage,
         region=region,
         credential_id=credential_id,
         iteration=iteration,
@@ -239,7 +245,7 @@ def create(
 
 @app.command()
 def delete(
-    checkpoint_id: str = typer.Argument(..., help="UUID of checkpoint to delete."),
+    checkpoint_id: UUID = typer.Argument(..., help="UUID of checkpoint to delete."),
     force: bool = typer.Option(
         False,
         "--force",
@@ -261,7 +267,7 @@ def delete(
 
 @app.command()
 def download(
-    checkpoint_id: str = typer.Argument(..., help="UUID of checkpoint to download."),
+    checkpoint_id: UUID = typer.Argument(..., help="UUID of checkpoint to download."),
     save_directory: Optional[str] = typer.Option(
         None,
         "--destination",

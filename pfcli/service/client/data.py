@@ -16,12 +16,10 @@ from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
 
 from pfcli.service import StorageType, storage_type_map_inv
-from pfcli.service.client.base import ClientService, T, safe_request
-from pfcli.utils import (
-    secho_error_and_exit,
-    storage_path_to_local_path,
-    validate_storage_region,
-)
+from pfcli.service.client.base import ClientService, safe_request
+from pfcli.utils.format import secho_error_and_exit
+from pfcli.utils.fs import storage_path_to_local_path
+from pfcli.utils.validate import validate_storage_region
 
 # The actual hard limit of a part size is 5 GiB, and we use 200 MiB part size.
 # See https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html.
@@ -30,7 +28,7 @@ S3_UPLOAD_SIZE_LIMIT = 5 * 1024 * 1024 * 1024  # 5 GiB
 
 
 class DataClientService(ClientService):
-    def get_dataset(self, dataset_id: T) -> dict:
+    def get_dataset(self, dataset_id: int) -> dict:
         response = safe_request(
             self.retrieve, err_prefix=f"Dataset ({dataset_id}) is not found."
         )(pk=dataset_id)
@@ -38,7 +36,7 @@ class DataClientService(ClientService):
 
     def update_dataset(
         self,
-        dataset_id: T,
+        dataset_id: int,
         *,
         name: Optional[str] = None,
         vendor: Optional[StorageType] = None,
@@ -79,10 +77,10 @@ class DataClientService(ClientService):
         )(pk=dataset_id, json=request_data)
         return response.json()
 
-    def delete_dataset(self, dataset_id: T) -> None:
+    def delete_dataset(self, dataset_id: int) -> None:
         safe_request(self.delete, err_prefix="Failed to delete dataset")(pk=dataset_id)
 
-    def get_spu_urls(self, dataset_id: T, paths: List[str]) -> List[dict]:
+    def get_spu_urls(self, dataset_id: int, paths: List[str]) -> List[dict]:
         """Get single part upload URLs for multiple files.
 
         Args:
@@ -98,7 +96,7 @@ class DataClientService(ClientService):
         return response.json()
 
     def get_mpu_urls(
-        self, dataset_id: T, paths: List[str], src_path: Optional[str] = None
+        self, dataset_id: int, paths: List[str], src_path: Optional[str] = None
     ) -> List[dict]:
         """Get multipart upload URLs for multiple datasets
 
@@ -141,7 +139,7 @@ class DataClientService(ClientService):
         return start_mpu_resps
 
     def complete_mpu(
-        self, dataset_id: T, path: str, upload_id: str, parts: List[dict]
+        self, dataset_id: int, path: str, upload_id: str, parts: List[dict]
     ) -> None:
         safe_request(
             self.post, err_prefix=f"Failed to complete multipart upload for {path}"
@@ -154,7 +152,7 @@ class DataClientService(ClientService):
             },
         )
 
-    def abort_mpu(self, dataset_id: T, path: str, upload_id: str) -> None:
+    def abort_mpu(self, dataset_id: int, path: str, upload_id: str) -> None:
         safe_request(
             self.post, err_prefix=f"Failed to abort multipart upload for {path}"
         )(
@@ -166,7 +164,7 @@ class DataClientService(ClientService):
         )
 
     def _multipart_upload_file(
-        self, dataset_id: T, file_path: str, url_dict: List[dict], ctx: tqdm
+        self, dataset_id: int, file_path: str, url_dict: dict, ctx: tqdm
     ) -> None:
         # TODO (ym): parallelize each part upload.
         parts = []
@@ -187,7 +185,7 @@ class DataClientService(ClientService):
                     s = Session()
                     req = Request("PUT", url_info["upload_url"], data=wrapped_object)
                     prep = req.prepare()
-                    prep.headers["Content-Length"] = chunk_size
+                    prep.headers["Content-Length"] = str(chunk_size)
                     response = s.send(prep)
                     response.raise_for_status()
 
@@ -208,7 +206,7 @@ class DataClientService(ClientService):
 
     def upload_files(
         self,
-        dataset_id: T,
+        dataset_id: int,
         spu_url_dicts: List[Dict[str, str]],
         mpu_url_dicts: List[dict],
         source_path: Path,
@@ -282,10 +280,10 @@ def expand_paths(path: Path, expand: bool, size_type: FileSizeType) -> List[str]
         paths = [str(path.name)]
         paths = filter_files_by_size(paths, size_type)
     else:
-        paths = list(path.rglob("*"))
+        paths = [str(p) for p in path.rglob("*")]
         paths = filter_files_by_size(paths, size_type)
         rel_path = path if expand else path.parent
-        paths = [str(f.relative_to(rel_path)) for f in paths if f.is_file()]
+        paths = [str(Path(p).relative_to(rel_path)) for p in paths if Path(p).is_file()]
 
     return paths
 
@@ -308,7 +306,7 @@ def _upload_file(file_path: str, url: str, ctx: tqdm) -> None:
             prep = req.prepare()
             prep.headers[
                 "Content-Length"
-            ] = total_file_size  # necessary to use ``CallbackIOWrapper``
+            ] = str(total_file_size)  # necessary to use ``CallbackIOWrapper``
             response = s.send(prep)
             if response.status_code != 200:
                 secho_error_and_exit(
@@ -362,6 +360,7 @@ class _CustomCallbackIOWrapper(CallbackIOWrapper):
 
             @wraps(func)
             def read(*args, **kwargs):
+                assert chunk_size is not None
                 if self._cursor >= chunk_size:
                     self._cursor = 0
                     return

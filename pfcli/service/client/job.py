@@ -4,11 +4,11 @@
 
 import json
 import os
-import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from string import Template
-from typing import Dict, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
+from uuid import UUID
 
 import requests
 import typer
@@ -23,12 +23,13 @@ from pfcli.service import JobStatus, LogType
 from pfcli.service.auth import TokenType, auto_token_refresh, get_auth_header, get_token
 from pfcli.service.client.base import ClientService, ProjectRequestMixin, safe_request
 from pfcli.service.formatter import TreeFormatter
-from pfcli.utils import get_workspace_files, paginated_get, secho_error_and_exit, zip_dir
-
+from pfcli.utils.format import secho_error_and_exit
+from pfcli.utils.fs import get_workspace_files, zip_dir
+from pfcli.utils.request import paginated_get
 
 class JobWebSocketClientService(ClientService):
     @asynccontextmanager
-    async def _connect(self, job_id: str) -> Iterator[WebSocketClientProtocol]:
+    async def _connect(self, job_id: UUID) -> Iterator[WebSocketClientProtocol]:
         access_token = get_token(TokenType.ACCESS)
         base_url = self.url_template.render(**self.url_kwargs, pk=job_id)
         url = f"{base_url}?token={access_token}"
@@ -60,7 +61,7 @@ class JobWebSocketClientService(ClientService):
 
     @asynccontextmanager
     async def open_connection(
-        self, job_id: str, log_types: Optional[List[str]], machines: Optional[List[int]]
+        self, job_id: UUID, log_types: Optional[List[str]], machines: Optional[List[int]]
     ):
         if log_types is None:
             sources = [f"process.{x.value}" for x in LogType]
@@ -156,7 +157,7 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
         job_name: Optional[str] = None,
         vm: Optional[str] = None,
         statuses: Optional[Tuple[JobStatus]] = None,
-        user_ids: Optional[List[uuid.UUID]] = None,
+        user_ids: Optional[List[UUID]] = None,
     ) -> List[dict]:
         params = {
             "created_at.since": since,
@@ -236,7 +237,7 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
         machines: Optional[List[int]] = None,
         content: Optional[str] = None,
     ) -> List[dict]:
-        request_data = {"limit": num_records}
+        request_data: Dict[str, Any] = {"limit": num_records}
         if head:
             request_data["ascending"] = "true"
         else:

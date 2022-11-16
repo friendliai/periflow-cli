@@ -3,6 +3,7 @@
 """PeriFlow Credential CLI"""
 
 import json
+from uuid import UUID
 
 import typer
 
@@ -14,7 +15,7 @@ from pfcli.service.client import (
 )
 from pfcli.service.config import CredentialConfigService
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import secho_error_and_exit
+from pfcli.utils.format import secho_error_and_exit
 
 
 app = typer.Typer(
@@ -233,7 +234,7 @@ def list(
 
 @app.command()
 def update(
-    credential_id: str = typer.Argument(..., help="UUID of credential to update.")
+    credential_id: UUID = typer.Argument(..., help="UUID of credential to update.")
 ):
     """Update a credential data."""
     configurator = CredentialConfigService()
@@ -244,7 +245,7 @@ def update(
     client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
 
     cred = client.update_credential(
-        credential_id, name=name, type_version=1, value=value
+        credential_id, name=name, type_version="1", value=value
     )
     cred["type"] = cred_type_map_inv[cred["type"]].value
 
@@ -254,7 +255,7 @@ def update(
 
 @app.command()
 def delete(
-    credential_id: str = typer.Argument(..., help="UUID of credential to delete."),
+    credential_id: UUID = typer.Argument(..., help="UUID of credential to delete."),
     force: bool = typer.Option(
         False,
         "--force",

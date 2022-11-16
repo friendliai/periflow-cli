@@ -42,7 +42,7 @@ from pfcli.service.client.user import (
     UserMFAService,
     UserSignUpService,
 )
-from pfcli.utils import (
+from pfcli.utils.url import (
     get_auth_uri,
     get_meter_uri,
     get_mr_uri,

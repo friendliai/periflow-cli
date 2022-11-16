@@ -3,17 +3,18 @@
 """PeriFlow CheckpointClient Service"""
 
 from typing import List, Optional
+from uuid import UUID
 
 import requests
 from requests.models import Response
 
 from pfcli.service import StorageType
 from pfcli.service.auth import auto_token_refresh, get_auth_header
-from pfcli.service.client.base import ClientService, T, safe_request
+from pfcli.service.client.base import ClientService, safe_request
 
 
-class CheckpointClientService(ClientService):
-    def get_checkpoint(self, checkpoint_id: T) -> dict:
+class CheckpointClientService(ClientService[UUID]):
+    def get_checkpoint(self, checkpoint_id: UUID) -> dict:
         response = safe_request(
             self.retrieve, err_prefix="Failed to get info of checkpoint"
         )(pk=checkpoint_id)
@@ -21,7 +22,7 @@ class CheckpointClientService(ClientService):
 
     def update_checkpoint(
         self,
-        checkpoint_id: T,
+        checkpoint_id: UUID,
         *,
         vendor: Optional[StorageType] = None,
         region: Optional[str] = None,
@@ -58,14 +59,14 @@ class CheckpointClientService(ClientService):
         )(pk=checkpoint_id, json=request_data)
         return response.json()
 
-    def delete_checkpoint(self, checkpoint_id: T) -> None:
+    def delete_checkpoint(self, checkpoint_id: UUID) -> Response:
         response = safe_request(self.delete, err_prefix="Failed to delete checkpoint.")(
             pk=checkpoint_id
         )
         return response
 
     @auto_token_refresh
-    def download(self, checkpoint_id: T) -> Response:
+    def download(self, checkpoint_id: UUID) -> Response:
         response = safe_request(
             self.retrieve, err_prefix="Failed to get info of checkpoint."
         )(pk=checkpoint_id)
@@ -78,7 +79,7 @@ class CheckpointClientService(ClientService):
             headers=get_auth_header(),
         )
 
-    def get_checkpoint_download_urls(self, checkpoint_id: T) -> List[dict]:
+    def get_checkpoint_download_urls(self, checkpoint_id: UUID) -> List[dict]:
         response = safe_request(
             self.download, err_prefix="Failed to get download URLs of checkpoint files."
         )(checkpoint_id=checkpoint_id)

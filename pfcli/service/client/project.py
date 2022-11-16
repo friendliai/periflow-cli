@@ -3,10 +3,10 @@
 """PeriFlow ProjectClient Service"""
 
 
-import uuid
+from requests import HTTPError
 from string import Template
 from typing import List, Optional
-from requests import HTTPError
+from uuid import UUID
 
 from pfcli.service import (
     CloudType,
@@ -22,27 +22,26 @@ from pfcli.service.client.base import (
     T,
     safe_request,
 )
-from pfcli.utils import (
-    paginated_get,
-    validate_storage_region,
-)
+from pfcli.utils.format import secho_error_and_exit
+from pfcli.utils.request import paginated_get
+from pfcli.utils.validate import validate_storage_region
 
 
-def find_project_id(projects: List[dict], project_name: str) -> uuid.UUID:
+def find_project_id(projects: List[dict], project_name: str) -> UUID:
     for project in projects:
         if project["name"] == project_name:
-            return uuid.UUID(project["id"])
+            return UUID(project["id"])
     secho_error_and_exit(f"No project exists with name {project_name}.")
 
 
-class ProjectClientService(ClientService):
-    def get_project(self, pf_project_id: uuid.UUID) -> dict:
+class ProjectClientService(ClientService[UUID]):
+    def get_project(self, pf_project_id: UUID) -> dict:
         response = safe_request(self.retrieve, err_prefix="Failed to get a project.")(
             pk=pf_project_id
         )
         return response.json()
 
-    def check_project_membership(self, pf_project_id: uuid.UUID) -> bool:
+    def check_project_membership(self, pf_project_id: UUID) -> bool:
         try:
             self.retrieve(pf_project_id)
         except HTTPError:
@@ -50,19 +49,19 @@ class ProjectClientService(ClientService):
         else:
             return True
 
-    def delete_project(self, pf_project_id: uuid.UUID) -> None:
+    def delete_project(self, pf_project_id: UUID) -> None:
         safe_request(self.delete, err_prefix="Failed to delete a project.")(
             pk=pf_project_id
         )
 
-    def list_users(self, pf_project_id: str) -> List[dict]:
+    def list_users(self, pf_project_id: UUID) -> List[dict]:
         get_response_dict = safe_request(
             self.list, err_prefix="Failed to list users in the current project"
         )
         return paginated_get(get_response_dict, path=f"{pf_project_id}/pf_user")
 
 
-class ProjectDataClientService(ClientService, ProjectRequestMixin):
+class ProjectDataClientService(ClientService[int], ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
@@ -71,7 +70,7 @@ class ProjectDataClientService(ClientService, ProjectRequestMixin):
         response = safe_request(self.list, err_prefix="Failed to list dataset info.")()
         return response.json()
 
-    def get_id_by_name(self, name: str) -> Optional[T]:
+    def get_id_by_name(self, name: str) -> Optional[int]:
         datasets = self.list_datasets()
         for dataset in datasets:
             if dataset["name"] == name:
@@ -165,13 +164,13 @@ class ProjectCredentialClientService(ClientService, ProjectRequestMixin):
         return response.json()
 
 
-class ProjectVMConfigClientService(ClientService, ProjectRequestMixin):
+class ProjectVMConfigClientService(ClientService[int], ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
     def list_vm_locks(
-        self, vm_config_id: T, lock_status_list: List[LockStatus]
+        self, vm_config_id: int, lock_status_list: List[LockStatus]
     ) -> List[dict]:
         status_param = ",".join(lock_status_list)
         response = safe_request(self.list, err_prefix="Failed to inspect locked VMs.")(
@@ -179,7 +178,7 @@ class ProjectVMConfigClientService(ClientService, ProjectRequestMixin):
         )
         return response.json()
 
-    def get_vm_count_in_use(self, vm_config_id: T) -> int:
+    def get_vm_count_in_use(self, vm_config_id: int) -> int:
         vm_locks = self.list_vm_locks(
             vm_config_id, [LockStatus.ACTIVE, LockStatus.DELETING]
         )

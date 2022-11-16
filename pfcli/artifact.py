@@ -11,7 +11,8 @@ import typer
 from pfcli.service import ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.job import ProjectJobArtifactClientService
-from pfcli.utils import download_file, secho_error_and_exit
+from pfcli.utils.fs import download_file
+from pfcli.utils.format import secho_error_and_exit
 
 
 app = typer.Typer(
