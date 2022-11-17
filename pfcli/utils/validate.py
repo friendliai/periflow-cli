@@ -3,7 +3,7 @@
 """PeriFlow CLI Validation Utilities"""
 
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 import typer
 
@@ -40,9 +40,18 @@ def validate_datetime_format(datetime_str: Optional[str]) -> Optional[str]:
     return datetime_str
 
 
-def validate_cloud_storage_type(val: StorageType) -> StorageType:
+def validate_cloud_storage_type(val: StorageType) -> str:
     if val is StorageType.FAI:
         secho_error_and_exit(
             "Checkpoint creation with FAI storage is not supported now."
         )
-    return val
+    return val.value
+
+
+def validate_parallelism_order(value: str) -> List[str]:
+    parallelism_order = value.split(",")
+    if {"pp", "dp", "mp"} != set(parallelism_order):
+        secho_error_and_exit(
+            "Invalid Argument: parallelism_order should contain 'pp', 'dp', 'mp'"
+        )
+    return parallelism_order

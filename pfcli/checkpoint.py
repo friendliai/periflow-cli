@@ -29,7 +29,7 @@ from pfcli.service.cloud import build_storage_helper
 from pfcli.service.formatter import PanelFormatter, TableFormatter, TreeFormatter
 from pfcli.utils.format import datetime_to_pretty_str, secho_error_and_exit
 from pfcli.utils.fs import download_file
-from pfcli.utils.validate import validate_cloud_storage_type
+from pfcli.utils.validate import validate_cloud_storage_type, validate_parallelism_order
 
 
 app = typer.Typer(
@@ -81,15 +81,6 @@ panel_formatter = PanelFormatter(
     ],
 )
 tree_formatter = TreeFormatter(name="Files")
-
-
-def _validate_parallelism_order(value: str) -> List[str]:
-    parallelism_order = value.split(",")
-    if {"pp", "dp", "mp"} != set(parallelism_order):
-        secho_error_and_exit(
-            "Invalid Argument: parallelism_order should contain 'pp', 'dp', 'mp'"
-        )
-    return parallelism_order
 
 
 @app.command()
@@ -191,7 +182,7 @@ def create(
     parallelism_order: str = typer.Option(
         "pp,dp,mp",
         "--parallelism-order",
-        callback=_validate_parallelism_order,
+        callback=validate_parallelism_order,
         help="Order of device allocation in distributed training.",
     ),
 ):
