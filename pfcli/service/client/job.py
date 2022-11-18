@@ -132,7 +132,7 @@ class ProjectJobArtifactClientService(ClientService, ProjectRequestMixin):
         return response.json()
 
 
-class JobTemplateClientService(ClientService):
+class JobTemplateClientService(ClientService[UUID]):
     def list_job_template_names(self) -> List[str]:
         response = safe_request(
             self.list, err_prefix="Failed to list job template names."
@@ -147,6 +147,13 @@ class JobTemplateClientService(ClientService):
             if template["name"] == name:
                 return template
         return None
+
+    def get_job_template(self, job_template_id: UUID) -> dict:
+        response = safe_request(
+            self.retrieve,
+            err_prefix=f"Job template (ID: {job_template_id}) is not found.",
+        )(pk=job_template_id)
+        return response.json()
 
 
 class ProjectJobClientService(ClientService, ProjectRequestMixin):
