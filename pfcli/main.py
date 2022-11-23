@@ -19,13 +19,20 @@ from pfcli import (
     serve,
     vm,
 )
+from pfcli.context import (
+    get_current_project_id,
+    project_context_path,
+    set_current_group_id,
+)
 from pfcli.service import ServiceType
 from pfcli.service.auth import clear_tokens, get_token, TokenType, update_token
 from pfcli.service.client import (
+    build_client,
+    ProjectClientService,
     UserClientService,
+    UserGroupClientService,
     UserMFAService,
     UserSignUpService,
-    build_client,
 )
 from pfcli.service.formatter import PanelFormatter
 from pfcli.utils.format import secho_error_and_exit
@@ -101,6 +108,24 @@ def login(
         typer.run(_mfa_verify)
     else:
         _handle_login_response(r, False)
+
+    # Save user's organiztion context
+    project_client: ProjectClientService = build_client(ServiceType.PROJECT)
+    user_group_client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
+    org = user_group_client.get_group_info()
+    org_id = org["id"]
+
+    project_id = get_current_project_id()
+    if project_id is not None:
+        if project_client.check_project_membership(pf_project_id=project_id):
+            project_org_id = project_client.get_project(pf_project_id=project_id)[
+                "pf_group_id"
+            ]
+            if project_org_id != org_id:
+                project_context_path.unlink(missing_ok=True)
+        else:
+            project_context_path.unlink(missing_ok=True)
+    set_current_group_id(org_id)
 
 
 @app.command(help="Sign out PeriFlow")

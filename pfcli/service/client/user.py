@@ -98,9 +98,9 @@ class UserGroupClientService(ClientService, UserRequestMixin):
         self.initialize_user()
         super().__init__(template, pf_user_id=self.user_id, **kwargs)
 
-    def get_group_info(self) -> list:
+    def get_group_info(self) -> dict:
         response = safe_request(self.list, err_prefix="Failed to get my group info.")()
-        return response.json()
+        return response.json()[0]
 
 
 class UserGroupProjectClientService(ClientService, UserRequestMixin, GroupRequestMixin):
