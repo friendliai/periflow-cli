@@ -112,6 +112,7 @@ def login(
     # Save user's organiztion context
     project_client: ProjectClientService = build_client(ServiceType.PROJECT)
     user_group_client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
+
     org = user_group_client.get_group_info()
     org_id = org["id"]
 

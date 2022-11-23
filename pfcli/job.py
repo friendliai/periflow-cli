@@ -230,18 +230,6 @@ def refine_config(
                     "setup": "",
                     "run": docker_command,
                 }
-    else:
-        job_template_name = config["job_setting"]["template_name"]
-        job_template_config = job_template_client.get_job_template_by_name(
-            job_template_name
-        )
-        if job_template_config is None:
-            secho_error_and_exit(
-                f"Predefined job template ({job_template_name}) is not found."
-            )
-        del config["job_setting"]["template_name"]
-        config["job_setting"]["engine_code"] = job_template_config["engine_code"]
-        config["job_setting"]["model_code"] = job_template_config["model_code"]
 
 
 @app.command()
