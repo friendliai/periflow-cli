@@ -12,7 +12,7 @@ import typer
 from pfcli.service import GroupRole, ProjectRole, ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.user import (
-    UserClientService, 
+    UserClientService,
     UserGroupClientService,
     UserMFAService,
     UserSignUpService
@@ -200,9 +200,9 @@ def test_user_group_client_get_group_info(
         url_template.render(**user_group_client.url_kwargs),
         json=[{"id": "00000000-0000-0000-0000-000000000000", "name": "my-group"}],
     )
-    assert user_group_client.get_group_info() == [
-        {"id": "00000000-0000-0000-0000-000000000000", "name": "my-group"}
-    ]
+    assert user_group_client.get_group_info() == {
+        "id": "00000000-0000-0000-0000-000000000000", "name": "my-group"
+    }
 
     # Failed
     requests_mock.get(

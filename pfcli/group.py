@@ -97,17 +97,14 @@ def get_current_org() -> dict:
 
     curr_org_id = get_current_group_id()
     if curr_org_id is None:
-        secho_error_and_exit("working organization is not set")
+        secho_error_and_exit("Organization is not identified. Please login again.")
 
-    orgs = user_group_client.get_group_info()
-    for org in orgs:
-        if org["id"] == str(curr_org_id):
-            return org
+    org = user_group_client.get_group_info()
+    if org["id"] == str(curr_org_id):
+        return org
 
     # org context may be wrong
-    secho_error_and_exit(
-        "Failed to identify organization... Please set organization again."
-    )
+    secho_error_and_exit("Failed to identify organization.")
 
 
 @app.command(help="list up members in the current working organization")
@@ -116,7 +113,7 @@ def members():
     org_id = get_current_group_id()
 
     if org_id is None:
-        secho_error_and_exit("working organization is not set")
+        secho_error_and_exit("Organization is not identified. Please login again.")
 
     members = group_client.list_users(org_id)
     member_table_formatter.render(members)

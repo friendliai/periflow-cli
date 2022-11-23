@@ -112,8 +112,9 @@ def login(
     # Save user's organiztion context
     project_client: ProjectClientService = build_client(ServiceType.PROJECT)
     user_group_client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
-    orgs = user_group_client.get_group_info()
-    org_id = orgs[0]["id"]  # TODO (ym): We assume single-org
+
+    org = user_group_client.get_group_info()
+    org_id = org["id"]
 
     project_id = get_current_project_id()
     if project_id is not None:
