@@ -4,6 +4,7 @@
 
 from string import Template
 from typing import List
+from uuid import UUID
 
 from pfcli.service import GroupRole, ProjectRole
 from pfcli.service.client.base import (
@@ -12,7 +13,7 @@ from pfcli.service.client.base import (
     UserRequestMixin,
     safe_request,
 )
-from pfcli.utils import paginated_get
+from pfcli.utils.request import paginated_get
 
 
 class UserMFAService(ClientService):
@@ -52,7 +53,7 @@ class UserClientService(ClientService, UserRequestMixin):
         )
 
     def set_group_privilege(
-        self, pf_group_id: str, pf_user_id: str, privilege_level: GroupRole
+        self, pf_group_id: UUID, pf_user_id: UUID, privilege_level: GroupRole
     ) -> None:
         safe_request(
             self.partial_update, err_prefix="Failed to update privilege level in group"
@@ -62,7 +63,7 @@ class UserClientService(ClientService, UserRequestMixin):
             json={"privilege_level": privilege_level.value},
         )
 
-    def get_project_membership(self, pf_project_id: str) -> dict:
+    def get_project_membership(self, pf_project_id: UUID) -> dict:
         response = safe_request(
             self.retrieve, err_prefix="Failed identify member in project"
         )(
@@ -72,7 +73,7 @@ class UserClientService(ClientService, UserRequestMixin):
         return response.json()
 
     def add_to_project(
-        self, pf_user_id: str, pf_project_id: str, access_level: ProjectRole
+        self, pf_user_id: UUID, pf_project_id: UUID, access_level: ProjectRole
     ) -> None:
         safe_request(self.post, err_prefix="Failed to add user to project")(
             path=f"{pf_user_id}/pf_project/{pf_project_id}",
@@ -80,7 +81,7 @@ class UserClientService(ClientService, UserRequestMixin):
         )
 
     def set_project_privilege(
-        self, pf_user_id: str, pf_project_id: str, access_level: ProjectRole
+        self, pf_user_id: UUID, pf_project_id: UUID, access_level: ProjectRole
     ) -> None:
         safe_request(
             self.partial_update,
@@ -97,9 +98,9 @@ class UserGroupClientService(ClientService, UserRequestMixin):
         self.initialize_user()
         super().__init__(template, pf_user_id=self.user_id, **kwargs)
 
-    def get_group_info(self) -> list:
+    def get_group_info(self) -> dict:
         response = safe_request(self.list, err_prefix="Failed to get my group info.")()
-        return response.json()
+        return response.json()[0]
 
 
 class UserGroupProjectClientService(ClientService, UserRequestMixin, GroupRequestMixin):

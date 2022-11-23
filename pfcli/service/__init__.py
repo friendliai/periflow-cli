@@ -13,13 +13,11 @@ class ServiceType(str, Enum):
     PROJECT = "PROJECT"
     GROUP = "GROUP"
     GROUP_PROJECT = "GROUP_PROJECT"
-    EXPERIMENT = "EXPERIMENT"
-    PROJECT_EXPERIMENT = "PROJECT_EXPERIMENT"
-    JOB = "JOB"
-    JOB_CHECKPOINT = "JOB_CHECKPOINT"
-    JOB_ARTIFACT = "JOB_ARTIFACT"
+    PROJECT_JOB_CHECKPOINT = "PROJECT_JOB_CHECKPOINT"
+    PROJECT_JOB_ARTIFACT = "PROJECT_JOB_ARTIFACT"
     PROJECT_JOB = "PROJECT_JOB"
     JOB_TEMPLATE = "JOB_TEMPLATE"
+    GROUP_VM_QUOTA = "GROUP_VM_QUOTA"
     PROJECT_VM_QUOTA = "PROJECT_VM_QUOTA"
     PROJECT_VM_CONFIG = "PROJECT_VM_CONFIG"
     GROUP_VM_CONFIG = "GROUP_VM_CONFIG"
@@ -65,6 +63,7 @@ class JobStatus(str, Enum):
 
 class SimpleJobStatus(str, Enum):
     """Simplified job status delivered to users"""
+
     WAITING = "waiting"
     ALLOCATING = "allocating"
     PREPARING = "preparing"
@@ -91,7 +90,7 @@ job_status_map: Dict[JobStatus, SimpleJobStatus] = {
 }
 
 
-job_status_map_inv: Dict[SimpleJobStatus, Tuple[JobStatus]] = {
+job_status_map_inv: Dict[SimpleJobStatus, Tuple[JobStatus, ...]] = {
     SimpleJobStatus.WAITING: (
         JobStatus.WAITING,
         JobStatus.ENQUEUED,
@@ -102,9 +101,20 @@ job_status_map_inv: Dict[SimpleJobStatus, Tuple[JobStatus]] = {
     SimpleJobStatus.RUNNING: (JobStatus.RUNNING,),
     SimpleJobStatus.SUCCESS: (JobStatus.SUCCESS,),
     SimpleJobStatus.FAILED: (JobStatus.FAILED,),
-    SimpleJobStatus.STOPPING: (JobStatus.TERMINATING, JobStatus.CANCELLING,),
-    SimpleJobStatus.STOPPED: (JobStatus.TERMINATED, JobStatus.CANCELLED,),
+    SimpleJobStatus.STOPPING: (
+        JobStatus.TERMINATING,
+        JobStatus.CANCELLING,
+    ),
+    SimpleJobStatus.STOPPED: (
+        JobStatus.TERMINATED,
+        JobStatus.CANCELLED,
+    ),
 }
+
+
+class PeriFlowService(str, Enum):
+    TRAIN = "train"
+    SERVE = "serve"
 
 
 class JobType(str, Enum):
@@ -162,7 +172,7 @@ storage_type_map: Dict[StorageType, str] = {
 }
 
 
-storage_type_map_inv: Dict[StorageType, str] = {
+storage_type_map_inv: Dict[str, StorageType] = {
     "aws": StorageType.S3,
     "azure.blob": StorageType.BLOB,
     "gcp": StorageType.GCS,
@@ -194,7 +204,7 @@ cred_type_map: Dict[CredType, str] = {
 }
 
 
-cred_type_map_inv: Dict[CredType, str] = {
+cred_type_map_inv: Dict[str, CredType] = {
     "docker": CredType.DOCKER,
     "aws": CredType.S3,
     "azure.blob": CredType.BLOB,

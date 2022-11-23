@@ -13,6 +13,7 @@ from typing import (
     Optional,
     Union,
 )
+from uuid import UUID
 
 import yaml
 import typer
@@ -36,13 +37,11 @@ from pfcli.service.client import (
     build_client,
 )
 from pfcli.service.cloud import build_storage_helper
-from pfcli.utils import get_default_editor, open_editor, secho_error_and_exit
+from pfcli.utils.prompt import get_default_editor, open_editor
+from pfcli.utils.format import secho_error_and_exit
 
 
 DEFAULT_TEMPLATE_CONFIG = """\
-# The name of experiment
-experiment:
-
 # The name of job
 name:
 
@@ -291,7 +290,7 @@ class CustomJobConfigService(JobConfigService):
 class PredefinedJobConfigService(JobConfigService):
     """Predefined job template configuration service"""
 
-    model_name: Optional[str] = None
+    template_id: Optional[UUID] = None
     model_config: Optional[dict] = None
 
     def start_interaction(self) -> None:
@@ -299,13 +298,12 @@ class PredefinedJobConfigService(JobConfigService):
             ServiceType.JOB_TEMPLATE
         )
 
-        template_names = job_template_client_service.list_job_template_names()
-        self.model_name = typer.prompt(
-            "Which job do you want to run? Choose one in the following catalog:\n",
-            type=Choice(template_names),
+        self.template_id = typer.prompt(
+            "Enter the predefined job template ID",
             prompt_suffix="\n>> ",
+            type=UUID,
         )
-        template = job_template_client_service.get_job_template_by_name(self.model_name)
+        template = job_template_client_service.get_job_template(self.template_id)
         assert template is not None
         self.model_config = template["data_example"]
 
@@ -328,10 +326,11 @@ class PredefinedJobConfigService(JobConfigService):
 
         yaml_str = DEFAULT_TEMPLATE_CONFIG
         yaml_str += PREDEFINED_JOB_SETTING_CONFIG
-        yaml_str += f"  template_name: {self.model_name}\n"
-        yaml_str += f"  model_config:\n"
-        for k, v in self.model_config.items():
-            yaml_str += f"    {k}: {v}\n"
+        yaml_str += f"  template_id: {self.template_id}\n"
+        if self.model_config:
+            yaml_str += f"  model_config:\n"
+            for k, v in self.model_config.items():
+                yaml_str += f"    {k}: {v}\n"
 
         if self.use_data:
             yaml_str += DATA_CONFIG
@@ -382,7 +381,7 @@ class CredentialConfigService(InteractiveConfigMixin):
         self._validate_schema(schema)
         self.ready = True
 
-    def start_interaction_for_update(self, credential_id: str) -> None:
+    def start_interaction_for_update(self, credential_id: UUID) -> None:
         cred_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
         prev_cred = cred_client.get_credential(credential_id)
 
@@ -437,7 +436,7 @@ class DataConfigService(InteractiveConfigMixin):
     vendor: Optional[StorageType] = None
     region: Optional[str] = None
     storage_name: Optional[str] = None
-    credential_id: Optional[str] = None
+    credential_id: Optional[UUID] = None
     metadata: Optional[dict] = field(default_factory=dict)
     files: Optional[List[dict]] = field(default_factory=list)
 
@@ -453,6 +452,7 @@ class DataConfigService(InteractiveConfigMixin):
 
     def _get_credential(self) -> dict:
         client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
+        assert self.credential_id is not None
         return client.get_credential(self.credential_id)["value"]
 
     def start_interaction_common(self) -> None:
@@ -485,6 +485,7 @@ class DataConfigService(InteractiveConfigMixin):
             show_choices=False,
             prompt_suffix="\n>> ",
         )
+        self.credential_id = UUID(self.credential_id)
         credential_value = self._get_credential()
         storage_helper = build_storage_helper(self.vendor, credential_value)
         self.files = storage_helper.list_storage_files(self.storage_name)

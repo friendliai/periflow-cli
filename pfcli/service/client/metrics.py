@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import List, TypeVar
 
 from pfcli.service.client.base import ClientService, safe_request
-from pfcli.utils import datetime_to_simple_string, utc_to_local
+from pfcli.utils.format import datetime_to_simple_string, utc_to_local
 
 MetricsType = TypeVar("MetricsType")
 

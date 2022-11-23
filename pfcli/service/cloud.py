@@ -20,7 +20,7 @@ from botocore.client import BaseClient
 from azure.storage.blob import BlobServiceClient
 
 from pfcli.service import StorageType
-from pfcli.utils import secho_error_and_exit
+from pfcli.utils.format import secho_error_and_exit
 
 
 C = TypeVar("C", bound="CloudStorageHelper")

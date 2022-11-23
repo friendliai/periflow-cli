@@ -13,7 +13,6 @@ PeriFlow를 사용하시는 여러분들을 환영합니다. 본 튜토리얼에
 - **Organization**: PeriFlow의 최상위 그룹 단위입니다. 조직 내에 멤버들을 초대하여 개발 및 실험 과정을 협업할 수 있습니다. 사용자는 동시에 여러 개의 Organization에 속할 수 있습니다.
 - **Project**: Organization 내의 서브 그룹의 단위입니다. Organization 내에서 용도에 따라 여러 개의 Project를 생성하고 각 Project 마다 필요한 멤버들을 추가할 수 있습니다. Project 내에서는 Job, Dataset, Checkpoint, Credential 등의 모든 자원이 공유됩니다. 사용자는 동시에 여러 개의 Project에 속할 수 있습니다.
 - **Job**: 학습 작업의 실행/스케줄링 단위 입니다. `python main.py ...`와 같은 명령어를 사용하여 학습 프로세스를 실행하는 것이 PeriFlow에선 Job 하나에 해당 합니다.
-- **Experiment**: 여러 Job들의 묶음으로, Job에 붙이는 태그에 해당합니다. 같은 종류의 Job은 같은 Experiment에 묶어서 보다 편하게 Job을 관리할 수 있습니다.
 - **Dataset**: Job에 사용될 학습 데이터입니다.
 - **Checkpoint**: 모델 학습의 결과물로 생긴 모델 가중치 체크포인트입니다. 학습 과정의 특정 스텝에서 Checkpoint 하나가 생성될 수 있습니다.
 - **Credential**: 유저의 개인 클라우드 저장소, Slack 등에 접근하기 위해 필요한 secret 입니다.

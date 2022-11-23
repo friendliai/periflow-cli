@@ -4,13 +4,14 @@
 
 
 from typing import Optional
+from uuid import UUID
 
 from pfcli.service import CredType, cred_type_map
-from pfcli.service.client.base import ClientService, T, safe_request
+from pfcli.service.client.base import ClientService, safe_request
 
 
-class CredentialClientService(ClientService):
-    def get_credential(self, credential_id: T) -> dict:
+class CredentialClientService(ClientService[UUID]):
+    def get_credential(self, credential_id: UUID) -> dict:
         response = safe_request(self.retrieve, err_prefix="Credential is not found.")(
             pk=credential_id
         )
@@ -18,7 +19,7 @@ class CredentialClientService(ClientService):
 
     def update_credential(
         self,
-        credential_id: T,
+        credential_id: UUID,
         *,
         name: Optional[str] = None,
         type_version: Optional[str] = None,
@@ -36,7 +37,7 @@ class CredentialClientService(ClientService):
         )(pk=credential_id, json=request_data)
         return response.json()
 
-    def delete_credential(self, credential_id: T) -> None:
+    def delete_credential(self, credential_id: UUID) -> None:
         safe_request(self.delete, err_prefix="Failed to delete credential")(
             pk=credential_id
         )

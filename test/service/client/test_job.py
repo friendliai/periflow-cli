@@ -5,6 +5,8 @@
 
 import json
 from copy import deepcopy
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -16,27 +18,27 @@ from pfcli.service import LogType, ServiceType
 from pfcli.service.auth import TokenType
 from pfcli.service.client import build_client
 from pfcli.service.client.job import (
-    JobArtifactClientService,
-    JobCheckpointClientService,
-    JobClientService,
     JobTemplateClientService,
     JobWebSocketClientService,
+    ProjectJobArtifactClientService,
+    ProjectJobCheckpointClientService,
+    ProjectJobClientService,
 )
 
 
 @pytest.fixture
-def job_client() -> JobClientService:
-    return build_client(ServiceType.JOB)
+def project_job_client(user_project_group_context) -> ProjectJobClientService:
+    return build_client(ServiceType.PROJECT_JOB)
 
 
 @pytest.fixture
-def job_checkpoint_client() -> JobCheckpointClientService:
-    return build_client(ServiceType.JOB_CHECKPOINT, job_id=1)
+def job_checkpoint_client(user_project_group_context) -> ProjectJobCheckpointClientService:
+    return build_client(ServiceType.PROJECT_JOB_CHECKPOINT, job_number=1)
 
 
 @pytest.fixture
-def job_artifact_client() -> JobArtifactClientService:
-    return build_client(ServiceType.JOB_ARTIFACT, job_id=1)
+def job_artifact_client(user_project_group_context) -> ProjectJobArtifactClientService:
+    return build_client(ServiceType.PROJECT_JOB_ARTIFACT, job_number=1)
 
 
 @pytest.fixture
@@ -45,91 +47,113 @@ def job_template_client() -> JobTemplateClientService:
 
 
 @pytest.fixture
-def job_ws_client() -> JobWebSocketClientService:
+def job_ws_client(user_project_group_context) -> JobWebSocketClientService:
     return build_client(ServiceType.JOB_WS)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_job_client_list_jobs(
-    requests_mock: requests_mock.Mocker, job_client: JobClientService
+    requests_mock: requests_mock.Mocker, project_job_client: ProjectJobClientService
 ):
-    assert isinstance(job_client, JobClientService)
+    assert isinstance(project_job_client, ProjectJobClientService)
 
     # Success
     requests_mock.get(
-        job_client.url_template.render(),
+        project_job_client.url_template.render(
+            **project_job_client.url_kwargs
+        ),
         json={"results": [{"id": 1}, {"id": 2}], "next_cursor": None},
     )
-    assert job_client.list_jobs() == [{"id": 1}, {"id": 2}]
+    assert project_job_client.list_jobs() == [{"id": 1}, {"id": 2}]
 
     # Failed due to HTTP error
-    requests_mock.get(job_client.url_template.render(), status_code=404)
+    requests_mock.get(project_job_client.url_template.render(
+        **project_job_client.url_kwargs
+    ), status_code=404)
     with pytest.raises(typer.Exit):
-        job_client.list_jobs()
+        project_job_client.list_jobs()
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_job_client_get_job(
-    requests_mock: requests_mock.Mocker, job_client: JobClientService
+    requests_mock: requests_mock.Mocker, project_job_client: ProjectJobClientService
 ):
-    assert isinstance(job_client, JobClientService)
+    assert isinstance(project_job_client, ProjectJobClientService)
 
     # Success
-    requests_mock.get(job_client.url_template.render(1), json={"id": 1})
-    assert job_client.get_job(1) == {"id": 1}
+    requests_mock.get(project_job_client.url_template.render(
+        **project_job_client.url_kwargs,
+        pk=1
+    ), json={"id": 1})
+    assert project_job_client.get_job(1) == {"id": 1}
 
     # Failed due to HTTP error
-    requests_mock.get(job_client.url_template.render(1), status_code=404)
+    requests_mock.get(project_job_client.url_template.render(
+        **project_job_client.url_kwargs,
+        pk=1
+    ), status_code=404)
     with pytest.raises(typer.Exit):
-        job_client.get_job(1)
+        project_job_client.get_job(1)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_job_client_cancel_job(
-    requests_mock: requests_mock.Mocker, job_client: JobClientService
+    requests_mock: requests_mock.Mocker, project_job_client: ProjectJobClientService
 ):
-    url_template = deepcopy(job_client.url_template)
-    url_template.attach_pattern("$job_id/cancel/")
+    url_template = deepcopy(project_job_client.url_template)
+    url_template.attach_pattern("$job_number/cancel/")
 
     # Success
-    requests_mock.post(url_template.render(job_id=1))
+    requests_mock.post(url_template.render(
+        **project_job_client.url_kwargs,
+        job_number=1,
+    ))
     try:
-        job_client.cancel_job(1)
+        project_job_client.cancel_job(1)
     except typer.Exit as exc:
-        raise pytest.failed(f"Test failed: {exc!r}") from exc
+        raise pytest.fail(f"Test failed: {exc!r}") from exc
 
     # Failed
-    requests_mock.post(url_template.render(job_id=1), status_code=500)
+    requests_mock.post(url_template.render(
+        **project_job_client.url_kwargs,
+        job_number=1
+    ), status_code=500)
     with pytest.raises(typer.Exit):
-        job_client.cancel_job(1)
+        project_job_client.cancel_job(1)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_job_client_terminate_job(
-    requests_mock: requests_mock.Mocker, job_client: JobClientService
+    requests_mock: requests_mock.Mocker, project_job_client: ProjectJobClientService
 ):
-    url_template = deepcopy(job_client.url_template)
-    url_template.attach_pattern("$job_id/terminate/")
+    url_template = deepcopy(project_job_client.url_template)
+    url_template.attach_pattern("$job_number/terminate/")
 
     # Success
-    requests_mock.post(url_template.render(job_id=1))
+    requests_mock.post(url_template.render(
+        **project_job_client.url_kwargs,
+        job_number=1,
+    ))
     try:
-        job_client.terminate_job(1)
+        project_job_client.terminate_job(1)
     except typer.Exit as exc:
-        raise pytest.failed(f"Test failed: {exc!r}") from exc
+        raise pytest.fail(f"Test failed: {exc!r}") from exc
 
     # Failed
-    requests_mock.post(url_template.render(job_id=1), status_code=500)
+    requests_mock.post(url_template.render(
+        **project_job_client.url_kwargs,
+        job_number=1,
+    ), status_code=500)
     with pytest.raises(typer.Exit):
-        job_client.terminate_job(1)
+        project_job_client.terminate_job(1)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_job_client_get_text_logs(
-    requests_mock: requests_mock.Mocker, job_client: JobClientService
+    requests_mock: requests_mock.Mocker, project_job_client: ProjectJobClientService
 ):
-    url_template = deepcopy(job_client.url_template)
-    url_template.attach_pattern("$job_id/text_log/")
+    url_template = deepcopy(project_job_client.url_template)
+    url_template.attach_pattern("$job_number/text_log/")
 
     data = {
         "results": [
@@ -150,21 +174,27 @@ def test_job_client_get_text_logs(
     }
 
     # Success
-    requests_mock.get(url_template.render(job_id=1), json=data)
-    assert job_client.get_text_logs(1, 2) == list(reversed(data["results"]))
+    requests_mock.get(url_template.render(
+        **project_job_client.url_kwargs,
+        job_number=1,
+    ), json=data)
+    assert project_job_client.get_text_logs(1, 2) == list(reversed(data["results"]))
 
     # Success w options
     assert (
-        job_client.get_text_logs(
+        project_job_client.get_text_logs(
             1, 2, head=True, log_types=["stdout"], machines=[0], content="2022"
         )
         == data["results"]
     )
 
     # Failed
-    requests_mock.get(url_template.render(job_id=1), status_code=500)
+    requests_mock.get(url_template.render(
+        **project_job_client.url_kwargs,
+        job_number=1,
+    ), status_code=500)
     with pytest.raises(typer.Exit):
-        job_client.get_text_logs(1, 2)
+        project_job_client.get_text_logs(1, 2)
 
 
 @pytest.mark.asyncio
@@ -204,14 +234,16 @@ async def test_job_ws_client(job_ws_client: JobWebSocketClientService):
 
         resp_list = []
         async with job_ws_client.open_connection(
-            job_id=1, log_types=["stdout", "stderr", "vmlog"], machines=[0]
+            job_id="33333333-3333-3333-3333-333333333333",
+            log_types=["stdout", "stderr", "vmlog"],
+            machines=[0]
         ):
             async for resp in job_ws_client:
                 resp_list.append(resp)
 
         get_token_mock.assert_called_once_with(TokenType.ACCESS)
         ws_connect_mock.assert_called_once_with(
-            f"{job_ws_client.url_template.render(1)}?token=ACCESS_TOKEN"
+            f"{job_ws_client.url_template.render(**job_ws_client.url_kwargs, pk='33333333-3333-3333-3333-333333333333')}?token=ACCESS_TOKEN"
         )
         ws_connect_mock.return_value.__aenter__.assert_awaited_once()
         ws_connect_mock.return_value.__aexit__.assert_awaited_once()
@@ -255,7 +287,9 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
         ws_mock.recv.side_effect = ["not_a_json"]
         with pytest.raises(typer.Exit):
             async with job_ws_client.open_connection(
-                job_id=1, log_types=None, machines=None
+                job_id="33333333-3333-3333-3333-333333333333",
+                log_types=None,
+                machines=None
             ):
                 pass
 
@@ -270,7 +304,9 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
         ]
         with pytest.raises(typer.Exit):
             async with job_ws_client.open_connection(
-                job_id=1, log_types=None, machines=None
+                job_id="33333333-3333-3333-3333-333333333333",
+                log_types=None,
+                machines=None
             ):
                 pass
 
@@ -285,7 +321,9 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
         ]
         with pytest.raises(typer.Exit):
             async with job_ws_client.open_connection(
-                job_id=1, log_types=[LogType.STDOUT], machines=None
+                job_id="33333333-3333-3333-3333-333333333333",
+                log_types=[LogType.STDOUT],
+                machines=None
             ):
                 pass
 
@@ -301,7 +339,9 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
         ]
         with pytest.raises(typer.Exit):
             async with job_ws_client.open_connection(
-                job_id=1, log_types=None, machines=None
+                job_id="33333333-3333-3333-3333-333333333333",
+                log_types=None,
+                machines=None
             ):
                 async for _ in job_ws_client:
                     pass
@@ -310,19 +350,23 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_job_checkpoint_client_list_checkpoints(
     requests_mock: requests_mock.Mocker,
-    job_checkpoint_client: JobCheckpointClientService,
+    job_checkpoint_client: ProjectJobCheckpointClientService,
 ):
-    assert isinstance(job_checkpoint_client, JobCheckpointClientService)
+    assert isinstance(job_checkpoint_client, ProjectJobCheckpointClientService)
 
     # Success
     requests_mock.get(
-        job_checkpoint_client.url_template.render(job_id=1), json=[{"id": 1}]
+        job_checkpoint_client.url_template.render(
+            **job_checkpoint_client.url_kwargs,
+        ), json=[{"id": 1}]
     )
     assert job_checkpoint_client.list_checkpoints() == [{"id": 1}]
 
     # Failed due to HTTP error
     requests_mock.get(
-        job_checkpoint_client.url_template.render(job_id=1), status_code=404
+        job_checkpoint_client.url_template.render(
+            **job_checkpoint_client.url_kwargs,
+        ), status_code=404
     )
     with pytest.raises(typer.Exit):
         job_checkpoint_client.list_checkpoints()
@@ -330,19 +374,21 @@ def test_job_checkpoint_client_list_checkpoints(
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_job_artifact_client_list_artifacts(
-    requests_mock: requests_mock.Mocker, job_artifact_client: JobCheckpointClientService
+    requests_mock: requests_mock.Mocker, job_artifact_client: ProjectJobCheckpointClientService
 ):
-    assert isinstance(job_artifact_client, JobArtifactClientService)
+    assert isinstance(job_artifact_client, ProjectJobArtifactClientService)
 
     # Success
     requests_mock.get(
-        job_artifact_client.url_template.render(job_id=1), json=[{"id": 1}]
+        job_artifact_client.url_template.render(
+            **job_artifact_client.url_kwargs,
+        ), json=[{"id": 1}]
     )
     assert job_artifact_client.list_artifacts() == [{"id": 1}]
 
     # Failed due to HTTP error
     requests_mock.get(
-        job_artifact_client.url_template.render(job_id=1), status_code=404
+        job_artifact_client.url_template.render(**job_artifact_client.url_kwargs), status_code=404
     )
     with pytest.raises(typer.Exit):
         job_artifact_client.list_artifacts()
@@ -350,22 +396,24 @@ def test_job_artifact_client_list_artifacts(
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_job_artifact_client_get_download_urls(
-    requests_mock: requests_mock.Mocker, job_artifact_client: JobCheckpointClientService
+    requests_mock: requests_mock.Mocker, job_artifact_client: ProjectJobCheckpointClientService
 ):
-    assert isinstance(job_artifact_client, JobArtifactClientService)
+    assert isinstance(job_artifact_client, ProjectJobArtifactClientService)
 
     url_template = job_artifact_client.url_template.copy()
     url_template.attach_pattern("1/download/")
     # Success
     requests_mock.get(
-        url_template.render(job_id=1), json=[{"url": "https://hello.artifact.com"}]
+        url_template.render(
+            **job_artifact_client.url_kwargs,
+        ), json=[{"url": "https://hello.artifact.com"}]
     )
     assert job_artifact_client.get_artifact_download_url(1) == [
         {"url": "https://hello.artifact.com"}
     ]
 
     # Failed due to HTTP error
-    requests_mock.get(url_template.render(job_id=1), status_code=404)
+    requests_mock.get(url_template.render(**job_artifact_client.url_kwargs), status_code=404)
     with pytest.raises(typer.Exit):
         job_artifact_client.get_artifact_download_url(1)
 
@@ -427,3 +475,52 @@ def test_job_template_client_get_job_template_by_name(
     requests_mock.get(job_template_client.url_template.render(), status_code=404)
     with pytest.raises(typer.Exit):
         job_template_client.get_job_template_by_name("some-template")
+
+
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_project_job_client_run_job(
+    requests_mock: requests_mock.Mocker, project_job_client: ProjectJobClientService
+):
+    # Success wo workspace dir
+    requests_mock.post(
+        project_job_client.url_template.render(**project_job_client.url_kwargs),
+        json={"id": 1},
+    )
+    assert project_job_client.run_job({"k": "v"}, None) == {"id": 1}
+
+    # Success w workspace dir
+    with TemporaryDirectory() as dir:
+        ws_dir = Path(dir)
+        with open(ws_dir / "large_file", "wb") as f:
+            f.seek(500 * 1024)  # 500KB
+            f.write(b"0")
+        assert project_job_client.run_job(
+            {
+                "job_setting": {
+                    "workspace": {
+                        "mount_path": "/workspace"
+                }
+            }, "k": "v"}, ws_dir) == {"id": 1}
+
+    # Failed due to large workspace dir exceeding the size limit
+    with TemporaryDirectory() as dir:
+        ws_dir = Path(dir)
+        with open(ws_dir / "large_file", "wb") as f:
+            f.seek(2 * 1024 * 1024 * 1024)  # 2GB
+            f.write(b"0")
+        with pytest.raises(typer.Exit):
+            project_job_client.run_job({"k": "v"}, ws_dir)
+
+    # Failed due to empty workspace dir
+    with TemporaryDirectory() as dir:
+        ws_dir = Path(dir)
+        with pytest.raises(typer.Exit):
+            project_job_client.run_job({"k": "v"}, ws_dir)
+
+    # Failed due to HTTP error
+    requests_mock.post(
+        project_job_client.url_template.render(**project_job_client.url_kwargs),
+        status_code=500,
+    )
+    with pytest.raises(typer.Exit):
+        project_job_client.run_job({"k": "v"}, None)
