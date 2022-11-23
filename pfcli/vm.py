@@ -15,15 +15,9 @@ from pfcli.service.client import (
     ProjectVMQuotaClientService,
     build_client,
 )
-<<<<<<< HEAD
 from pfcli.service.client.project import ProjectVMConfigClientService, find_project_id
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.settings import settings
-=======
-from pfcli.service.client.project import find_project_id
-from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import secho_error_and_exit
->>>>>>> 94f76aa77d16f6aec4637ed81ee4f0573921fac9
 
 
 app = typer.Typer(
