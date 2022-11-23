@@ -198,7 +198,9 @@ def refine_config(
         config["job_setting"]["workspace"] = {"mount_path": "/workspace"}
 
     data_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
-    vm_client: GroupVMConfigClientService = build_client(ServiceType.GROUP_VM_CONFIG)
+    vm_client: GroupVMConfigClientService = build_client(
+        ServiceType.PFT_GROUP_VM_CONFIG
+    )
     job_template_client: JobTemplateClientService = build_client(
         ServiceType.JOB_TEMPLATE
     )

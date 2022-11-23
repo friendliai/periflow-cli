@@ -32,14 +32,14 @@ def project_data_client(user_project_group_context) -> ProjectDataClientService:
 
 @pytest.fixture
 def project_vm_quota_client(user_project_group_context) -> ProjectVMQuotaClientService:
-    return build_client(ServiceType.PROJECT_VM_QUOTA)
+    return build_client(ServiceType.PFT_PROJECT_VM_QUOTA)
 
 
 @pytest.fixture
 def project_vm_config_client(
     user_project_group_context,
 ) -> ProjectVMConfigClientService:
-    return build_client(ServiceType.PROJECT_VM_CONFIG)
+    return build_client(ServiceType.PFT_PROJECT_VM_CONFIG)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")

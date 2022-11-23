@@ -32,7 +32,7 @@ def group_client(user_project_group_context) -> GroupClientService:
 
 @pytest.fixture
 def group_vm_config_client(user_project_group_context) -> GroupVMConfigClientService:
-    return build_client(ServiceType.GROUP_VM_CONFIG)
+    return build_client(ServiceType.PFT_GROUP_VM_CONFIG)
 
 
 @pytest.fixture

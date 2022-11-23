@@ -14,7 +14,7 @@ from pfcli.service.client.billing import BillingClientService
 
 @pytest.fixture
 def billing_summary_client(user_project_group_context) -> BillingClientService:
-    return build_client(ServiceType.BILLING_SUMMARY)
+    return build_client(ServiceType.PFT_BILLING_SUMMARY)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")

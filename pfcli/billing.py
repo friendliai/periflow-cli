@@ -53,7 +53,7 @@ def summary(
     ),
 ):
     """Summarize the billing information for the given time range"""
-    client: BillingClientService = build_client(ServiceType.BILLING_SUMMARY)
+    client: BillingClientService = build_client(ServiceType.PFT_BILLING_SUMMARY)
 
     agg_by = "user_id"
 

@@ -584,6 +584,7 @@ class CustomDataConfigService(DataConfigService):
 @dataclass
 class DeploymentConfigService(InteractiveConfigMixin):
     """Deployment template configuration service."""
+
     ready: bool = False
     use_specific_image: bool = False
     use_ckpt_config: bool = False
@@ -618,7 +619,7 @@ class OrcaDeploymentConfigService(DeploymentConfigService):
             prompt_suffix="\n>> ",
         )
         self.ready = True
-    
+
     def render(self) -> str:
         assert self.ready
 

@@ -51,7 +51,6 @@ from pfcli.utils.url import (
     get_uri,
     get_wss_uri,
 )
-from pfcli.settings import settings
 
 client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.MFA: (
@@ -114,36 +113,31 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         GroupProjectVMQuotaClientService,
         Template(get_uri("group/$group_id/vm_quota/")),
     ),
-    ServiceType.PROJECT_VM_QUOTA: (
+    ServiceType.PFT_PROJECT_VM_QUOTA: (
         ProjectVMQuotaClientService,
-        Template(get_uri("project/$project_id/vm_quota/"))
-        if not settings.pfs_only
-        else Template(get_pfs_uri("project/$project_id/vm_quota/")),  # FIXME: fix this path after vm impl in pfs
+        Template(get_uri("project/$project_id/vm_quota/")),
     ),
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_mr_uri("models/"))),
     ServiceType.GROUP_PROJECT_CHECKPOINT: (
         GroupProjectCheckpointClientService,
         Template(get_mr_uri("orgs/$group_id/prjs/$project_id/models/")),
     ),  # pylint: disable=line-too-long
-    ServiceType.PROJECT_VM_CONFIG: (
+    ServiceType.PFT_PROJECT_VM_CONFIG: (
         ProjectVMConfigClientService,
-        Template(get_uri("project/$project_id/vm_config/"))
-        if not settings.pfs_only
-        else Template(get_pfs_uri("project/$project_id/vm_config/")),  # FIXME: fix this path after vm impl in pfs
+        Template(get_uri("project/$project_id/vm_config/")),
     ),
-    ServiceType.GROUP_VM_CONFIG: (
+    ServiceType.PFT_GROUP_VM_CONFIG: (
         GroupVMConfigClientService,
-        Template(get_uri("group/$group_id/vm_config/"))
-        if not settings.pfs_only
-        else Template(get_pfs_uri("group/$group_id/vm_config/")),  # FIXME: fix this path after vm impl in pfs
+        Template(get_uri("group/$group_id/vm_config/")),
     ),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri("job/"))),
-    ServiceType.DEPLOYMENT: (DeploymentClientService, Template(get_pfs_uri("deployment/"))),
-    ServiceType.BILLING_SUMMARY: (
+    ServiceType.DEPLOYMENT: (
+        DeploymentClientService,
+        Template(get_pfs_uri("deployment/")),
+    ),
+    ServiceType.PFT_BILLING_SUMMARY: (
         BillingClientService,
-        Template(get_meter_uri("training/instances/price/")) 
-        if not settings.pfs_only
-        else Template(get_meter_uri("serving/instances/price/")),
+        Template(get_meter_uri("training/instances/price/")),
     ),
     ServiceType.METRICS: (
         MetricsClientService,

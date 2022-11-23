@@ -93,16 +93,18 @@ def list(
     if service == PeriFlowService.TRAIN:
         """List all VM quota information."""
         vm_quota_client: ProjectVMQuotaClientService = build_client(
-            ServiceType.PROJECT_VM_QUOTA
+            ServiceType.PFT_PROJECT_VM_QUOTA
         )
         vm_config_client: ProjectVMConfigClientService = build_client(
-            ServiceType.PROJECT_VM_CONFIG
+            ServiceType.PFT_PROJECT_VM_CONFIG
         )
         group_vm_config_client: GroupVMConfigClientService = build_client(
-            ServiceType.GROUP_VM_CONFIG
+            ServiceType.PFT_GROUP_VM_CONFIG
         )
 
-        vm_dict_list = vm_quota_client.list_vm_quotas(vendor=cloud, device_type=device_type)
+        vm_dict_list = vm_quota_client.list_vm_quotas(
+            vendor=cloud, device_type=device_type
+        )
         vm_id_map = group_vm_config_client.get_vm_config_id_map()
         available_vm_dict_list = []
         for vm_dict in vm_dict_list:
@@ -123,7 +125,7 @@ def list(
         )
         formatter.render(available_vm_dict_list)
     else:
-        #TODO: PFS vm list
+        # TODO: PFS vm list
         pass
 
 
@@ -132,13 +134,13 @@ def view(
     vm_instance_name: str = typer.Argument(..., help="vm type"),
 ):
     vm_quota_client: ProjectVMQuotaClientService = build_client(
-        ServiceType.PROJECT_VM_QUOTA
+        ServiceType.PFT_PROJECT_VM_QUOTA
     )
     vm_config_client: ProjectVMConfigClientService = build_client(
-        ServiceType.PROJECT_VM_CONFIG
+        ServiceType.PFT_PROJECT_VM_CONFIG
     )
     group_vm_config_client: GroupVMConfigClientService = build_client(
-        ServiceType.GROUP_VM_CONFIG
+        ServiceType.PFT_GROUP_VM_CONFIG
     )
 
     vm_dict_list = vm_quota_client.list_vm_quotas()
