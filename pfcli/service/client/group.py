@@ -6,6 +6,7 @@ import json
 import uuid
 from string import Template
 from typing import Dict, List, Optional
+from uuid import UUID
 
 from pfcli.service import CheckpointCategory, ModelFormCategory, StorageType
 from pfcli.service.client.base import (
@@ -16,7 +17,8 @@ from pfcli.service.client.base import (
     UserRequestMixin,
     safe_request,
 )
-from pfcli.utils import paginated_get, validate_storage_region
+from pfcli.utils.request import paginated_get
+from pfcli.utils.validate import validate_storage_region
 
 
 class GroupClientService(ClientService):
@@ -42,7 +44,7 @@ class GroupClientService(ClientService):
             path="invite/confirm", json={"email_token": token, "key": key}
         )
 
-    def get_user(self, pf_group_id: uuid.UUID, username: str) -> dict:
+    def get_users(self, pf_group_id: uuid.UUID, username: str) -> List[dict]:
         get_response_dict = safe_request(
             self.list, err_prefix="Failed to get user in organization"
         )
@@ -86,13 +88,13 @@ class GroupVMConfigClientService(ClientService, GroupRequestMixin):
         )()
         return response.json()
 
-    def get_vm_config_id_map(self) -> Dict[str, T]:
+    def get_vm_config_id_map(self) -> Dict[str, int]:
         id_map = {}
         for vm_config in self.list_vm_configs():
             id_map[vm_config["vm_config_type"]["code"]] = vm_config["id"]
         return id_map
 
-    def get_id_by_name(self, name: str) -> Optional[T]:
+    def get_id_by_name(self, name: str) -> Optional[int]:
         for vm_config in self.list_vm_configs():
             if vm_config["vm_config_type"]["code"] == name:
                 return vm_config["id"]
@@ -129,7 +131,7 @@ class GroupProjectCheckpointClientService(
         model_form_category: ModelFormCategory,
         vendor: StorageType,
         region: str,
-        credential_id: str,
+        credential_id: UUID,
         iteration: int,
         storage_name: str,
         files: List[dict],
@@ -164,48 +166,40 @@ class GroupProjectCheckpointClientService(
         return response.json()
 
 
-class GroupProjectVMQuotaClientService(ClientService, GroupRequestMixin):
+class GroupProjectVMQuotaClientService(ClientService[UUID], GroupRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_group()
         super().__init__(template, group_id=self.group_id, **kwargs)
 
-    def list_quota(
-        self,
-        vm_instance_name: str,
-        project_id: Optional[T] = None
-    ):
-        params = {
-            "vm_config_type_code": vm_instance_name
-        }
+    def list_quota(self, vm_instance_name: str, project_id: Optional[T] = None):
+        params = {"vm_config_type_code": vm_instance_name}
         if project_id is not None:
             params["project_id"] = str(project_id)
-        response = safe_request(self.list, err_prefix="Failed to list Project VM Quotas.")(
-            params=params
-        )
+        response = safe_request(
+            self.list, err_prefix="Failed to list Project VM Quotas."
+        )(params=params)
         return response.json()
 
-    def create_project_quota(
-        self,
-        vm_instance_name: str,
-        project_id: T,
-        quota: int
-    ):
-        response = safe_request(self.post, err_prefix="Failed to create project quota.")(
+    def create_project_quota(self, vm_instance_name: str, project_id: UUID, quota: int):
+        response = safe_request(
+            self.post, err_prefix="Failed to create project quota."
+        )(
             json={
                 "group_id": str(self.group_id),
                 "vm_config_type_code": vm_instance_name,
                 "project_id": str(project_id),
-                "quota": quota
+                "quota": quota,
             }
         )
         return response.json()
 
-    def update_project_quota(self, quota_id: T, new_quota: int):
-        response = safe_request(self.post, err_prefix=f"Failed to update project quota to {new_quota}.")(
-            pk=quota_id,
-            json={"quota": new_quota}
-        )
+    def update_project_quota(self, quota_id: UUID, new_quota: int):
+        response = safe_request(
+            self.post, err_prefix=f"Failed to update project quota to {new_quota}."
+        )(pk=quota_id, json={"quota": new_quota})
         return response.json()
 
-    def delete_quota(self, quota_id: T):
-        safe_request(self.delete, err_prefix="Failed to delete project quota.")(pk=quota_id)
+    def delete_quota(self, quota_id: UUID):
+        safe_request(self.delete, err_prefix="Failed to delete project quota.")(
+            pk=quota_id
+        )

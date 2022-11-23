@@ -8,7 +8,9 @@ from typing import Callable, Union
 
 import requests
 
-from pfcli.utils import get_periflow_directory, get_uri, secho_error_and_exit
+from pfcli.utils.format import secho_error_and_exit
+from pfcli.utils.fs import get_periflow_directory
+from pfcli.utils.url import get_uri
 
 
 access_token_path = get_periflow_directory() / "access_token"

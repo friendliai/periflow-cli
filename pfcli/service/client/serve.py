@@ -4,11 +4,11 @@
 
 from typing import List
 
-from pfcli.service.client.base import ClientService, T, safe_request
+from pfcli.service.client.base import ClientService, safe_request
 
 
 class ServeClientService(ClientService):
-    def get_serve(self, serve_id: T) -> dict:
+    def get_serve(self, serve_id: str) -> dict:
         response = safe_request(
             self.retrieve,
             err_prefix=f"Serve ({serve_id}) is not found. You may enter wrongID.",
@@ -25,5 +25,5 @@ class ServeClientService(ClientService):
         response = safe_request(self.list, err_prefix="Failed to list serves.")()
         return response.json()
 
-    def delete_serve(self, serve_id: T) -> None:
+    def delete_serve(self, serve_id: str) -> None:
         safe_request(self.delete, err_prefix="Failed to delete serve.")(pk=serve_id)

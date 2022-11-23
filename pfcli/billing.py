@@ -11,7 +11,11 @@ from pfcli.service import ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.billing import BillingClientService, TimeGranularity
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import datetime_to_simple_string, secho_error_and_exit, utc_to_local
+from pfcli.utils.format import (
+    datetime_to_simple_string,
+    secho_error_and_exit,
+    utc_to_local,
+)
 
 
 tabulate.PRESERVE_WHITESPACE = True
@@ -48,8 +52,7 @@ def summary(
         None, "--time-granularity", "-t", help="View within the given time granularity."
     ),
 ):
-    """Summarize the billing information for the given time range
-    """
+    """Summarize the billing information for the given time range"""
     client: BillingClientService = build_client(ServiceType.BILLING_SUMMARY)
 
     agg_by = "user_id"
@@ -64,13 +67,12 @@ def summary(
         if day is None:
             start_date = datetime(year, month, 1).astimezone()
             end_date = (
-                datetime(year + int(month == 12), (month + 1) if month < 12 else 1, 1) - timedelta(days=1)
+                datetime(year + int(month == 12), (month + 1) if month < 12 else 1, 1)
+                - timedelta(days=1)
             ).astimezone()
         else:
             start_date = datetime(year, month, day).astimezone()
-            end_date = (
-                datetime(year, month, day) + timedelta(days=1)
-            ).astimezone()
+            end_date = (datetime(year, month, day) + timedelta(days=1)).astimezone()
     except ValueError as exc:
         secho_error_and_exit(f"Failed to parse datetime: {exc}")
 
@@ -78,18 +80,24 @@ def summary(
         start_date=start_date.isoformat(),
         end_date=end_date.isoformat(),
         agg_by=agg_by,
-        time_granularity=time_granularity
+        time_granularity=time_granularity,
     )
 
     total_price = 0
     for price_info in prices:
         price_info["start_time"] = datetime_to_simple_string(
-            utc_to_local(datetime.strptime(price_info["start_time"], "%Y-%m-%dT%H:%M:%SZ"))
+            utc_to_local(
+                datetime.strptime(price_info["start_time"], "%Y-%m-%dT%H:%M:%SZ")
+            )
         )
         price_info["end_time"] = datetime_to_simple_string(
-            utc_to_local(datetime.strptime(price_info["end_time"], "%Y-%m-%dT%H:%M:%SZ"))
+            utc_to_local(
+                datetime.strptime(price_info["end_time"], "%Y-%m-%dT%H:%M:%SZ")
+            )
         )
-        aggregated_price = reduce(lambda acc, x: acc + x["price"], price_info["price_list"], 0.0)
+        aggregated_price = reduce(
+            lambda acc, x: acc + x["price"], price_info["price_list"], 0.0
+        )
         price_info["price"] = round(aggregated_price, 2)
         total_price += aggregated_price
 

@@ -13,6 +13,7 @@ from typing import (
     Optional,
     Union,
 )
+from uuid import UUID
 
 import yaml
 import typer
@@ -35,7 +36,8 @@ from pfcli.service.client import (
     build_client,
 )
 from pfcli.service.cloud import build_storage_helper
-from pfcli.utils import get_default_editor, open_editor, secho_error_and_exit
+from pfcli.utils.prompt import get_default_editor, open_editor
+from pfcli.utils.format import secho_error_and_exit
 
 
 DEFAULT_TEMPLATE_CONFIG = """\
@@ -346,7 +348,7 @@ class CredentialConfigService(InteractiveConfigMixin):
         self._validate_schema(schema)
         self.ready = True
 
-    def start_interaction_for_update(self, credential_id: str) -> None:
+    def start_interaction_for_update(self, credential_id: UUID) -> None:
         cred_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
         prev_cred = cred_client.get_credential(credential_id)
 

@@ -5,33 +5,32 @@
 import copy
 import requests
 from dataclasses import dataclass
-from functools import partial, wraps
+from functools import wraps
 from requests.models import Response
 from string import Template
-from typing import Callable, Optional, TypeVar, Union
+from typing import Callable, Generic, Optional, TypeVar, Union
 from urllib.parse import urljoin, urlparse
 
 import uuid
 
 from pfcli.context import get_current_group_id, get_current_project_id
 from pfcli.service.auth import auto_token_refresh, get_auth_header
-from pfcli.utils import decode_http_err, get_auth_uri, secho_error_and_exit
+from pfcli.utils.format import secho_error_and_exit
+from pfcli.utils.request import decode_http_err
+from pfcli.utils.url import get_auth_uri
 
 
 T = TypeVar("T", bound=Union[int, str, uuid.UUID])
 
 
 def safe_request(
-    func: Optional[Callable[..., Response]] = None, *, err_prefix: str = ""
+    func: Callable[..., Response], *, err_prefix: str = ""
 ) -> Callable[..., Response]:
     if err_prefix:
         err_prefix = err_prefix.rstrip() + "\n"
 
-    if func is None:
-        return partial(safe_request, err_prefix=err_prefix)
-
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs) -> Response:
         try:
             return func(*args, **kwargs)
         except requests.HTTPError as exc:
@@ -87,7 +86,7 @@ class URLTemplate:
         return URLTemplate(pattern=Template(self.pattern.template))
 
 
-class ClientService:
+class ClientService(Generic[T]):
     def __init__(self, template: Template, **kwargs):
         self.url_template = URLTemplate(template)
         self.url_kwargs = kwargs

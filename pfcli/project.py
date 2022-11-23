@@ -3,6 +3,7 @@
 """PeriFlow Project CLI"""
 
 from typing import Optional, Tuple, Union
+from uuid import UUID
 
 import typer
 
@@ -11,7 +12,7 @@ from pfcli.context import (
     set_current_project_id,
     project_context_path,
 )
-from pfcli.group import _get_current_org, _get_org_user_id_by_name
+from pfcli.group import get_current_org, _get_org_user_id_by_name
 from pfcli.service import GroupRole, ProjectRole, ServiceType
 from pfcli.service.client import (
     GroupProjectClientService,
@@ -22,7 +23,7 @@ from pfcli.service.client import (
 )
 from pfcli.service.client.project import find_project_id
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import secho_error_and_exit
+from pfcli.utils.format import secho_error_and_exit
 
 
 app = typer.Typer(
@@ -142,6 +143,26 @@ def delete(
     typer.secho(f"Project {name} deleted.", fg=typer.colors.BLUE)
 
 
+def _check_project_and_get_id() -> Tuple[UUID, UUID]:
+    """Get org_id and project_id if valid"""
+
+    user_client: UserClientService = build_client(ServiceType.USER)
+
+    org = get_current_org()
+    project_id = get_current_project_id()
+    if project_id is None:
+        secho_error_and_exit("Failed to identify project... Please set project again.")
+
+    if org["privilege_level"] == GroupRole.OWNER:
+        return UUID(org["id"]), project_id
+
+    requester = user_client.get_project_membership(project_id)
+    if requester["access_level"] != ProjectRole.ADMIN:
+        secho_error_and_exit("Only the admin of the project can add-user/set-role")
+
+    return org["id"], project_id
+
+
 @app.command("add-user", help="add user to project")
 def add_user(
     username: str = typer.Argument(
@@ -189,23 +210,8 @@ def members():
     project_client: ProjectClientService = build_client(ServiceType.PROJECT)
 
     project_id = get_current_project_id()
+    if project_id is None:
+        secho_error_and_exit("Failed to identify project... Please set project again.")
+
     members = project_client.list_users(project_id)
     member_table_formatter.render(members)
-
-
-def _check_project_and_get_id() -> Tuple[str, str]:
-    """Get org_id and project_id if valid"""
-
-    user_client: UserClientService = build_client(ServiceType.USER)
-
-    org = _get_current_org()
-    project_id = get_current_project_id()
-
-    if org["privilege_level"] == GroupRole.OWNER:
-        return org["id"], project_id
-
-    requester = user_client.get_project_membership(project_id)
-    if requester["access_level"] != ProjectRole.ADMIN:
-        secho_error_and_exit("Only the admin of the project can add-user/set-role")
-
-    return org["id"], project_id

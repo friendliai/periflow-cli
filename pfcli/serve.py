@@ -4,6 +4,7 @@
 
 from dateutil.parser import parse
 from typing import Optional
+from uuid import UUID
 
 import typer
 
@@ -16,7 +17,7 @@ from pfcli.service.client import (
     build_client,
 )
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import datetime_to_pretty_str
+from pfcli.utils.format import datetime_to_pretty_str
 
 
 app = typer.Typer(
@@ -126,7 +127,7 @@ def view(serve_id: str = typer.Argument(..., help="serve id to inspect detail.")
 
 @app.command()
 def create(
-    checkpoint_id: str = typer.Option(
+    checkpoint_id: UUID = typer.Option(
         ..., "--checkpoint-id", "-c", help="Checkpoint id to deploy."
     ),
     name: str = typer.Option(..., "--name", "-n", help="The name of serve deployment."),

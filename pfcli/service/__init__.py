@@ -63,6 +63,7 @@ class JobStatus(str, Enum):
 
 class SimpleJobStatus(str, Enum):
     """Simplified job status delivered to users"""
+
     WAITING = "waiting"
     ALLOCATING = "allocating"
     PREPARING = "preparing"
@@ -89,7 +90,7 @@ job_status_map: Dict[JobStatus, SimpleJobStatus] = {
 }
 
 
-job_status_map_inv: Dict[SimpleJobStatus, Tuple[JobStatus]] = {
+job_status_map_inv: Dict[SimpleJobStatus, Tuple[JobStatus, ...]] = {
     SimpleJobStatus.WAITING: (
         JobStatus.WAITING,
         JobStatus.ENQUEUED,
@@ -100,8 +101,14 @@ job_status_map_inv: Dict[SimpleJobStatus, Tuple[JobStatus]] = {
     SimpleJobStatus.RUNNING: (JobStatus.RUNNING,),
     SimpleJobStatus.SUCCESS: (JobStatus.SUCCESS,),
     SimpleJobStatus.FAILED: (JobStatus.FAILED,),
-    SimpleJobStatus.STOPPING: (JobStatus.TERMINATING, JobStatus.CANCELLING,),
-    SimpleJobStatus.STOPPED: (JobStatus.TERMINATED, JobStatus.CANCELLED,),
+    SimpleJobStatus.STOPPING: (
+        JobStatus.TERMINATING,
+        JobStatus.CANCELLING,
+    ),
+    SimpleJobStatus.STOPPED: (
+        JobStatus.TERMINATED,
+        JobStatus.CANCELLED,
+    ),
 }
 
 
@@ -155,7 +162,7 @@ storage_type_map: Dict[StorageType, str] = {
 }
 
 
-storage_type_map_inv: Dict[StorageType, str] = {
+storage_type_map_inv: Dict[str, StorageType] = {
     "aws": StorageType.S3,
     "azure.blob": StorageType.BLOB,
     "gcp": StorageType.GCS,
@@ -187,7 +194,7 @@ cred_type_map: Dict[CredType, str] = {
 }
 
 
-cred_type_map_inv: Dict[CredType, str] = {
+cred_type_map_inv: Dict[str, CredType] = {
     "docker": CredType.DOCKER,
     "aws": CredType.S3,
     "azure.blob": CredType.BLOB,

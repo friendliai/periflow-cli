@@ -7,6 +7,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 from typing import Generator, List, Optional, Tuple
+from uuid import UUID
 
 import ruamel.yaml
 import tabulate
@@ -34,20 +35,22 @@ from pfcli.service.client import (
     UserClientService,
     build_client,
 )
-from pfcli.service.client.job import ProjectJobArtifactClientService, ProjectJobCheckpointClientService
+from pfcli.service.client.job import (
+    ProjectJobArtifactClientService,
+    ProjectJobCheckpointClientService,
+)
 from pfcli.service.client.metrics import MetricsClientService
 from pfcli.service.config import build_job_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import (
+from pfcli.utils.format import (
     datetime_to_pretty_str,
     datetime_to_simple_string,
-    get_default_editor,
-    open_editor,
     secho_error_and_exit,
     timedelta_to_pretty_str,
     utc_to_local,
-    validate_datetime_format,
 )
+from pfcli.utils.prompt import get_default_editor, open_editor
+from pfcli.utils.validate import validate_datetime_format
 
 tabulate.PRESERVE_WHITESPACE = True
 
@@ -200,7 +203,8 @@ def refine_config(
         ServiceType.JOB_TEMPLATE
     )
 
-    vm_name = vm_name or config["vm"]
+    vm_name = vm_name or config.get("vm")
+    assert vm_name is not None
     vm_config_id = vm_client.get_id_by_name(vm_name)
     if vm_config_id is None:
         secho_error_and_exit(f"VM ({vm_name}) is not found.")
@@ -335,7 +339,7 @@ def list(
         None,
         "--status",
         help="Filter jobs by job status",
-    )
+    ),
 ):
     """List all jobs."""
     client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
@@ -405,7 +409,7 @@ def stop(job_number: int = typer.Argument(..., help="Job number to be stopped"))
         JobStatus.STARTED,
         JobStatus.ALLOCATING,
         JobStatus.PREPARING,
-        JobStatus.RUNNING
+        JobStatus.RUNNING,
     ):
         client.terminate_job(job_number)
     else:
@@ -549,7 +553,7 @@ def _format_log_string(
 
 
 async def monitor_logs(
-    job_id: str,
+    job_id: UUID,
     log_types: Optional[List[str]],
     machines: Optional[List[int]],
     show_time: bool,
@@ -611,7 +615,14 @@ def log(
         secho_error_and_exit("'follow' cannot be set when 'export_path' is given")
 
     client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
-    logs = client.get_text_logs(job_number, num_records, head, None, machines, content)
+    logs = client.get_text_logs(
+        job_number=job_number,
+        num_records=num_records,
+        head=head,
+        log_types=None,
+        machines=machines,  # type: ignore
+        content=content,
+    )
 
     job_finished = False
     if export_path is not None:
@@ -630,11 +641,17 @@ def log(
 
     if not job_finished and follow:
         job_client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
-        job_id = job_client.get_job(job_number)["id"]
+        job_id = UUID(job_client.get_job(job_number)["id"])
         try:
             # Subscribe job log
             asyncio.run(
-                monitor_logs(job_id, None, machines, show_time, show_machine_id)
+                monitor_logs(
+                    job_id=job_id,
+                    log_types=None,
+                    machines=machines,  # type: ignore
+                    show_time=show_time,
+                    show_machine_id=show_machine_id,
+                )
             )
         except KeyboardInterrupt:
             secho_error_and_exit(f"Keyboard Interrupt...", color=typer.colors.MAGENTA)
