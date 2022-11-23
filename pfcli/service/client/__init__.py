@@ -5,7 +5,7 @@ from typing import Dict, Tuple, Type, TypeVar
 
 from pfcli.service import ServiceType
 from pfcli.service.client.base import ClientService
-from pfcli.service.client.billing import BillingClientService
+from pfcli.service.client.billing import PFTBillingClientService
 from pfcli.service.client.checkpoint import CheckpointClientService
 from pfcli.service.client.credential import (
     CredentialClientService,
@@ -17,7 +17,7 @@ from pfcli.service.client.group import (
     GroupProjectCheckpointClientService,
     GroupProjectClientService,
     GroupProjectVMQuotaClientService,
-    GroupVMConfigClientService,
+    PFTGroupVMConfigClientService,
 )
 from pfcli.service.client.job import (
     JobTemplateClientService,
@@ -31,8 +31,8 @@ from pfcli.service.client.project import (
     ProjectClientService,
     ProjectCredentialClientService,
     ProjectDataClientService,
-    ProjectVMConfigClientService,
-    ProjectVMQuotaClientService,
+    PFTProjectVMConfigClientService,
+    PFTProjectVMQuotaClientService,
 )
 from pfcli.service.client.deployment import DeploymentClientService
 from pfcli.service.client.user import (
@@ -114,7 +114,7 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         Template(get_uri("group/$group_id/vm_quota/")),
     ),
     ServiceType.PFT_PROJECT_VM_QUOTA: (
-        ProjectVMQuotaClientService,
+        PFTProjectVMQuotaClientService,
         Template(get_uri("project/$project_id/vm_quota/")),
     ),
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_mr_uri("models/"))),
@@ -123,11 +123,11 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         Template(get_mr_uri("orgs/$group_id/prjs/$project_id/models/")),
     ),  # pylint: disable=line-too-long
     ServiceType.PFT_PROJECT_VM_CONFIG: (
-        ProjectVMConfigClientService,
+        PFTProjectVMConfigClientService,
         Template(get_uri("project/$project_id/vm_config/")),
     ),
     ServiceType.PFT_GROUP_VM_CONFIG: (
-        GroupVMConfigClientService,
+        PFTGroupVMConfigClientService,
         Template(get_uri("group/$group_id/vm_config/")),
     ),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri("job/"))),
@@ -136,7 +136,7 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         Template(get_pfs_uri("deployment/")),
     ),
     ServiceType.PFT_BILLING_SUMMARY: (
-        BillingClientService,
+        PFTBillingClientService,
         Template(get_meter_uri("training/instances/price/")),
     ),
     ServiceType.METRICS: (

@@ -19,7 +19,7 @@ class TimeGranularity(str, Enum):
     week = "week"
 
 
-class BillingClientService(
+class PFTBillingClientService(
     ClientService, GroupRequestMixin, ProjectRequestMixin, UserRequestMixin
 ):
     def __init__(self, template: Template, **kwargs):

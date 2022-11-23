@@ -9,7 +9,7 @@ import typer
 
 from pfcli.service import ServiceType
 from pfcli.service.client import build_client
-from pfcli.service.client.billing import BillingClientService, TimeGranularity
+from pfcli.service.client.billing import PFTBillingClientService, TimeGranularity
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import (
     datetime_to_simple_string,
@@ -53,7 +53,7 @@ def summary(
     ),
 ):
     """Summarize the billing information for the given time range"""
-    client: BillingClientService = build_client(ServiceType.PFT_BILLING_SUMMARY)
+    client: PFTBillingClientService = build_client(ServiceType.PFT_BILLING_SUMMARY)
 
     agg_by = "user_id"
 

@@ -10,12 +10,12 @@ from pfcli.service import CloudType, PeriFlowService, ServiceType
 from pfcli.service.client import (
     GroupProjectClientService,
     GroupProjectVMQuotaClientService,
-    GroupVMConfigClientService,
-    ProjectVMConfigClientService,
-    ProjectVMQuotaClientService,
+    PFTGroupVMConfigClientService,
+    PFTProjectVMConfigClientService,
+    PFTProjectVMQuotaClientService,
     build_client,
 )
-from pfcli.service.client.project import ProjectVMConfigClientService, find_project_id
+from pfcli.service.client.project import PFTProjectVMConfigClientService, find_project_id
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import secho_error_and_exit
 
@@ -92,13 +92,13 @@ def list(
 ):
     if service == PeriFlowService.TRAIN:
         """List all VM quota information."""
-        vm_quota_client: ProjectVMQuotaClientService = build_client(
+        vm_quota_client: PFTProjectVMQuotaClientService = build_client(
             ServiceType.PFT_PROJECT_VM_QUOTA
         )
-        vm_config_client: ProjectVMConfigClientService = build_client(
+        vm_config_client: PFTProjectVMConfigClientService = build_client(
             ServiceType.PFT_PROJECT_VM_CONFIG
         )
-        group_vm_config_client: GroupVMConfigClientService = build_client(
+        group_vm_config_client: PFTGroupVMConfigClientService = build_client(
             ServiceType.PFT_GROUP_VM_CONFIG
         )
 
@@ -135,13 +135,13 @@ def list(
 def view(
     vm_instance_name: str = typer.Argument(..., help="vm type"),
 ):
-    vm_quota_client: ProjectVMQuotaClientService = build_client(
+    vm_quota_client: PFTProjectVMQuotaClientService = build_client(
         ServiceType.PFT_PROJECT_VM_QUOTA
     )
-    vm_config_client: ProjectVMConfigClientService = build_client(
+    vm_config_client: PFTProjectVMConfigClientService = build_client(
         ServiceType.PFT_PROJECT_VM_CONFIG
     )
-    group_vm_config_client: GroupVMConfigClientService = build_client(
+    group_vm_config_client: PFTGroupVMConfigClientService = build_client(
         ServiceType.PFT_GROUP_VM_CONFIG
     )
 
