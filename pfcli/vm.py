@@ -126,7 +126,9 @@ def list(
         formatter.render(available_vm_dict_list)
     else:
         # TODO: PFS vm list
-        pass
+        secho_error_and_exit(
+            "VM list for the deployment is not supported yet. Please contact the support team."
+        )
 
 
 @quota_app.command("view", help="view quota detail of a VM")
