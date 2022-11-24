@@ -5,36 +5,34 @@ from typing import Dict, Tuple, Type, TypeVar
 
 from pfcli.service import ServiceType
 from pfcli.service.client.base import ClientService
-from pfcli.service.client.billing import BillingClientService
+from pfcli.service.client.billing import PFTBillingClientService
 from pfcli.service.client.checkpoint import CheckpointClientService
 from pfcli.service.client.credential import (
     CredentialClientService,
     CredentialTypeClientService,
 )
 from pfcli.service.client.data import DataClientService
-from pfcli.service.client.experiment import ExperimentClientService
 from pfcli.service.client.group import (
     GroupClientService,
     GroupProjectCheckpointClientService,
     GroupProjectClientService,
-    GroupVMConfigClientService,
+    GroupProjectVMQuotaClientService,
+    PFTGroupVMConfigClientService,
 )
 from pfcli.service.client.job import (
-    JobArtifactClientService,
-    JobCheckpointClientService,
-    JobClientService,
     JobTemplateClientService,
     JobWebSocketClientService,
+    ProjectJobArtifactClientService,
+    ProjectJobCheckpointClientService,
+    ProjectJobClientService,
 )
 from pfcli.service.client.metrics import MetricsClientService
 from pfcli.service.client.project import (
     ProjectClientService,
     ProjectCredentialClientService,
     ProjectDataClientService,
-    ProjectExperimentClientService,
-    ProjectJobClientService,
-    ProjectVMConfigClientService,
-    ProjectVMQuotaClientService,
+    PFTProjectVMConfigClientService,
+    PFTProjectVMQuotaClientService,
 )
 from pfcli.service.client.deployment import DeploymentClientService
 from pfcli.service.client.user import (
@@ -44,7 +42,7 @@ from pfcli.service.client.user import (
     UserMFAService,
     UserSignUpService,
 )
-from pfcli.utils import (
+from pfcli.utils.url import (
     get_auth_uri,
     get_meter_uri,
     get_mr_uri,
@@ -53,7 +51,6 @@ from pfcli.utils import (
     get_uri,
     get_wss_uri,
 )
-from pfcli.settings import settings
 
 client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.MFA: (
@@ -79,19 +76,13 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         GroupProjectClientService,
         Template(get_auth_uri("pf_group/$pf_group_id/pf_project")),
     ),
-    ServiceType.EXPERIMENT: (ExperimentClientService, Template(get_uri("experiment/"))),
-    ServiceType.PROJECT_EXPERIMENT: (
-        ProjectExperimentClientService,
-        Template(get_uri("project/$project_id/experiment/")),
-    ),  # pylint: disable=line-too-long
-    ServiceType.JOB: (JobClientService, Template(get_uri("job/"))),
-    ServiceType.JOB_CHECKPOINT: (
-        JobCheckpointClientService,
-        Template(get_uri("job/$job_id/checkpoint/")),
+    ServiceType.PROJECT_JOB_CHECKPOINT: (
+        ProjectJobCheckpointClientService,
+        Template(get_uri("project/$project_id/job/$job_number/checkpoint/")),
     ),
-    ServiceType.JOB_ARTIFACT: (
-        JobArtifactClientService,
-        Template(get_uri("job/$job_id/artifact/")),
+    ServiceType.PROJECT_JOB_ARTIFACT: (
+        ProjectJobArtifactClientService,
+        Template(get_uri("project/$project_id/job/$job_number/artifact/")),
     ),
     ServiceType.PROJECT_JOB: (
         ProjectJobClientService,
@@ -118,36 +109,35 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         ProjectDataClientService,
         Template(get_uri("project/$project_id/datastore/")),
     ),
-    ServiceType.PROJECT_VM_QUOTA: (
-        ProjectVMQuotaClientService,
-        Template(get_uri("project/$project_id/vm_quota/"))
-        if not settings.pfs_only
-        else Template(get_pfs_uri("project/$project_id/vm_quota/")),  # FIXME: fix this path after vm impl in pfs
+    ServiceType.GROUP_VM_QUOTA: (
+        GroupProjectVMQuotaClientService,
+        Template(get_uri("group/$group_id/vm_quota/")),
+    ),
+    ServiceType.PFT_PROJECT_VM_QUOTA: (
+        PFTProjectVMQuotaClientService,
+        Template(get_uri("project/$project_id/vm_quota/")),
     ),
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_mr_uri("models/"))),
     ServiceType.GROUP_PROJECT_CHECKPOINT: (
         GroupProjectCheckpointClientService,
         Template(get_mr_uri("orgs/$group_id/prjs/$project_id/models/")),
     ),  # pylint: disable=line-too-long
-    ServiceType.PROJECT_VM_CONFIG: (
-        ProjectVMConfigClientService,
-        Template(get_uri("project/$project_id/vm_config/"))
-        if not settings.pfs_only
-        else Template(get_pfs_uri("project/$project_id/vm_config/")),  # FIXME: fix this path after vm impl in pfs
+    ServiceType.PFT_PROJECT_VM_CONFIG: (
+        PFTProjectVMConfigClientService,
+        Template(get_uri("project/$project_id/vm_config/")),
     ),
-    ServiceType.GROUP_VM_CONFIG: (
-        GroupVMConfigClientService,
-        Template(get_uri("group/$group_id/vm_config/"))
-        if not settings.pfs_only
-        else Template(get_pfs_uri("group/$group_id/vm_config/")),  # FIXME: fix this path after vm impl in pfs
+    ServiceType.PFT_GROUP_VM_CONFIG: (
+        PFTGroupVMConfigClientService,
+        Template(get_uri("group/$group_id/vm_config/")),
     ),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri("job/"))),
-    ServiceType.DEPLOYMENT: (DeploymentClientService, Template(get_pfs_uri("deployment/"))),
-    ServiceType.BILLING_SUMMARY: (
-        BillingClientService,
-        Template(get_meter_uri("training/instances/price/")) 
-        if not settings.pfs_only
-        else Template(get_meter_uri("serving/instances/price/")),
+    ServiceType.DEPLOYMENT: (
+        DeploymentClientService,
+        Template(get_pfs_uri("deployment/")),
+    ),
+    ServiceType.PFT_BILLING_SUMMARY: (
+        PFTBillingClientService,
+        Template(get_meter_uri("training/instances/price/")),
     ),
     ServiceType.METRICS: (
         MetricsClientService,

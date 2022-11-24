@@ -10,8 +10,9 @@ import typer
 
 from pfcli.service import ServiceType
 from pfcli.service.client import build_client
-from pfcli.service.client.job import JobArtifactClientService
-from pfcli.utils import download_file, secho_error_and_exit
+from pfcli.service.client.job import ProjectJobArtifactClientService
+from pfcli.utils.fs import download_file
+from pfcli.utils.format import secho_error_and_exit
 
 
 app = typer.Typer(
@@ -36,8 +37,8 @@ def download(
 
     save_directory = save_directory or Path(os.getcwd())
 
-    client: JobArtifactClientService = build_client(
-        ServiceType.JOB_ARTIFACT, job_id=job_id
+    client: ProjectJobArtifactClientService = build_client(
+        ServiceType.PROJECT_JOB_ARTIFACT, job_id=job_id
     )
     all_artifacts = client.list_artifacts()
     for i, artifact in enumerate(all_artifacts):

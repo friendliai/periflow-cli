@@ -13,24 +13,30 @@ from pfcli import (
     checkpoint,
     credential,
     dataset,
-    experiment,
     group,
     job,
     project,
     deployment,
     vm,
 )
+from pfcli.context import (
+    get_current_project_id,
+    project_context_path,
+    set_current_group_id,
+)
 from pfcli.service import ServiceType
 from pfcli.service.auth import clear_tokens, get_token, TokenType, update_token
 from pfcli.service.client import (
+    build_client,
+    ProjectClientService,
     UserClientService,
+    UserGroupClientService,
     UserMFAService,
     UserSignUpService,
-    build_client,
 )
 from pfcli.service.formatter import PanelFormatter
-from pfcli.utils import get_uri, secho_error_and_exit
-from pfcli.settings import settings
+from pfcli.utils.format import secho_error_and_exit
+from pfcli.utils.url import get_uri
 
 app = typer.Typer(
     help="Welcome to PeriFlow 🤗",
@@ -42,16 +48,13 @@ app = typer.Typer(
 app.add_typer(credential.app, name="credential", help="Manage credentials")
 app.add_typer(checkpoint.app, name="checkpoint", help="Manage checkpoints")
 app.add_typer(vm.app, name="vm", help="Manage VMs")
-app.add_typer(experiment.app, name="experiment", help="Manage experiments")
 app.add_typer(deployment.app, name="deployment", help="Manage deployments")
 app.add_typer(project.app, name="project", help="Manage projects")
 app.add_typer(group.app, name="org", help="Manage organizations")
 app.add_typer(billing.app, name="billing", help="Manage billing")
-
-if not settings.pfs_only:
-    app.add_typer(artifact.app, name="artifact", help="Manager artifacts")
-    app.add_typer(job.app, name="job", help="Manage jobs")
-    app.add_typer(dataset.app, name="dataset", help="Manage datasets")
+app.add_typer(artifact.app, name="artifact", help="Manager artifacts")
+app.add_typer(job.app, name="job", help="Manage jobs")
+app.add_typer(dataset.app, name="dataset", help="Manage datasets")
 
 
 user_panel_formatter = PanelFormatter(
@@ -106,6 +109,25 @@ def login(
         typer.run(_mfa_verify)
     else:
         _handle_login_response(r, False)
+
+    # Save user's organiztion context
+    project_client: ProjectClientService = build_client(ServiceType.PROJECT)
+    user_group_client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
+
+    org = user_group_client.get_group_info()
+    org_id = org["id"]
+
+    project_id = get_current_project_id()
+    if project_id is not None:
+        if project_client.check_project_membership(pf_project_id=project_id):
+            project_org_id = project_client.get_project(pf_project_id=project_id)[
+                "pf_group_id"
+            ]
+            if project_org_id != org_id:
+                project_context_path.unlink(missing_ok=True)
+        else:
+            project_context_path.unlink(missing_ok=True)
+    set_current_group_id(org_id)
 
 
 @app.command(help="Sign out PeriFlow")
@@ -166,10 +188,10 @@ def _handle_login_response(r: Response, mfa: bool):
         typer.echo("\n\nLogin success!")
         typer.echo("Welcome back to...")
         typer.echo(" _____          _  _____ _")
-        typer.echo("|  __ \___ _ __(_)|  ___| | _____      __")
-        typer.echo("|  ___/ _ \ '__| || |__ | |/ _ \ \ /\ / /")
+        typer.echo("|  __ \___ _ __(_)|  ___| | _____      __")  # type: ignore
+        typer.echo("|  ___/ _ \ '__| || |__ | |/ _ \ \ /\ / /")  # type: ignore
         typer.echo("| |  |  __/ |  | ||  __|| | (_) | V  V / ")
-        typer.echo("|_|   \___|_|  |_||_|   |_|\___/ \_/\_/  ")
+        typer.echo("|_|   \___|_|  |_||_|   |_|\___/ \_/\_/  ")  # type: ignore
         typer.echo("\n\n")
     except HTTPError:
         if mfa:

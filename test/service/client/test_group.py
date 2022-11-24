@@ -20,7 +20,8 @@ from pfcli.service.client import build_client
 from pfcli.service.client.group import (
     GroupClientService,
     GroupProjectCheckpointClientService,
-    GroupVMConfigClientService,
+    GroupProjectVMQuotaClientService,
+    PFTGroupVMConfigClientService,
 )
 
 
@@ -30,8 +31,8 @@ def group_client(user_project_group_context) -> GroupClientService:
 
 
 @pytest.fixture
-def group_vm_config_client(user_project_group_context) -> GroupVMConfigClientService:
-    return build_client(ServiceType.GROUP_VM_CONFIG)
+def group_vm_config_client(user_project_group_context) -> PFTGroupVMConfigClientService:
+    return build_client(ServiceType.PFT_GROUP_VM_CONFIG)
 
 
 @pytest.fixture
@@ -39,6 +40,13 @@ def group_project_checkpoint_client(
     user_project_group_context,
 ) -> GroupProjectCheckpointClientService:
     return build_client(ServiceType.GROUP_PROJECT_CHECKPOINT)
+
+
+@pytest.fixture
+def group_project_vm_quota_client(
+    user_project_group_context,
+) -> GroupProjectVMQuotaClientService:
+    return build_client(ServiceType.GROUP_VM_QUOTA)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
@@ -134,7 +142,7 @@ def test_group_client_accept_invite(
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_group_vm_config_client_get_id_by_name(
     requests_mock: requests_mock.Mocker,
-    group_vm_config_client: GroupVMConfigClientService,
+    group_vm_config_client: PFTGroupVMConfigClientService,
 ):
     example_data = [
         {
@@ -192,9 +200,9 @@ def test_group_vm_config_client_get_id_by_name(
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_group_vm_config_client_get_vm_config_id_map(
     requests_mock: requests_mock.Mocker,
-    group_vm_config_client: GroupVMConfigClientService,
+    group_vm_config_client: PFTGroupVMConfigClientService,
 ):
-    assert isinstance(group_vm_config_client, GroupVMConfigClientService)
+    assert isinstance(group_vm_config_client, PFTGroupVMConfigClientService)
 
     # Success
     requests_mock.get(
@@ -428,3 +436,35 @@ def test_group_checkpoint_create_checkpoints(
             data_config={"k": "v"},
             job_setting_config={"k": "v"},
         )
+
+
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_group_project_vm_quota_client(
+    requests_mock: requests_mock.Mocker,
+    group_project_vm_quota_client: GroupProjectVMQuotaClientService
+):
+    data = {
+        "id": 1,
+        "project_id": "11111111-1111-1111-1111-111111111111",
+        "vm_config": {
+            "vm_config_type": {
+                "id": 0,
+                "code": "azure-v100",
+                "vendor": "azure",
+                "region": "eastus",
+                "device_type": "V100",
+            },
+            "group_id": "00000000-0000-0000-0000-000000000000",
+        },
+        "quota": 10,
+    }
+    url = group_project_vm_quota_client.url_template.render(
+        **group_project_vm_quota_client.url_kwargs
+    )
+    requests_mock.post(url, json=data)
+
+    assert group_project_vm_quota_client.create_project_quota(
+        "azure-v100",
+        uuid.UUID("11111111-1111-1111-1111-111111111111"),
+        10
+    ) == data

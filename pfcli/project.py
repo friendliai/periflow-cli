@@ -2,8 +2,8 @@
 
 """PeriFlow Project CLI"""
 
-import uuid
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
+from uuid import UUID
 
 import typer
 
@@ -12,7 +12,7 @@ from pfcli.context import (
     set_current_project_id,
     project_context_path,
 )
-from pfcli.group import _get_current_org, _get_org_user_id_by_name
+from pfcli.group import get_current_org, _get_org_user_id_by_name
 from pfcli.service import GroupRole, ProjectRole, ServiceType
 from pfcli.service.client import (
     GroupProjectClientService,
@@ -21,8 +21,9 @@ from pfcli.service.client import (
     UserGroupProjectClientService,
     build_client,
 )
+from pfcli.service.client.project import find_project_id
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import secho_error_and_exit
+from pfcli.utils.format import secho_error_and_exit
 
 
 app = typer.Typer(
@@ -43,13 +44,6 @@ member_table_formatter = TableFormatter(
     fields=["id", "username", "name", "email", "access_level"],
     headers=["ID", "Username", "Name", "Email", "Role"],
 )
-
-
-def _find_project_id(projects: List[dict], project_name: str) -> uuid.UUID:
-    for project in projects:
-        if project["name"] == project_name:
-            return uuid.UUID(project["id"])
-    secho_error_and_exit(f"No project exists with name {project_name}.")
 
 
 @app.command(help="list all accessible projects")
@@ -121,7 +115,7 @@ def switch(
     )
     project_client: ProjectClientService = build_client(ServiceType.PROJECT)
 
-    project_id = _find_project_id(user_group_project_client.list_projects(), name)
+    project_id = find_project_id(user_group_project_client.list_projects(), name)
     if project_client.check_project_membership(pf_project_id=project_id):
         set_current_project_id(project_id)
         typer.secho(f"Project switched to {name}.", fg=typer.colors.BLUE)
@@ -142,11 +136,31 @@ def delete(
     user_group_project_client: UserGroupProjectClientService = build_client(
         ServiceType.USER_GROUP_PROJECT
     )
-    project_id = _find_project_id(user_group_project_client.list_projects(), name)
+    project_id = find_project_id(user_group_project_client.list_projects(), name)
     project_client.delete_project(pf_project_id=project_id)
     if project_id == get_current_project_id():
         project_context_path.unlink()
     typer.secho(f"Project {name} deleted.", fg=typer.colors.BLUE)
+
+
+def _check_project_and_get_id() -> Tuple[UUID, UUID]:
+    """Get org_id and project_id if valid"""
+
+    user_client: UserClientService = build_client(ServiceType.USER)
+
+    org = get_current_org()
+    project_id = get_current_project_id()
+    if project_id is None:
+        secho_error_and_exit("Failed to identify project... Please set project again.")
+
+    if org["privilege_level"] == GroupRole.OWNER:
+        return UUID(org["id"]), project_id
+
+    requester = user_client.get_project_membership(project_id)
+    if requester["access_level"] != ProjectRole.ADMIN:
+        secho_error_and_exit("Only the admin of the project can add-user/set-role")
+
+    return org["id"], project_id
 
 
 @app.command("add-user", help="add user to project")
@@ -196,23 +210,8 @@ def members():
     project_client: ProjectClientService = build_client(ServiceType.PROJECT)
 
     project_id = get_current_project_id()
+    if project_id is None:
+        secho_error_and_exit("Failed to identify project... Please set project again.")
+
     members = project_client.list_users(project_id)
     member_table_formatter.render(members)
-
-
-def _check_project_and_get_id() -> Tuple[str, str]:
-    """Get org_id and project_id if valid"""
-
-    user_client: UserClientService = build_client(ServiceType.USER)
-
-    org = _get_current_org()
-    project_id = get_current_project_id()
-
-    if org["privilege_level"] == GroupRole.OWNER:
-        return org["id"], project_id
-
-    requester = user_client.get_project_membership(project_id)
-    if requester["access_level"] != ProjectRole.ADMIN:
-        secho_error_and_exit("Only the admin of the project can add-user/set-role")
-
-    return org["id"], project_id

@@ -4,11 +4,12 @@
 
 from pathlib import Path
 from typing import Optional
-from click import Choice
+from uuid import UUID
 
+from click import Choice
+from rich.text import Text
 import typer
 import yaml
-from rich.text import Text
 
 from pfcli.service import (
     StorageType,
@@ -33,7 +34,9 @@ from pfcli.service.formatter import (
     TableFormatter,
     TreeFormatter,
 )
-from pfcli.utils import secho_error_and_exit, get_file_info
+from pfcli.utils.format import secho_error_and_exit
+from pfcli.utils.fs import get_file_info
+from pfcli.utils.validate import validate_cloud_storage_type
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -127,7 +130,9 @@ def view(
     client: DataClientService = build_client(ServiceType.DATA)
 
     dataset_id = project_client.get_id_by_name(name)
-    dataset = client.get_dataset(dataset_id)
+    if dataset_id is None:
+        secho_error_and_exit(f"Dataset with name ({name}) is not found.")
+    dataset = client.get_dataset(dataset_id)  # type: ignore
     dataset["vendor"] = storage_type_map_inv[dataset["vendor"]].value
     panel_formatter.render([dataset], show_detail=True)
     tree_formatter.render(dataset["files"])
@@ -139,19 +144,20 @@ def create(
     name: str = typer.Option(
         ..., "--name", "-n", help="Name of your dataset to create."
     ),
-    cloud: Optional[StorageType] = typer.Option(
+    cloud_storage: StorageType = typer.Option(
         ...,
-        "--cloud",
+        "--cloud-storage",
         "-c",
-        help="Name of cloud storage vendor where your dataset is uploaded.",
+        help="The cloud storage vendor where your dataset is uploaded.",
+        callback=validate_cloud_storage_type,
     ),
-    region: Optional[str] = typer.Option(
+    region: str = typer.Option(
         ...,
         "--region",
         "-r",
         help="Cloud storage region where your dataset is uploaded.",
     ),
-    storage_name: Optional[str] = typer.Option(
+    storage_name: str = typer.Option(
         ...,
         "--storage-name",
         "-s",
@@ -163,7 +169,7 @@ def create(
         "-p",
         help="File or direcotry path of cloud storage. The root of the storage will be used by default.",
     ),
-    credential_id: Optional[str] = typer.Option(
+    credential_id: UUID = typer.Option(
         ...,
         "--credential-id",
         "-i",
@@ -182,12 +188,13 @@ def create(
     """
     credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     credential = credential_client.get_credential(credential_id)
-    if credential["type"] != cred_type_map[cloud]:
+    if credential["type"] != cred_type_map[cloud_storage.value]:
         secho_error_and_exit(
-            f"Credential type and cloud vendor mismatch: {cred_type_map_inv[credential['type']]} and {cloud}."
+            "Credential type and cloud vendor mismatch: "
+            f"{cred_type_map_inv[credential['type']]} and {cloud_storage.value}."
         )
 
-    storage_helper = build_storage_helper(cloud, credential["value"])
+    storage_helper = build_storage_helper(cloud_storage, credential["value"])
     if storage_path is not None:
         storage_path = storage_path.strip("/")
     files = storage_helper.list_storage_files(storage_name, storage_path)
@@ -203,7 +210,14 @@ def create(
 
     client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
     dataset = client.create_dataset(
-        name, cloud, region, storage_name, credential_id, metadata, files, True
+        name=name,
+        vendor=cloud_storage,
+        region=region,
+        storage_name=storage_name,
+        credential_id=credential_id,
+        metadata=metadata,
+        files=files,
+        active=True,
     )
     dataset["vendor"] = storage_type_map_inv[dataset["vendor"]].value
 
@@ -235,7 +249,7 @@ def upload(
     client: DataClientService = build_client(ServiceType.DATA)
     project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
     expand = source_path.endswith("/")
-    source_path: Path = Path(source_path)
+    src_path: Path = Path(source_path)
 
     dataset_id = project_client.get_id_by_name(name)
     if dataset_id is not None:
@@ -256,8 +270,8 @@ def upload(
 
     try:
         typer.echo(f"Start uploading objects to dataset ({name})...")
-        spu_targets = expand_paths(source_path, expand, FileSizeType.SMALL)
-        mpu_targets = expand_paths(source_path, expand, FileSizeType.LARGE)
+        spu_targets = expand_paths(src_path, expand, FileSizeType.SMALL)
+        mpu_targets = expand_paths(src_path, expand, FileSizeType.LARGE)
         spu_url_dicts = (
             client.get_spu_urls(dataset_id=dataset_id, paths=spu_targets)
             if len(spu_targets) > 0
@@ -267,23 +281,21 @@ def upload(
             client.get_mpu_urls(
                 dataset_id=dataset_id,
                 paths=mpu_targets,
-                src_path=source_path.name if expand else None,
+                src_path=src_path.name if expand else None,
             )
             if len(mpu_targets) > 0
             else []
         )
 
-        client.upload_files(
-            dataset_id, spu_url_dicts, mpu_url_dicts, source_path, expand
-        )
+        client.upload_files(dataset_id, spu_url_dicts, mpu_url_dicts, src_path, expand)
 
         files = [
-            get_file_info(url_info["path"], source_path, expand)
+            get_file_info(url_info["path"], src_path, expand)
             for url_info in spu_url_dicts
         ]
         files.extend(
             [
-                get_file_info(url_info["path"], source_path, expand)
+                get_file_info(url_info["path"], src_path, expand)
                 for url_info in mpu_url_dicts
             ]
         )
@@ -322,6 +334,8 @@ def edit(
     """Edit metadata of dataset."""
     project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
     dataset_id = project_client.get_id_by_name(name)
+    if dataset_id is None:
+        secho_error_and_exit(f"Dataset with name ({name}) is not found.")
 
     metadata = None
     if metadata_file is not None:

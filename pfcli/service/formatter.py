@@ -90,7 +90,7 @@ class ListFormatter(Formatter):
     def apply_styling(self, header: str, **kwargs) -> None:
         self._styling_map[header] = kwargs
 
-    def add_substitution_rule(self, before: str, after: str) -> None:
+    def add_substitution_rule(self, before: str, after: Any) -> None:
         self._substitution_rule[before] = after
 
     def _substitute(self, val: str) -> str:

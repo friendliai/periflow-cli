@@ -5,7 +5,7 @@
 import uuid
 from typing import Optional
 
-from pfcli.utils import get_periflow_directory
+from pfcli.utils.fs import get_periflow_directory
 
 
 org_context_path = get_periflow_directory() / "organization"

@@ -22,12 +22,8 @@ from pfcli.service.client import (
 )
 from pfcli.service.config import build_deployment_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils import (
-    datetime_to_pretty_str,
-    secho_error_and_exit,
-    open_editor,
-    get_default_editor,
-)
+from pfcli.utils.format import datetime_to_pretty_str, secho_error_and_exit
+from pfcli.utils.prompt import get_default_editor, open_editor
 
 
 app = typer.Typer(
@@ -45,7 +41,16 @@ app.add_typer(template_app, name="template", help="Manage deployment templates."
 
 deployment_panel = PanelFormatter(
     name="Overview",
-    fields=["id", "config.name", "status", "vms", "config.gpu_type", "config.total_gpus", "start", "endpoint"],
+    fields=[
+        "id",
+        "config.name",
+        "status",
+        "vms",
+        "config.gpu_type",
+        "config.total_gpus",
+        "start",
+        "endpoint",
+    ],
     headers=["ID", "Name", "Status", "VM", "Device", "Device Cnt", "Start", "Endpoint"],
     extra_fields=["error"],
     extra_headers=["error"],
@@ -129,10 +134,7 @@ def delete(deployment_id: str = typer.Argument(..., help="ID of deployment to de
 
 @app.command()
 def view(
-    deployment_id: str = typer.Argument(
-        ...,
-        help="deployment id to inspect detail."
-    )
+    deployment_id: str = typer.Argument(..., help="deployment id to inspect detail.")
 ):
     """Show details of a deployment."""
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
@@ -151,52 +153,26 @@ def view(
 @app.command()
 def create(
     project_id: str = typer.Option(
-        ...,
-        "--project-id",
-        "-pid",
-        help="Project to deploy."
+        ..., "--project-id", "-pid", help="Project to deploy."
     ),
     checkpoint_id: str = typer.Option(
-        ...,
-        "--checkpoint-id",
-        "-id",
-        help="Checkpoint id to deploy."
+        ..., "--checkpoint-id", "-id", help="Checkpoint id to deploy."
     ),
     deployment_name: str = typer.Option(
-        ...,
-        "--name",
-        "-n",
-        help="The name of deployment. "
+        ..., "--name", "-n", help="The name of deployment. "
     ),
     gpu_type: GpuType = typer.Option(
-        ...,
-        "--gpu-type",
-        "-g",
-        help="The GPU type where the deployment is deployed."
+        ..., "--gpu-type", "-g", help="The GPU type where the deployment is deployed."
     ),
     cloud: CloudType = typer.Option(
-        ...,
-        "--cloud",
-        "-c",
-        help="Type of cloud(aws, azure, gcp)."
+        ..., "--cloud", "-c", help="Type of cloud(aws, azure, gcp)."
     ),
-    region: str = typer.Option(
-        ...,
-        "--region",
-        "-r",
-        help="Region of cloud."
-    ),
+    region: str = typer.Option(..., "--region", "-r", help="Region of cloud."),
     engine: Optional[EngineType] = typer.Option(
-        EngineType.ORCA,
-        "--engine",
-        "-e",
-        help="Type of engine(orca or triton)."
+        EngineType.ORCA, "--engine", "-e", help="Type of engine(orca or triton)."
     ),
     config_file: typer.FileText = typer.Option(
-        ...,
-        "--config-file",
-        "-f",
-        help="Path to configuration file."
+        ..., "--config-file", "-f", help="Path to configuration file."
     ),
 ):
     """Create a deployment object by using model checkpoint."""

@@ -3,21 +3,14 @@
 """PeriFlow ProjectClient Service"""
 
 
-import json
-import os
-import uuid
-from pathlib import Path
-from string import Template
-from typing import List, Optional, Tuple
 from requests import HTTPError
-
-import typer
-from rich.filesize import decimal
+from string import Template
+from typing import List, Optional
+from uuid import UUID
 
 from pfcli.service import (
     CloudType,
     CredType,
-    JobStatus,
     LockStatus,
     StorageType,
     cred_type_map,
@@ -29,24 +22,26 @@ from pfcli.service.client.base import (
     T,
     safe_request,
 )
-from pfcli.service.formatter import TreeFormatter
-from pfcli.utils import (
-    get_workspace_files,
-    paginated_get,
-    secho_error_and_exit,
-    validate_storage_region,
-    zip_dir,
-)
+from pfcli.utils.format import secho_error_and_exit
+from pfcli.utils.request import paginated_get
+from pfcli.utils.validate import validate_storage_region
 
 
-class ProjectClientService(ClientService):
-    def get_project(self, pf_project_id: uuid.UUID) -> dict:
+def find_project_id(projects: List[dict], project_name: str) -> UUID:
+    for project in projects:
+        if project["name"] == project_name:
+            return UUID(project["id"])
+    secho_error_and_exit(f"No project exists with name {project_name}.")
+
+
+class ProjectClientService(ClientService[UUID]):
+    def get_project(self, pf_project_id: UUID) -> dict:
         response = safe_request(self.retrieve, err_prefix="Failed to get a project.")(
             pk=pf_project_id
         )
         return response.json()
 
-    def check_project_membership(self, pf_project_id: uuid.UUID) -> bool:
+    def check_project_membership(self, pf_project_id: UUID) -> bool:
         try:
             self.retrieve(pf_project_id)
         except HTTPError:
@@ -54,105 +49,19 @@ class ProjectClientService(ClientService):
         else:
             return True
 
-    def delete_project(self, pf_project_id: uuid.UUID) -> None:
+    def delete_project(self, pf_project_id: UUID) -> None:
         safe_request(self.delete, err_prefix="Failed to delete a project.")(
             pk=pf_project_id
         )
 
-    def list_users(self, pf_project_id: str) -> List[dict]:
+    def list_users(self, pf_project_id: UUID) -> List[dict]:
         get_response_dict = safe_request(
             self.list, err_prefix="Failed to list users in the current project"
         )
         return paginated_get(get_response_dict, path=f"{pf_project_id}/pf_user")
 
 
-class ProjectExperimentClientService(ClientService, ProjectRequestMixin):
-    def __init__(self, template: Template, **kwargs):
-        self.initialize_project()
-        super().__init__(template, project_id=self.project_id, **kwargs)
-
-    def list_experiments(self) -> List[dict]:
-        response = safe_request(self.list, err_prefix="Failed to list experiments.")()
-        return response.json()
-
-    def get_id_by_name(self, name: str) -> Optional[T]:
-        response = safe_request(
-            self.list, err_prefix="Failed to get experiment info."
-        )()
-        for experiment in response.json():
-            if experiment["name"] == name:
-                return experiment["id"]
-        return None
-
-    def create_experiment(self, name: str) -> dict:
-        response = safe_request(self.post, err_prefix="Failed to post new experiment.")(
-            data={"name": name}
-        )
-        return response.json()
-
-
-class ProjectJobClientService(ClientService, ProjectRequestMixin):
-    def __init__(self, template: Template, **kwargs):
-        self.initialize_project()
-        super().__init__(template, project_id=self.project_id, **kwargs)
-
-    def list_jobs(
-        self,
-        since: Optional[str] = None,
-        until: Optional[str] = None,
-        job_name: Optional[str] = None,
-        vm: Optional[str] = None,
-        statuses: Optional[Tuple[JobStatus]] = None,
-    ) -> List[dict]:
-        params = {
-            "created_at.since": since,
-            "created_at.until": until,
-            "job_name": job_name,
-            "vm_code": vm,
-            "status": ",".join(statuses) if statuses is not None else None,
-        }
-        return paginated_get(
-            safe_request(self.list, err_prefix="Failed to list jobs in project."),
-            **params,
-        )
-
-    def run_job(self, config: dict, workspace_dir: Optional[Path]) -> dict:
-        job_request = safe_request(self.post, err_prefix="Failed to run job.")
-        if workspace_dir is not None:
-            typer.secho("Preparing workspace directory...", fg=typer.colors.MAGENTA)
-            workspace_dir = workspace_dir.resolve()
-            workspace_files = get_workspace_files(workspace_dir)
-            workspace_size = sum(f.stat().st_size for f in workspace_files)
-            if workspace_size <= 0 or workspace_size > 100 * 1024 * 1024:
-                secho_error_and_exit(
-                    f"Workspace directory size ({decimal(workspace_size)}) should be 0 < size <= 100MB."
-                )
-            tree_formatter = TreeFormatter(
-                name="Job Workspace",
-                root=os.path.join(
-                    config["job_setting"]["workspace"]["mount_path"], workspace_dir.name
-                ),
-            )
-            typer.secho(
-                "Workspace is prepared and will be mounted as the following structure.",
-                fg=typer.colors.MAGENTA,
-            )
-            tree_formatter.render(
-                [
-                    {"path": f.relative_to(workspace_dir), "size": f.stat().st_size}
-                    for f in workspace_files
-                ]
-            )
-            workspace_zip = Path(workspace_dir.parent / (workspace_dir.name + ".zip"))
-            with zip_dir(workspace_dir, workspace_files, workspace_zip) as zip_file:
-                files = {"workspace_zip": ("workspace.zip", zip_file)}
-                response = job_request(data={"data": json.dumps(config)}, files=files)
-        else:
-            response = job_request(json=config)
-        return response.json()
-
-
-class ProjectDataClientService(ClientService, ProjectRequestMixin):
+class ProjectDataClientService(ClientService[int], ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
@@ -161,7 +70,7 @@ class ProjectDataClientService(ClientService, ProjectRequestMixin):
         response = safe_request(self.list, err_prefix="Failed to list dataset info.")()
         return response.json()
 
-    def get_id_by_name(self, name: str) -> Optional[T]:
+    def get_id_by_name(self, name: str) -> Optional[int]:
         datasets = self.list_datasets()
         for dataset in datasets:
             if dataset["name"] == name:
@@ -174,7 +83,7 @@ class ProjectDataClientService(ClientService, ProjectRequestMixin):
         vendor: StorageType,
         region: str,
         storage_name: str,
-        credential_id: Optional[T],
+        credential_id: Optional[UUID],
         metadata: dict,
         files: List[dict],
         active: bool,
@@ -187,7 +96,7 @@ class ProjectDataClientService(ClientService, ProjectRequestMixin):
             "vendor": vendor_name,
             "region": region,
             "storage_name": storage_name,
-            "credential_id": credential_id,
+            "credential_id": str(credential_id),
             "metadata": metadata,
             "files": files,
             "active": active,
@@ -198,7 +107,7 @@ class ProjectDataClientService(ClientService, ProjectRequestMixin):
         return response.json()
 
 
-class ProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
+class PFTProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
@@ -207,7 +116,7 @@ class ProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
         self,
         vendor: Optional[CloudType] = None,
         device_type: Optional[str] = None,
-    ) -> Optional[List[dict]]:
+    ) -> List[dict]:
         response = safe_request(self.list, err_prefix="Failed to list VM quota info.")()
         vm_dict_list = response.json()
         if vendor is not None:
@@ -255,13 +164,13 @@ class ProjectCredentialClientService(ClientService, ProjectRequestMixin):
         return response.json()
 
 
-class ProjectVMConfigClientService(ClientService, ProjectRequestMixin):
+class PFTProjectVMConfigClientService(ClientService[int], ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
     def list_vm_locks(
-        self, vm_config_id: T, lock_status_list: List[LockStatus]
+        self, vm_config_id: int, lock_status_list: List[LockStatus]
     ) -> List[dict]:
         status_param = ",".join(lock_status_list)
         response = safe_request(self.list, err_prefix="Failed to inspect locked VMs.")(
@@ -269,7 +178,7 @@ class ProjectVMConfigClientService(ClientService, ProjectRequestMixin):
         )
         return response.json()
 
-    def get_vm_count_in_use(self, vm_config_id: T) -> int:
+    def get_vm_count_in_use(self, vm_config_id: int) -> int:
         vm_locks = self.list_vm_locks(
             vm_config_id, [LockStatus.ACTIVE, LockStatus.DELETING]
         )
