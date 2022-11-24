@@ -7,7 +7,7 @@ from typing import Optional
 import tabulate
 import typer
 
-from pfcli.service import ServiceType
+from pfcli.service import PeriFlowService, ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.billing import PFTBillingClientService, TimeGranularity
 from pfcli.service.formatter import PanelFormatter, TableFormatter
@@ -37,22 +37,14 @@ panel_formatter = PanelFormatter(
 )
 
 
-@app.command(help="summarize billing information")
-def summary(
-    year: int = typer.Argument(...),
-    month: int = typer.Argument(...),
-    day: Optional[int] = typer.Argument(None),
-    view_project: bool = typer.Option(
-        False, "--project", "-p", help="View project-level cost summary."
-    ),
-    view_organization: bool = typer.Option(
-        False, "--organization", "-o", help="View organization-level cost summary."
-    ),
-    time_granularity: Optional[TimeGranularity] = typer.Option(
-        None, "--time-granularity", "-t", help="View within the given time granularity."
-    ),
+def billing_summary_for_train(
+    year: int,
+    month: int,
+    day: Optional[int],
+    view_project: bool,
+    view_organization: bool,
+    time_granularity: Optional[TimeGranularity],
 ):
-    """Summarize the billing information for the given time range"""
     client: PFTBillingClientService = build_client(ServiceType.PFT_BILLING_SUMMARY)
 
     agg_by = "user_id"
@@ -103,3 +95,53 @@ def summary(
 
     table_formatter.render(prices)
     panel_formatter.render([{"price": round(total_price, 2)}])
+
+
+def billing_summary_for_serve(
+    year: int,
+    month: int,
+    day: Optional[int],
+    view_project: bool,
+    view_organization: bool,
+    time_granularity: Optional[TimeGranularity],
+):
+    # TODO: FILL ME
+    secho_error_and_exit(
+        "VM list for the deployment is not supported yet. Please contact the support team."
+    )
+
+
+@app.command(help="summarize billing information")
+def summary(
+    service: PeriFlowService = typer.Option(
+        ...,
+        "--service",
+        "-s",
+        help="PeriFlow service type to see service usage and costs.",
+    ),
+    year: int = typer.Argument(...),
+    month: int = typer.Argument(...),
+    day: Optional[int] = typer.Argument(None),
+    view_project: bool = typer.Option(
+        False, "--project", "-p", help="View project-level cost summary."
+    ),
+    view_organization: bool = typer.Option(
+        False, "--organization", "-o", help="View organization-level cost summary."
+    ),
+    time_granularity: Optional[TimeGranularity] = typer.Option(
+        None, "--time-granularity", "-t", help="View within the given time granularity."
+    ),
+):
+    """Summarize the billing information for the given time range"""
+    handler_map = {
+        PeriFlowService.TRAIN: billing_summary_for_train,
+        PeriFlowService.SERVE: billing_summary_for_serve,
+    }
+    handler_map[service](
+        year=year,
+        month=month,
+        day=day,
+        view_project=view_project,
+        view_organization=view_organization,
+        time_granularity=time_granularity,
+    )

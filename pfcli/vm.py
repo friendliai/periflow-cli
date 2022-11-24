@@ -75,7 +75,50 @@ quota_detail_panel = PanelFormatter(
 )
 
 
-@app.command("list")
+def vm_list_for_train(cloud: Optional[CloudType], device_type: Optional[str]) -> None:
+    """List all VM information for training."""
+    vm_quota_client: PFTProjectVMQuotaClientService = build_client(
+        ServiceType.PFT_PROJECT_VM_QUOTA
+    )
+    vm_config_client: PFTProjectVMConfigClientService = build_client(
+        ServiceType.PFT_PROJECT_VM_CONFIG
+    )
+    group_vm_config_client: PFTGroupVMConfigClientService = build_client(
+        ServiceType.PFT_GROUP_VM_CONFIG
+    )
+
+    vm_dict_list = vm_quota_client.list_vm_quotas(
+        vendor=cloud, device_type=device_type
+    )
+    vm_id_map = group_vm_config_client.get_vm_config_id_map()
+    available_vm_dict_list = []
+    for vm_dict in vm_dict_list:
+        vm_instance_name = vm_dict["vm_config_type"]["code"]
+        try:
+            vm_count_in_use = vm_config_client.get_vm_count_in_use(
+                vm_id_map[vm_instance_name]
+            )
+            vm_dict[
+                "quota"
+            ] = f"{vm_dict['quota'] - vm_count_in_use} / {vm_dict['quota']}"
+        except KeyError:
+            continue
+        available_vm_dict_list.append(vm_dict)
+
+    available_vm_dict_list = sorted(
+        available_vm_dict_list, key=lambda d: d["vm_config_type"]["code"]
+    )
+    formatter.render(available_vm_dict_list)
+
+
+def vm_list_for_serve(cloud: Optional[CloudType], device_type: Optional[str]) -> None:
+    # TODO: FILL ME
+    secho_error_and_exit(
+        "VM list for the deployment is not supported yet. Please contact the support team."
+    )
+
+
+@app.command("list", help="list up available VMs")
 def list(
     service: PeriFlowService = typer.Option(
         ...,
@@ -90,45 +133,11 @@ def list(
         None, "--device-type", "-d", help="Filter list by device type."
     ),
 ):
-    if service == PeriFlowService.TRAIN:
-        """List all VM quota information."""
-        vm_quota_client: PFTProjectVMQuotaClientService = build_client(
-            ServiceType.PFT_PROJECT_VM_QUOTA
-        )
-        vm_config_client: PFTProjectVMConfigClientService = build_client(
-            ServiceType.PFT_PROJECT_VM_CONFIG
-        )
-        group_vm_config_client: PFTGroupVMConfigClientService = build_client(
-            ServiceType.PFT_GROUP_VM_CONFIG
-        )
-
-        vm_dict_list = vm_quota_client.list_vm_quotas(
-            vendor=cloud, device_type=device_type
-        )
-        vm_id_map = group_vm_config_client.get_vm_config_id_map()
-        available_vm_dict_list = []
-        for vm_dict in vm_dict_list:
-            vm_instance_name = vm_dict["vm_config_type"]["code"]
-            try:
-                vm_count_in_use = vm_config_client.get_vm_count_in_use(
-                    vm_id_map[vm_instance_name]
-                )
-                vm_dict[
-                    "quota"
-                ] = f"{vm_dict['quota'] - vm_count_in_use} / {vm_dict['quota']}"
-            except KeyError:
-                continue
-            available_vm_dict_list.append(vm_dict)
-
-        available_vm_dict_list = sorted(
-            available_vm_dict_list, key=lambda d: d["vm_config_type"]["code"]
-        )
-        formatter.render(available_vm_dict_list)
-    else:
-        # TODO: PFS vm list
-        secho_error_and_exit(
-            "VM list for the deployment is not supported yet. Please contact the support team."
-        )
+    handler_map = {
+        PeriFlowService.TRAIN: vm_list_for_train,
+        PeriFlowService.SERVE: vm_list_for_serve,
+    }
+    handler_map[service](cloud, device_type)
 
 
 @quota_app.command("view", help="view quota detail of a VM")
