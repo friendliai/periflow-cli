@@ -113,7 +113,10 @@ def login(
     project_client: ProjectClientService = build_client(ServiceType.PROJECT)
     user_group_client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
 
-    org = user_group_client.get_group_info()
+    try:
+        org = user_group_client.get_group_info()
+    except IndexError:
+        secho_error_and_exit("You are not included in any organization.")
     org_id = org["id"]
 
     project_id = get_current_project_id()
