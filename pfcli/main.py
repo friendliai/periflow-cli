@@ -116,7 +116,7 @@ def login(
     try:
         org = user_group_client.get_group_info()
     except IndexError:
-        secho_error_and_exit("You are included in any organization.")
+        secho_error_and_exit("You are not included in any organization.")
     org_id = org["id"]
 
     project_id = get_current_project_id()
