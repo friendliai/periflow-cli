@@ -15,7 +15,10 @@ from pfcli.service.client import (
     PFTProjectVMQuotaClientService,
     build_client,
 )
-from pfcli.service.client.project import PFTProjectVMConfigClientService, find_project_id
+from pfcli.service.client.project import (
+    PFTProjectVMConfigClientService,
+    find_project_id,
+)
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import secho_error_and_exit
 
@@ -87,9 +90,7 @@ def vm_list_for_train(cloud: Optional[CloudType], device_type: Optional[str]) ->
         ServiceType.PFT_GROUP_VM_CONFIG
     )
 
-    vm_dict_list = vm_quota_client.list_vm_quotas(
-        vendor=cloud, device_type=device_type
-    )
+    vm_dict_list = vm_quota_client.list_vm_quotas(vendor=cloud, device_type=device_type)
     vm_id_map = group_vm_config_client.get_vm_config_id_map()
     available_vm_dict_list = []
     for vm_dict in vm_dict_list:

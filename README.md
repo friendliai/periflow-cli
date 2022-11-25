@@ -8,6 +8,12 @@ Welcome to PeriFlow ☁︎
 
 PeriFlow is a reliable, speedy, and efficient service for training and serving your own large-scale AI model on any data of your choice. PeriFlow makes use of the cloud infrastructure without your need to invest in on-premise supercomputers. With one click, PeriFlow loads your data and runs optimized massive-scale AI training, handling any headaches that may arise plus visualizing your training progress.
 
+Please visit [docs.periflow.ai](https://docs.periflow.ai) for the detailed guide:
+
+- [CLI documentation](https://docs.periflow.ai/cli/intro)
+- [Python SDK documentation](https://docs.periflow.ai/sdk/intro)
+- [PeriFlow tutorials](https://docs.periflow.ai/tutorial/intro)
+
 ## Installation
 
 You can simply install the package using `pip`.
@@ -39,7 +45,7 @@ You may go through the following steps when training AI models in PeriFlow.
 1. Sign in.
 2. Create/upload a dataset.
 3. Run a job and monitor the job status.
-4. Download trained model checkpoints to your local computer.
+4. Download trained model checkpoints to your local computer or deploy it!
 
 ### Step 1. Sign In
 
