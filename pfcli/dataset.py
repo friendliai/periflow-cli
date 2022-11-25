@@ -264,7 +264,14 @@ def upload(
             secho_error_and_exit(f"Error occurred while parsing metadata file... {exc}")
 
     dataset = project_client.create_dataset(
-        name, StorageType.FAI, "", "", None, metadata, [], False
+        name=name,
+        vendor=StorageType.FAI,
+        region="",
+        storage_name="",
+        credential_id=None,
+        metadata=metadata,
+        files=[],
+        active=False,
     )
     dataset_id = dataset["id"]
 

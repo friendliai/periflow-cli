@@ -96,7 +96,7 @@ class ProjectDataClientService(ClientService[int], ProjectRequestMixin):
             "vendor": vendor_name,
             "region": region,
             "storage_name": storage_name,
-            "credential_id": str(credential_id),
+            "credential_id": str(credential_id) if credential_id is not None else None,
             "metadata": metadata,
             "files": files,
             "active": active,
