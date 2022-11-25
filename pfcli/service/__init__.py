@@ -18,9 +18,9 @@ class ServiceType(str, Enum):
     PROJECT_JOB = "PROJECT_JOB"
     JOB_TEMPLATE = "JOB_TEMPLATE"
     GROUP_VM_QUOTA = "GROUP_VM_QUOTA"
-    PROJECT_VM_QUOTA = "PROJECT_VM_QUOTA"
-    PROJECT_VM_CONFIG = "PROJECT_VM_CONFIG"
-    GROUP_VM_CONFIG = "GROUP_VM_CONFIG"
+    PFT_PROJECT_VM_QUOTA = "PROJECT_VM_QUOTA"
+    PFT_PROJECT_VM_CONFIG = "PROJECT_VM_CONFIG"
+    PFT_GROUP_VM_CONFIG = "GROUP_VM_CONFIG"
     CREDENTIAL = "CREDENTIAL"
     PROJECT_CREDENTIAL = "PROJECT_CREDENTIAL"
     CREDENTIAL_TYPE = "CREDENTIAL_TYPE"
@@ -29,8 +29,8 @@ class ServiceType(str, Enum):
     CHECKPOINT = "CHECKPOINT"
     GROUP_PROJECT_CHECKPOINT = "GROUP_PROJECT_CHECKPOINT"
     JOB_WS = "JOB_WS"
-    SERVE = "SERVE"
-    BILLING_SUMMARY = "BILLING_SUMMARY"
+    DEPLOYMENT = "DEPLOYMENT"
+    PFT_BILLING_SUMMARY = "BILLING_SUMMARY"
     METRICS = "METRICS"
 
 
@@ -112,6 +112,11 @@ job_status_map_inv: Dict[SimpleJobStatus, Tuple[JobStatus, ...]] = {
 }
 
 
+class PeriFlowService(str, Enum):
+    TRAIN = "train"
+    SERVE = "serve"
+
+
 class JobType(str, Enum):
     PREDEFINED = "predefined"
     CUSTOM = "custom"
@@ -152,6 +157,11 @@ class ModelFormCategory(str, Enum):
 class GpuType(str, Enum):
     T4 = "t4"
     V100 = "v100"
+
+
+class EngineType(str, Enum):
+    ORCA = "orca"
+    TRITON = "triton"
 
 
 storage_type_map: Dict[StorageType, str] = {

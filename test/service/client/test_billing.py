@@ -9,19 +9,19 @@ import typer
 
 from pfcli.service import ServiceType
 from pfcli.service.client import build_client
-from pfcli.service.client.billing import BillingClientService
+from pfcli.service.client.billing import PFTBillingClientService
 
 
 @pytest.fixture
-def billing_summary_client(user_project_group_context) -> BillingClientService:
-    return build_client(ServiceType.BILLING_SUMMARY)
+def billing_summary_client(user_project_group_context) -> PFTBillingClientService:
+    return build_client(ServiceType.PFT_BILLING_SUMMARY)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_billing_summary_client_get_summary(
-    requests_mock: requests_mock.Mocker, billing_summary_client: BillingClientService
+    requests_mock: requests_mock.Mocker, billing_summary_client: PFTBillingClientService
 ):
-    assert isinstance(billing_summary_client, BillingClientService)
+    assert isinstance(billing_summary_client, PFTBillingClientService)
 
     url_template = deepcopy(billing_summary_client.url_template)
 

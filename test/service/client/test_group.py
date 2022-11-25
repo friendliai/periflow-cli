@@ -21,7 +21,7 @@ from pfcli.service.client.group import (
     GroupClientService,
     GroupProjectCheckpointClientService,
     GroupProjectVMQuotaClientService,
-    GroupVMConfigClientService,
+    PFTGroupVMConfigClientService,
 )
 
 
@@ -31,8 +31,8 @@ def group_client(user_project_group_context) -> GroupClientService:
 
 
 @pytest.fixture
-def group_vm_config_client(user_project_group_context) -> GroupVMConfigClientService:
-    return build_client(ServiceType.GROUP_VM_CONFIG)
+def group_vm_config_client(user_project_group_context) -> PFTGroupVMConfigClientService:
+    return build_client(ServiceType.PFT_GROUP_VM_CONFIG)
 
 
 @pytest.fixture
@@ -142,7 +142,7 @@ def test_group_client_accept_invite(
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_group_vm_config_client_get_id_by_name(
     requests_mock: requests_mock.Mocker,
-    group_vm_config_client: GroupVMConfigClientService,
+    group_vm_config_client: PFTGroupVMConfigClientService,
 ):
     example_data = [
         {
@@ -200,9 +200,9 @@ def test_group_vm_config_client_get_id_by_name(
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_group_vm_config_client_get_vm_config_id_map(
     requests_mock: requests_mock.Mocker,
-    group_vm_config_client: GroupVMConfigClientService,
+    group_vm_config_client: PFTGroupVMConfigClientService,
 ):
-    assert isinstance(group_vm_config_client, GroupVMConfigClientService)
+    assert isinstance(group_vm_config_client, PFTGroupVMConfigClientService)
 
     # Success
     requests_mock.get(

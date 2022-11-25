@@ -107,7 +107,7 @@ class ProjectDataClientService(ClientService[int], ProjectRequestMixin):
         return response.json()
 
 
-class ProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
+class PFTProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
@@ -164,7 +164,7 @@ class ProjectCredentialClientService(ClientService, ProjectRequestMixin):
         return response.json()
 
 
-class ProjectVMConfigClientService(ClientService[int], ProjectRequestMixin):
+class PFTProjectVMConfigClientService(ClientService[int], ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)

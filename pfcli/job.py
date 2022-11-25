@@ -27,7 +27,7 @@ from pfcli.service import (
     storage_type_map_inv,
 )
 from pfcli.service.client import (
-    GroupVMConfigClientService,
+    PFTGroupVMConfigClientService,
     JobTemplateClientService,
     JobWebSocketClientService,
     ProjectDataClientService,
@@ -198,7 +198,9 @@ def refine_config(
         config["job_setting"]["workspace"] = {"mount_path": "/workspace"}
 
     data_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
-    vm_client: GroupVMConfigClientService = build_client(ServiceType.GROUP_VM_CONFIG)
+    vm_client: PFTGroupVMConfigClientService = build_client(
+        ServiceType.PFT_GROUP_VM_CONFIG
+    )
     job_template_client: JobTemplateClientService = build_client(
         ServiceType.JOB_TEMPLATE
     )

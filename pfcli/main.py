@@ -16,7 +16,7 @@ from pfcli import (
     group,
     job,
     project,
-    serve,
+    deployment,
     vm,
 )
 from pfcli.context import (
@@ -44,16 +44,17 @@ app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,
 )
+
 app.add_typer(credential.app, name="credential", help="Manage credentials")
-app.add_typer(job.app, name="job", help="Manage jobs")
 app.add_typer(checkpoint.app, name="checkpoint", help="Manage checkpoints")
-app.add_typer(dataset.app, name="dataset", help="Manage datasets")
 app.add_typer(vm.app, name="vm", help="Manage VMs")
-app.add_typer(serve.app, name="serve", help="Manage serves")
+app.add_typer(deployment.app, name="deployment", help="Manage deployments")
 app.add_typer(project.app, name="project", help="Manage projects")
 app.add_typer(group.app, name="org", help="Manage organizations")
-app.add_typer(artifact.app, name="artifact", help="Manager artifacts")
 app.add_typer(billing.app, name="billing", help="Manage billing")
+app.add_typer(artifact.app, name="artifact", help="Manager artifacts")
+app.add_typer(job.app, name="job", help="Manage jobs")
+app.add_typer(dataset.app, name="dataset", help="Manage datasets")
 
 
 user_panel_formatter = PanelFormatter(

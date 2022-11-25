@@ -5,7 +5,7 @@ from typing import Dict, Tuple, Type, TypeVar
 
 from pfcli.service import ServiceType
 from pfcli.service.client.base import ClientService
-from pfcli.service.client.billing import BillingClientService
+from pfcli.service.client.billing import PFTBillingClientService
 from pfcli.service.client.checkpoint import CheckpointClientService
 from pfcli.service.client.credential import (
     CredentialClientService,
@@ -17,7 +17,7 @@ from pfcli.service.client.group import (
     GroupProjectCheckpointClientService,
     GroupProjectClientService,
     GroupProjectVMQuotaClientService,
-    GroupVMConfigClientService,
+    PFTGroupVMConfigClientService,
 )
 from pfcli.service.client.job import (
     JobTemplateClientService,
@@ -31,10 +31,10 @@ from pfcli.service.client.project import (
     ProjectClientService,
     ProjectCredentialClientService,
     ProjectDataClientService,
-    ProjectVMConfigClientService,
-    ProjectVMQuotaClientService,
+    PFTProjectVMConfigClientService,
+    PFTProjectVMQuotaClientService,
 )
-from pfcli.service.client.serve import ServeClientService
+from pfcli.service.client.deployment import DeploymentClientService
 from pfcli.service.client.user import (
     UserClientService,
     UserGroupClientService,
@@ -113,8 +113,8 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         GroupProjectVMQuotaClientService,
         Template(get_uri("group/$group_id/vm_quota/")),
     ),
-    ServiceType.PROJECT_VM_QUOTA: (
-        ProjectVMQuotaClientService,
+    ServiceType.PFT_PROJECT_VM_QUOTA: (
+        PFTProjectVMQuotaClientService,
         Template(get_uri("project/$project_id/vm_quota/")),
     ),
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_mr_uri("models/"))),
@@ -122,18 +122,21 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         GroupProjectCheckpointClientService,
         Template(get_mr_uri("orgs/$group_id/prjs/$project_id/models/")),
     ),  # pylint: disable=line-too-long
-    ServiceType.PROJECT_VM_CONFIG: (
-        ProjectVMConfigClientService,
+    ServiceType.PFT_PROJECT_VM_CONFIG: (
+        PFTProjectVMConfigClientService,
         Template(get_uri("project/$project_id/vm_config/")),
     ),
-    ServiceType.GROUP_VM_CONFIG: (
-        GroupVMConfigClientService,
+    ServiceType.PFT_GROUP_VM_CONFIG: (
+        PFTGroupVMConfigClientService,
         Template(get_uri("group/$group_id/vm_config/")),
     ),
     ServiceType.JOB_WS: (JobWebSocketClientService, Template(get_wss_uri("job/"))),
-    ServiceType.SERVE: (ServeClientService, Template(get_pfs_uri("deployment/"))),
-    ServiceType.BILLING_SUMMARY: (
-        BillingClientService,
+    ServiceType.DEPLOYMENT: (
+        DeploymentClientService,
+        Template(get_pfs_uri("deployment/")),
+    ),
+    ServiceType.PFT_BILLING_SUMMARY: (
+        PFTBillingClientService,
         Template(get_meter_uri("training/instances/price/")),
     ),
     ServiceType.METRICS: (

@@ -13,8 +13,8 @@ from pfcli.service.client import build_client
 from pfcli.service.client.project import (
     ProjectCredentialClientService,
     ProjectDataClientService,
-    ProjectVMConfigClientService,
-    ProjectVMQuotaClientService,
+    PFTProjectVMConfigClientService,
+    PFTProjectVMQuotaClientService,
 )
 
 
@@ -31,15 +31,15 @@ def project_data_client(user_project_group_context) -> ProjectDataClientService:
 
 
 @pytest.fixture
-def project_vm_quota_client(user_project_group_context) -> ProjectVMQuotaClientService:
-    return build_client(ServiceType.PROJECT_VM_QUOTA)
+def project_vm_quota_client(user_project_group_context) -> PFTProjectVMQuotaClientService:
+    return build_client(ServiceType.PFT_PROJECT_VM_QUOTA)
 
 
 @pytest.fixture
 def project_vm_config_client(
     user_project_group_context,
-) -> ProjectVMConfigClientService:
-    return build_client(ServiceType.PROJECT_VM_CONFIG)
+) -> PFTProjectVMConfigClientService:
+    return build_client(ServiceType.PFT_PROJECT_VM_CONFIG)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
@@ -141,7 +141,7 @@ def test_project_data_client_create_dataset(
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_project_vm_quota_client_list_vm_quotas(
     requests_mock: requests_mock.Mocker,
-    project_vm_quota_client: ProjectVMQuotaClientService,
+    project_vm_quota_client: PFTProjectVMQuotaClientService,
 ):
     example_data = [
         {
@@ -304,7 +304,7 @@ def test_project_credential_client_service(
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_project_vm_config_client_get_active_vm_count(
     requests_mock: requests_mock.Mocker,
-    project_vm_config_client: ProjectVMConfigClientService,
+    project_vm_config_client: PFTProjectVMConfigClientService,
 ):
     # Success
     url_template = deepcopy(project_vm_config_client.url_template)

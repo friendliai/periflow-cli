@@ -6,16 +6,16 @@ from typing import Optional
 
 import typer
 
-from pfcli.service import CloudType, ServiceType
+from pfcli.service import CloudType, PeriFlowService, ServiceType
 from pfcli.service.client import (
     GroupProjectClientService,
     GroupProjectVMQuotaClientService,
-    GroupVMConfigClientService,
-    ProjectVMConfigClientService,
-    ProjectVMQuotaClientService,
+    PFTGroupVMConfigClientService,
+    PFTProjectVMConfigClientService,
+    PFTProjectVMQuotaClientService,
     build_client,
 )
-from pfcli.service.client.project import find_project_id
+from pfcli.service.client.project import PFTProjectVMConfigClientService, find_project_id
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import secho_error_and_exit
 
@@ -75,27 +75,21 @@ quota_detail_panel = PanelFormatter(
 )
 
 
-@app.command("list")
-def list(
-    cloud: Optional[CloudType] = typer.Option(
-        None, "--cloud", "-c", help="Filter list by cloud vendor."
-    ),
-    device_type: Optional[str] = typer.Option(
-        None, "--device-type", "-d", help="Filter list by device type."
-    ),
-):
-    """List all VM quota information."""
-    vm_quota_client: ProjectVMQuotaClientService = build_client(
-        ServiceType.PROJECT_VM_QUOTA
+def vm_list_for_train(cloud: Optional[CloudType], device_type: Optional[str]) -> None:
+    """List all VM information for training."""
+    vm_quota_client: PFTProjectVMQuotaClientService = build_client(
+        ServiceType.PFT_PROJECT_VM_QUOTA
     )
-    vm_config_client: ProjectVMConfigClientService = build_client(
-        ServiceType.PROJECT_VM_CONFIG
+    vm_config_client: PFTProjectVMConfigClientService = build_client(
+        ServiceType.PFT_PROJECT_VM_CONFIG
     )
-    group_vm_config_client: GroupVMConfigClientService = build_client(
-        ServiceType.GROUP_VM_CONFIG
+    group_vm_config_client: PFTGroupVMConfigClientService = build_client(
+        ServiceType.PFT_GROUP_VM_CONFIG
     )
 
-    vm_dict_list = vm_quota_client.list_vm_quotas(vendor=cloud, device_type=device_type)
+    vm_dict_list = vm_quota_client.list_vm_quotas(
+        vendor=cloud, device_type=device_type
+    )
     vm_id_map = group_vm_config_client.get_vm_config_id_map()
     available_vm_dict_list = []
     for vm_dict in vm_dict_list:
@@ -114,22 +108,50 @@ def list(
     available_vm_dict_list = sorted(
         available_vm_dict_list, key=lambda d: d["vm_config_type"]["code"]
     )
-
     formatter.render(available_vm_dict_list)
+
+
+def vm_list_for_serve(cloud: Optional[CloudType], device_type: Optional[str]) -> None:
+    # TODO: FILL ME
+    secho_error_and_exit(
+        "VM list for the deployment is not supported yet. Please contact the support team."
+    )
+
+
+@app.command("list", help="list up available VMs")
+def list(
+    service: PeriFlowService = typer.Option(
+        ...,
+        "--service",
+        "-s",
+        help="PeriFlow service type. Training and serving services are provided with different VM types.",
+    ),
+    cloud: Optional[CloudType] = typer.Option(
+        None, "--cloud", "-c", help="Filter list by cloud vendor."
+    ),
+    device_type: Optional[str] = typer.Option(
+        None, "--device-type", "-d", help="Filter list by device type."
+    ),
+):
+    handler_map = {
+        PeriFlowService.TRAIN: vm_list_for_train,
+        PeriFlowService.SERVE: vm_list_for_serve,
+    }
+    handler_map[service](cloud, device_type)
 
 
 @quota_app.command("view", help="view quota detail of a VM")
 def view(
     vm_instance_name: str = typer.Argument(..., help="vm type"),
 ):
-    vm_quota_client: ProjectVMQuotaClientService = build_client(
-        ServiceType.PROJECT_VM_QUOTA
+    vm_quota_client: PFTProjectVMQuotaClientService = build_client(
+        ServiceType.PFT_PROJECT_VM_QUOTA
     )
-    vm_config_client: ProjectVMConfigClientService = build_client(
-        ServiceType.PROJECT_VM_CONFIG
+    vm_config_client: PFTProjectVMConfigClientService = build_client(
+        ServiceType.PFT_PROJECT_VM_CONFIG
     )
-    group_vm_config_client: GroupVMConfigClientService = build_client(
-        ServiceType.GROUP_VM_CONFIG
+    group_vm_config_client: PFTGroupVMConfigClientService = build_client(
+        ServiceType.PFT_GROUP_VM_CONFIG
     )
 
     vm_dict_list = vm_quota_client.list_vm_quotas()

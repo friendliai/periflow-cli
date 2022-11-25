@@ -77,7 +77,7 @@ class GroupProjectClientService(ClientService, GroupRequestMixin):
         return paginated_get(get_response_dict)
 
 
-class GroupVMConfigClientService(ClientService, GroupRequestMixin):
+class PFTGroupVMConfigClientService(ClientService, GroupRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_group()
         super().__init__(template, group_id=self.group_id, **kwargs)
