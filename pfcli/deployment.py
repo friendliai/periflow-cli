@@ -237,10 +237,10 @@ def metrics(
 @app.command()
 def usage(
     deployment_id: str = typer.Option(
-        None, help="Deployment id to inspect detail."
+        None, "--deployment-id", "-d", help="Deployment id to inspect detail."
     ),
     project_id: str = typer.Option(
-        None, help="Project id to inspect detail."
+        None, "--project-id", "-p", help="Project id to inspect detail."
     ),
 ):
     """Show total usage of deployment or project."""
