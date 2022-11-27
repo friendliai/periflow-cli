@@ -34,8 +34,7 @@ def datetime_to_pretty_str(past: datetime, long_list: bool = False):
             return f"{delta.days + round(delta.seconds / (3600 * 24))} days ago"
 
 
-def timedelta_to_pretty_str(start: datetime, finish: datetime, long_list: bool = False):
-    delta = finish - start
+def timedelta_to_pretty_str(delta: timedelta, long_list: bool = False):
     if long_list:
         if delta < timedelta(minutes=1):
             return f"{(delta.seconds % 60)}s"
