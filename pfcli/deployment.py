@@ -2,6 +2,8 @@
 
 """CLI for Deployment"""
 
+from collections import defaultdict
+from datetime import timedelta
 from dateutil.parser import parse
 from typing import Optional
 
@@ -20,9 +22,18 @@ from pfcli.service.client import (
     DeploymentClientService,
     build_client,
 )
+from pfcli.service.client.deployment import (
+    DeploymentMetricsClientService,
+    PFSDeploymentUsageClientService,
+    PFSProjectUsageClientService,
+)
 from pfcli.service.config import build_deployment_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils.format import datetime_to_pretty_str, secho_error_and_exit
+from pfcli.utils.format import (
+    datetime_to_pretty_str,
+    secho_error_and_exit,
+    timedelta_to_pretty_str,
+)
 from pfcli.utils.prompt import get_default_editor, open_editor
 
 
@@ -40,7 +51,7 @@ template_app = typer.Typer(
 app.add_typer(template_app, name="template", help="Manage deployment templates.")
 
 deployment_panel = PanelFormatter(
-    name="Overview",
+    name="Deployment Overview",
     fields=[
         "id",
         "config.name",
@@ -72,6 +83,48 @@ deployment_table = TableFormatter(
     extra_headers=["error"],
 )
 
+deployment_metrics_table = TableFormatter(
+    name="Deployment Metrics",
+    fields=[
+        "id",
+        "latency",
+        "throughput",
+        "time_window",
+    ],
+    headers=["ID", "Latency(ns)", "Throughput(req/s)", "Time Window(sec)"],
+    extra_fields=["error"],
+    extra_headers=["error"],
+)
+
+deployment_usage_panel = PanelFormatter(
+    name="Deployment Usage",
+    fields=[
+        "id",
+        "project_id",
+        "usage",
+        "start",
+        "status",
+    ],
+    headers=["ID", "ProjectID", "Usage", "Start" , "Status"],
+    extra_fields=["error"],
+    extra_headers=["error"],
+)
+
+
+project_usage_table = TableFormatter(
+    name="Project Usage",
+    fields=[
+        "id",
+        "usage",
+        "start",
+        "status",
+    ],
+    headers=["ID", "Usage", "Start", "Status"],
+    extra_fields=["error"],
+    extra_headers=["error"],
+)
+
+
 deployment_panel.add_substitution_rule("waiting", "[bold]waiting")
 deployment_panel.add_substitution_rule("enqueued", "[bold cyan]enqueued")
 deployment_panel.add_substitution_rule("running", "[bold blue]running")
@@ -89,6 +142,15 @@ deployment_table.add_substitution_rule("failed", "[bold red]failed")
 deployment_table.add_substitution_rule("terminated", "[bold yellow]terminated")
 deployment_table.add_substitution_rule("terminating", "[bold magenta]terminating")
 deployment_table.add_substitution_rule("cancelling", "[bold magenta]cancelling")
+
+deployment_metrics_table.add_substitution_rule("waiting", "[bold]waiting")
+deployment_metrics_table.add_substitution_rule("enqueued", "[bold cyan]enqueued")
+deployment_metrics_table.add_substitution_rule("running", "[bold blue]running")
+deployment_metrics_table.add_substitution_rule("success", "[bold green]success")
+deployment_metrics_table.add_substitution_rule("failed", "[bold red]failed")
+deployment_metrics_table.add_substitution_rule("terminated", "[bold yellow]terminated")
+deployment_metrics_table.add_substitution_rule("terminating", "[bold magenta]terminating")
+deployment_metrics_table.add_substitution_rule("cancelling", "[bold magenta]cancelling")
 
 
 @app.command()
@@ -151,6 +213,116 @@ def view(
 
 
 @app.command()
+def metrics(
+    deployment_id: str = typer.Argument(
+        ..., help="Deployment id to inspect detail."
+    ),
+    time_window: int = typer.Option(
+        60, "--time-window", "-t", help="Time window of metrics in seconds."
+    ),
+):
+    """Show metrics of a deployment."""
+    metrics_client: DeploymentMetricsClientService = build_client(
+        ServiceType.DEPLOYMENT_METRICS,
+        deployment_id=deployment_id
+    )
+    metrics = metrics_client.get_metrics(
+        deployment_id=deployment_id,
+        time_window=time_window
+    )
+    metrics["id"] = metrics["deployment_id"]
+    deployment_metrics_table.render([metrics])
+
+
+@app.command()
+def usage(
+    deployment_id: str = typer.Option(
+        None, help="Deployment id to inspect detail."
+    ),
+    project_id: str = typer.Option(
+        None, help="Project id to inspect detail."
+    ),
+):
+    """Show total usage of deployment or project."""
+    if (not deployment_id and not project_id) or (deployment_id and project_id):
+        secho_error_and_exit(f"Only one of deployment id or project id should be submitted.")
+    
+    # deployment usage
+    if deployment_id:
+        deployment_usage_client: PFSDeploymentUsageClientService = build_client(
+            ServiceType.PFS_DEPLOYMENT_USAGE
+        )
+        usage_list = deployment_usage_client.get_usage(deployment_id).get("usage")
+        deployment_usage = defaultdict()
+        deployment_usage["id"] = deployment_id
+        deployment_usage["project_id"] = usage_list[0]["project_id"]
+        started_at = usage_list[0]["created_at"]
+        if started_at is not None:
+            start = datetime_to_pretty_str(parse(started_at))
+        else:
+            start = None
+        deployment_usage["start"] = start
+
+        # sum usage
+        deployment_usage["usage"] = timedelta_to_pretty_str(
+            _calculate_usage(usage_list), True
+        )
+
+        # status
+        deployment_usage["status"] = (
+            "running"
+            if usage_list[-1]["has_finished"] == False
+            else "terminated"
+        )
+
+        deployment_usage_panel.render(deployment_usage)
+
+
+    # project usage
+    elif project_id:
+        
+        project_usage_client: PFSProjectUsageClientService = build_client(
+            ServiceType.PFS_PROJECT_USAGE
+        )
+        project_usage = []
+        usage_dict = project_usage_client.get_usage(project_id)
+        for project_deployment, usage_list in usage_dict.items():
+            deployment_usage = defaultdict()
+            deployment_usage["id"] = project_deployment
+
+            started_at = usage_list[0]["created_at"]
+            if started_at is not None:
+                start = datetime_to_pretty_str(parse(started_at))
+            else:
+                start = None
+            deployment_usage["start"] = start
+
+            # sum usage
+            deployment_usage["usage"] = timedelta_to_pretty_str(
+                _calculate_usage(usage_list), True
+            )
+
+            # status
+            deployment_usage["status"] = (
+                "running"
+                if usage_list[-1]["has_finished"] == False
+                else "terminated"
+            )
+            project_usage.append(deployment_usage)
+        
+        project_usage_table.render(project_usage)
+
+
+def _calculate_usage(usage_list: dict) -> timedelta:
+    """Calculate usage in timedelta"""
+    sum_timedelta = timedelta()
+    for usage in usage_list:
+        started_at = usage["created_at"]
+        last_synced_at = usage["last_synced_at"]
+        sum_timedelta = sum_timedelta + parse(last_synced_at) - parse(started_at)
+    return sum_timedelta
+
+@app.command()
 def create(
     project_id: str = typer.Option(
         ..., "--project-id", "-pid", help="Project to deploy."
@@ -206,7 +378,7 @@ def create(
 
 
 @template_app.command("create")
-def template_crate(
+def template_create(
     save_path: typer.FileTextWrite = typer.Option(
         ..., "--save-path", "-s", help="Path to save job YAML configruation file."
     )

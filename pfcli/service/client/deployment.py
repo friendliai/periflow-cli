@@ -29,3 +29,30 @@ class DeploymentClientService(ClientService[str]):
         safe_request(self.delete, err_prefix="Failed to delete deployment.")(
             pk=deployment_id
         )
+
+
+class DeploymentMetricsClientService(ClientService):
+    def get_metrics(self, deployment_id: str, time_window: int) -> dict:
+        response = safe_request(
+            self.list,
+            err_prefix=f"Deployment ({deployment_id}) is not found. You may enter wrongID.",
+        )(data=str(time_window))
+        return response.json()
+
+
+class PFSDeploymentUsageClientService(ClientService[str]):
+    def get_usage(self, deployment_id: str) -> dict:
+        response = safe_request(
+            self.retrieve,
+            err_prefix=f"Deployment ({deployment_id}) is not found. You may enter wrongID.",
+        )(pk=deployment_id)
+        return response.json()
+
+
+class PFSProjectUsageClientService(ClientService[str]):
+    def get_usage(self, project_id: str) -> dict:
+        response = safe_request(
+            self.retrieve,
+            err_prefix=f"Project ({project_id}) is not found. You may enter wrongID.",
+        )(pk=project_id)
+        return response.json()
