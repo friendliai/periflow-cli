@@ -245,10 +245,10 @@ def metrics(
 @app.command()
 def usage(
     deployment_id: str = typer.Option(
-        None, help="Deployment id to inspect detail."
+        None, "--deployment-id", "-d", help="Deployment id to inspect detail."
     ),
     project_id: str = typer.Option(
-        None, help="Project id to inspect detail."
+        None, "--project-id", "-p", help="Project id to inspect detail."
     ),
 ):
     """Show total usage of deployment or project."""
@@ -263,8 +263,8 @@ def usage(
         usage_list = deployment_usage_client.get_usage(deployment_id).get("usage")
         deployment_usage = defaultdict()
         deployment_usage["id"] = deployment_id
-        deployment_usage["project_id"] = usage_list[0]["project_id"]
-        started_at = usage_list[0]["created_at"]
+        deployment_usage["project_id"] = usage_list[0]["project_id"] if usage_list else None
+        started_at = usage_list[0]["created_at"] if usage_list else None
         if started_at is not None:
             start = datetime_to_pretty_str(parse(started_at))
         else:
@@ -274,14 +274,14 @@ def usage(
         # sum usage
         deployment_usage["usage"] = timedelta_to_pretty_str(
             _calculate_usage(usage_list), True
-        )
+        ) if usage_list else None
 
         # status
         deployment_usage["status"] = (
             "running"
             if usage_list[-1]["has_finished"] == False
             else "terminated"
-        )
+        ) if usage_list else None
 
         deployment_usage_panel.render(deployment_usage)
 
