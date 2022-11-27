@@ -33,21 +33,26 @@ class DeploymentClientService(ClientService[str]):
             pk=deployment_id
         )
 
-    def get_deployment_metrics(self, deployment_id: str, time_window: int) -> None:
+class DeploymentMetricsClientService(ClientService):
+    def get_metrics(self, deployment_id: str, time_window: int) -> dict:
         response = safe_request(
             self.list,
-            err_prefix="Failed to get deployment metrics.",
-        )(path=f"/deployment/{deployment_id}/metrics", data=str(time_window))
+            err_prefix=f"Deployment ({deployment_id}) is not found. You may enter wrongID.",
+        )(data=str(time_window))
         return response.json()
 
-class DeploymentUsageClientService(ClientService[str], ProjectRequestMixin):
-    def __init__(self, template: Template, **kwargs):
-        self.initialize_project()
-        super().__init__(template, project_id=self.project_id, **kwargs)
-
-    def get_deployment_usage(self) -> dict:
+class PFSDeploymentUsageClientService(ClientService[str]):
+    def get_usage(self, deployment_id: str) -> dict:
         response = safe_request(
-            self.list,
-            err_prefix=f"Deployment usages are not found in the project.",
-        )()
+            self.retrieve,
+            err_prefix=f"Deployment ({deployment_id}) is not found. You may enter wrongID.",
+        )(pk=deployment_id)
+        return response.json()
+
+class PFSProjectUsageClientService(ClientService[str]):
+    def get_usage(self, project_id: str) -> dict:
+        response = safe_request(
+            self.retrieve,
+            err_prefix=f"Project ({project_id}) is not found. You may enter wrongID.",
+        )(pk=project_id)
         return response.json()

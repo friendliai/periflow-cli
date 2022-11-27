@@ -357,11 +357,11 @@ def list(
         else:
             start = None
         if started_at is not None and finished_at is not None:
-            duration = timedelta_to_pretty_str(parse(started_at), parse(finished_at))
+            duration = timedelta_to_pretty_str(parse(finished_at) - parse(started_at))
         elif started_at is not None and job["status"] == JobStatus.RUNNING:
             start_time = parse(started_at)
             curr_time = datetime.now(start_time.tzinfo)
-            duration = timedelta_to_pretty_str(start_time, curr_time)
+            duration = timedelta_to_pretty_str(curr_time - start_time)
         else:
             duration = None
 
@@ -445,11 +445,11 @@ def view(
     else:
         start = None
     if started_at is not None and finished_at is not None:
-        duration = timedelta_to_pretty_str(parse(started_at), parse(finished_at))
+        duration = timedelta_to_pretty_str(parse(finished_at) - parse(started_at))
     elif started_at is not None and job["status"] == JobStatus.RUNNING:
         start_time = parse(started_at)
         curr_time = datetime.now(start_time.tzinfo)
-        duration = timedelta_to_pretty_str(start_time, curr_time)
+        duration = timedelta_to_pretty_str(curr_time - start_time)
     else:
         duration = None
 

@@ -34,7 +34,12 @@ from pfcli.service.client.project import (
     PFTProjectVMConfigClientService,
     PFTProjectVMQuotaClientService,
 )
-from pfcli.service.client.deployment import DeploymentClientService, DeploymentUsageClientService
+from pfcli.service.client.deployment import (
+    DeploymentClientService,
+    DeploymentMetricsClientService,
+    PFSDeploymentUsageClientService,
+    PFSProjectUsageClientService,
+)
 from pfcli.service.client.user import (
     UserClientService,
     UserGroupClientService,
@@ -135,9 +140,17 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         DeploymentClientService,
         Template(get_pfs_uri("deployment/")),
     ),
-    ServiceType.DEPLOYMENT_USAGE: (
-        DeploymentUsageClientService,
-        Template(get_pfs_uri("usage/project/$project_id/duration")),
+    ServiceType.DEPLOYMENT_METRICS: (
+        DeploymentMetricsClientService,
+        Template(get_pfs_uri("deployment/$deployment_id/metrics/")),
+    ),
+    ServiceType.PFS_DEPLOYMENT_USAGE: (
+        PFSDeploymentUsageClientService,
+        Template(get_pfs_uri("usage/deployment/")),
+    ),
+    ServiceType.PFS_PROJECT_USAGE: (
+        PFSProjectUsageClientService,
+        Template(get_pfs_uri("usage/project/")),
     ),
     ServiceType.PFT_BILLING_SUMMARY: (
         PFTBillingClientService,
