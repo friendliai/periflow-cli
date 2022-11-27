@@ -179,7 +179,7 @@ def list(
         else:
             start = None
         deployment["start"] = start
-        deployment["vms"] = deployment["vms"][0]["name"]
+        deployment["vms"] = deployment["vms"][0]["name"] if deployment["vms"] else "None"
 
     if tail is not None or head is not None:
         target_deployment_list = []
