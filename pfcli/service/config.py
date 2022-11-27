@@ -606,18 +606,6 @@ class OrcaDeploymentConfigService(DeploymentConfigService):
     use_scaler: bool = False
 
     def start_interaction(self):
-        self.use_specific_image = typer.confirm(
-            "Will you use specific orca docker image?",
-            prompt_suffix="\n>> ",
-        )
-        self.use_ckpt_config = typer.confirm(
-            "Will you use checkpoint config?",
-            prompt_suffix="\n>> ",
-        )
-        self.use_scaler = typer.confirm(
-            "Will you use keda autoscaler?",
-            prompt_suffix="\n>> ",
-        )
         self.ready = True
 
     def render(self) -> str:

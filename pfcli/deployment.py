@@ -9,6 +9,8 @@ import ruamel.yaml
 import typer
 import yaml
 from click import Choice
+from uuid import UUID
+import datetime
 
 from pfcli.service import (
     ServiceType,
@@ -18,8 +20,11 @@ from pfcli.service import (
 )
 from pfcli.service.client import (
     DeploymentClientService,
+    DeploymentUsageClientService,
     build_client,
 )
+from pfcli.context import get_current_project_id
+
 from pfcli.service.config import build_deployment_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import datetime_to_pretty_str, secho_error_and_exit
@@ -51,7 +56,7 @@ deployment_panel = PanelFormatter(
         "start",
         "endpoint",
     ],
-    headers=["ID", "Name", "Status", "VM", "Device", "Device Cnt", "Start", "Endpoint"],
+    headers=["ID", "Name", "Status", "VM Type", "GPU Type", "#GPUs", "Start", "Endpoint"],
     extra_fields=["error"],
     extra_headers=["error"],
 )
@@ -67,9 +72,28 @@ deployment_table = TableFormatter(
         "config.total_gpus",
         "start",
     ],
-    headers=["ID", "Name", "Status", "VM", "Device", "Device Cnt", "Start"],
+    headers=["ID", "Name", "Status", "VM Type", "GPU Type", "#GPUs", "Start"],
     extra_fields=["error"],
     extra_headers=["error"],
+)
+
+deployment_usage_table = TableFormatter(
+    name="Deployment Usage",
+    fields=[
+        "id",
+        "duration",
+    ],
+    headers=["ID", "Total Usage (days, HH:MM:SS)"],
+)
+
+deployment_metrics_table = TableFormatter(
+    name="Deployment Metrics",
+    fields=[
+        "deployment_id",
+        "latency",
+        "throughput",
+    ],
+    headers=["ID", "Mean Latency (ms)", "Mean Throughput (#reqs/sec)"],
 )
 
 deployment_panel.add_substitution_rule("waiting", "[bold]waiting")
@@ -101,8 +125,12 @@ def list(
     ),
 ):
     """List all deployments."""
+    project_id = get_current_project_id()
+    if project_id is None:
+        secho_error_and_exit("Failed to identify project... Please set project again.")
+
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
-    deployments = client.list_deployments()["deployments"]
+    deployments = client.list_deployments(str(project_id))["deployments"]
 
     for deployment in deployments:
         started_at = deployment.get("start")
@@ -130,7 +158,10 @@ def delete(deployment_id: str = typer.Argument(..., help="ID of deployment to de
     """Delete deployment."""
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
     client.delete_deployment(deployment_id)
-
+    typer.secho(
+        f"Deleted Deployment ({deployment_id}) successfully.",
+        fg=typer.colors.BLUE,
+    )
 
 @app.command()
 def view(
@@ -146,15 +177,32 @@ def view(
     else:
         start = None
     deployment["start"] = start
-    deployment["vms"] = deployment["vms"][0]["name"]
+    deployment["vms"] = deployment["vms"][0]["name"] if deployment["vms"] else "None"
     deployment_panel.render([deployment])
 
+@app.command()
+def metrics(
+    deployment_id: str = typer.Argument(..., help="ID of deployment to delete"),
+    time_window: Optional[int] = typer.Option(60, "--time-window", help="Time window in seconds."),
+):
+    """Show deployment metrics."""
+    client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
+    metrics = client.get_deployment_metrics(deployment_id, time_window)
+    # ns => ms
+    metrics["latency"] /= 1000000
+    deployment_metrics_table.render([metrics])
+
+@app.command()
+def usage():
+    """Show deployment usage in the project."""
+    client: DeploymentUsageClientService = build_client(ServiceType.DEPLOYMENT_USAGE)
+    usages = client.get_deployment_usage()
+    
+    deployments = [{"id": id, "duration": datetime.timedelta(seconds=int(duration))} for id, duration in usages.items()]
+    deployment_usage_table.render(deployments)
 
 @app.command()
 def create(
-    project_id: str = typer.Option(
-        ..., "--project-id", "-pid", help="Project to deploy."
-    ),
     checkpoint_id: str = typer.Option(
         ..., "--checkpoint-id", "-id", help="Checkpoint id to deploy."
     ),
@@ -176,8 +224,17 @@ def create(
     ),
 ):
     """Create a deployment object by using model checkpoint."""
+    project_id = get_current_project_id()
+    if project_id is None:
+        secho_error_and_exit("Failed to identify project... Please set project again.")
+
     if engine is not EngineType.ORCA:
         secho_error_and_exit("Only ORCA is supported!")
+
+    try:
+        UUID(checkpoint_id)
+    except ValueError:
+        secho_error_and_exit("Checkpoint ID should be in UUID format.")
 
     try:
         config: dict = yaml.safe_load(config_file)
@@ -185,7 +242,7 @@ def create(
         secho_error_and_exit(f"Error occurred while parsing engine config file... {e}")
 
     request_data = {
-        "project_id": project_id,
+        "project_id": str(project_id),
         "model_id": checkpoint_id,
         "name": deployment_name,
         "gpu_type": gpu_type,
@@ -193,14 +250,12 @@ def create(
         "region": region,
         **config,
     }
-    typer.secho(f"request_data: {request_data}")
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
-    typer.secho(f"deployment url:{client.url_kwargs}")
     deployment = client.create_deployment(request_data)
 
     typer.secho(
-        f"Deployment ({deployment['id']}) started successfully. Use 'pf deployment view <id>' to see the deployment details.\n"
-        f"Run 'curl {deployment['endpoint']}' for inference request",
+        f"Deployment ({deployment['id']}) started successfully. Use 'pf deployment view {deployment['id']}' to see the deployment details.\n"
+        f"Send inference requests to '{deployment['endpoint']}'.",
         fg=typer.colors.BLUE,
     )
 
@@ -212,12 +267,7 @@ def template_crate(
     )
 ):
     """Create a deployment engine configuration YAML file."""
-    engine_type = typer.prompt(
-        "What kind of engine type do you want?\n",
-        type=Choice([e.value for e in EngineType]),
-        prompt_suffix="\n>> ",
-    )
-    configurator = build_deployment_configurator(engine_type)
+    configurator = build_deployment_configurator(EngineType.ORCA)
     yaml_str = configurator.render()
 
     yaml = ruamel.yaml.YAML()
