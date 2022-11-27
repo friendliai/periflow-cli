@@ -41,18 +41,14 @@ class DeploymentMetricsClientService(ClientService):
         )(data=str(time_window))
         return response.json()
 
-class PFSDeploymentUsageClientService(ClientService[str]):
-    def get_usage(self, deployment_id: str) -> dict:
-        response = safe_request(
-            self.retrieve,
-            err_prefix=f"Deployment ({deployment_id}) is not found. You may enter wrongID.",
-        )(pk=deployment_id)
-        return response.json()
+class PFSProjectUsageClientService(ClientService[str], ProjectRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_project()
+        super().__init__(template, project_id=self.project_id, **kwargs)
 
-class PFSProjectUsageClientService(ClientService[str]):
-    def get_usage(self, project_id: str) -> dict:
+    def get_deployment_usage(self) -> dict:
         response = safe_request(
-            self.retrieve,
-            err_prefix=f"Project ({project_id}) is not found. You may enter wrongID.",
-        )(pk=project_id)
+            self.list,
+            err_prefix=f"Deployment usages are not found in the project.",
+        )()
         return response.json()

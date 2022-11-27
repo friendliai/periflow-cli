@@ -31,7 +31,6 @@ class ServiceType(str, Enum):
     JOB_WS = "JOB_WS"
     DEPLOYMENT = "DEPLOYMENT"
     DEPLOYMENT_METRICS = "DEPLOYMENT_METRICS"
-    PFS_DEPLOYMENT_USAGE = "PFS_DEPLOYMENT_USAGE"
     PFS_PROJECT_USAGE = "PFS_PROJECT_USAGE"
     PFT_BILLING_SUMMARY = "BILLING_SUMMARY"
     METRICS = "METRICS"
@@ -158,8 +157,7 @@ class ModelFormCategory(str, Enum):
 
 
 class GpuType(str, Enum):
-    T4 = "t4"
-    V100 = "v100"
+    A10G = "a10g"
 
 
 class EngineType(str, Enum):
