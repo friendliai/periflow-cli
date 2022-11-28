@@ -84,8 +84,8 @@ def test_user_client_set_group_privilege(
     url_template = deepcopy(user_client.url_template)
     url_template.attach_pattern("$pf_user_id/pf_group/$pf_group_id/privilege_level")
 
-    user_id = str(uuid.uuid4())
-    group_id = str(uuid.uuid4())
+    user_id = uuid.uuid4()
+    group_id = uuid.uuid4()
 
     requests_mock.patch(
         url_template.render(pf_user_id=user_id, pf_group_id=group_id), status_code=204
@@ -111,7 +111,7 @@ def test_user_client_get_project_membership(
     url_template = deepcopy(user_client.url_template)
     url_template.attach_pattern(f"{user_client.user_id}/pf_project/$pf_project_id")
 
-    project_id = str(uuid.uuid4())
+    project_id = uuid.uuid4()
     user_data = {
         "id": str(user_client.user_id),
         "name": "test",
@@ -138,8 +138,8 @@ def test_user_client_add_to_project(
     url_template = deepcopy(user_client.url_template)
     url_template.attach_pattern("$pf_user_id/pf_project/$pf_project_id")
 
-    user_id = str(uuid.uuid4())
-    project_id = str(uuid.uuid4())
+    user_id = uuid.uuid4()
+    project_id = uuid.uuid4()
 
     requests_mock.post(
         url_template.render(pf_user_id=user_id, pf_project_id=project_id),
@@ -160,6 +160,35 @@ def test_user_client_add_to_project(
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_user_client_delete_from_project(
+    requests_mock: requests_mock.Mocker, user_client: UserClientService
+):
+    # Success
+    url_template = deepcopy(user_client.url_template)
+    url_template.attach_pattern("$pf_user_id/pf_project/$pf_project_id")
+
+    user_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+
+    requests_mock.delete(
+        url_template.render(pf_user_id=user_id, pf_project_id=project_id),
+        status_code=204,
+    )
+    try:
+        user_client.delete_from_project(user_id, project_id)
+    except typer.Exit:
+        raise pytest.fail("Test add to project failed.")
+
+    # Failed
+    requests_mock.post(
+        url_template.render(pf_user_id=user_id, pf_project_id=project_id),
+        status_code=404,
+    )
+    with pytest.raises(typer.Exit):
+        user_client.add_to_project(user_id, project_id, ProjectRole.ADMIN)
+
+
+@pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_user_client_set_project_privilege(
     requests_mock: requests_mock.Mocker, user_client: UserClientService
 ):
@@ -167,8 +196,8 @@ def test_user_client_set_project_privilege(
     url_template = deepcopy(user_client.url_template)
     url_template.attach_pattern("$pf_user_id/pf_project/$pf_project_id/access_level")
 
-    user_id = str(uuid.uuid4())
-    project_id = str(uuid.uuid4())
+    user_id = uuid.uuid4()
+    project_id = uuid.uuid4()
 
     requests_mock.patch(
         url_template.render(pf_user_id=user_id, pf_project_id=project_id),
