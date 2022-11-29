@@ -180,7 +180,23 @@ def add_user(
     user_id = _get_org_user_id_by_name(org_id, username)
 
     user_client.add_to_project(user_id, project_id, role)
-    typer.secho(f"User successfully added to project")
+    typer.secho(f"User is successfully added to project", fg=typer.colors.BLUE)
+
+
+@app.command("delete-user", help="delete user from project")
+def delete_user(
+    username: str = typer.Argument(
+        ...,
+        help="Username to delete from the current working project",
+    ),
+):
+    user_client: UserClientService = build_client(ServiceType.USER)
+
+    org_id, project_id = _check_project_and_get_id()
+    user_id = _get_org_user_id_by_name(org_id, username)
+
+    user_client.delete_from_project(user_id, project_id)
+    typer.secho(f"User is successfully deleted from project", fg=typer.colors.BLUE)
 
 
 @app.command("set-role", help="set project role for a user")

@@ -49,7 +49,7 @@ def invite(email: str = typer.Argument(..., help="Invitation recipient email add
         secho_error_and_exit("Only the owner of the organization can invite/set-role.")
 
     group_client.invite_to_group(org["id"], email)
-    typer.secho("Invitation Successfully Sent!")
+    typer.echo("Invitation Successfully Sent!")
 
 
 @app.command("accept-invite", help="accept invitation")
@@ -59,7 +59,9 @@ def accept_invite(
 ):
     group_client: GroupClientService = build_client(ServiceType.GROUP)
     group_client.accept_invite(token, key)
-    typer.secho("Verification Success!")
+    typer.echo("Verification Success!")
+    typer.echo("Please login again with: ", nl=False)
+    typer.secho("pf login", fg=typer.colors.BLUE)
 
 
 @app.command("set-role", help="set organization role of the user")
@@ -78,7 +80,7 @@ def set_role(
 
     user_id = _get_org_user_id_by_name(org["id"], username)
     user_client.set_group_privilege(org["id"], user_id, role)
-    typer.secho(
+    typer.echo(
         f"Organization role for user ({username}) successfully updated to {role.value}!"
     )
 
