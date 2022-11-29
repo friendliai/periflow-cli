@@ -88,12 +88,16 @@ model_info_panel = PanelFormatter(
     fields=[
         "head_size",
         "num_heads",
-        "num_layers"
+        "num_layers",
+        "max_length",
+        "vocab_size",
     ],
     headers=[
         "Head Size",
         "#Heads",
-        "#Layers"
+        "#Layers",
+        "Max Length",
+        "Vocab Size",
     ]
 )
 
