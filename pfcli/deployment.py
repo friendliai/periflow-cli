@@ -12,6 +12,7 @@ from uuid import UUID
 import datetime
 
 from pfcli.service import (
+    DeploymentType,
     ServiceType,
     GpuType,
     CloudType,
@@ -53,6 +54,7 @@ deployment_panel = PanelFormatter(
     fields=[
         "id",
         "config.name",
+        "config.deployment_type",
         "status",
         "vms",
         "config.gpu_type",
@@ -63,6 +65,7 @@ deployment_panel = PanelFormatter(
     headers=[
         "ID",
         "Name",
+        "Type",
         "Status",
         "VM Type",
         "GPU Type",
@@ -107,9 +110,10 @@ deployment_usage_table = TableFormatter(
     name="Deployment Usage",
     fields=[
         "id",
+        "type",
         "duration",
     ],
-    headers=["ID", "Total Usage (days, HH:MM:SS)"],
+    headers=["ID", "Type", "Total Usage (days, HH:MM:SS)"],
 )
 
 deployment_panel.add_substitution_rule("waiting", "[bold]waiting")
@@ -227,8 +231,8 @@ def metrics(
     )
     metrics["id"] = metrics["deployment_id"]
     # ns => ms
-    metrics["latency"] = "{:.3f}".format(metrics["latency"] / 1000000)
-    metrics["throughput"] = "{:.3f}".format(metrics["throughput"])
+    metrics["latency"] = "{:.3f}".format(metrics["latency"] / 1000000) if "latency" in metrics else None
+    metrics["throughput"] = "{:.3f}".format(metrics["throughput"]) if "throughput" in metrics else None
     deployment_metrics_table.render([metrics])
 
 
@@ -239,8 +243,8 @@ def usage():
     usages = client.get_deployment_usage()
 
     deployments = [
-        {"id": id, "duration": datetime.timedelta(seconds=int(duration))}
-        for id, duration in usages.items()
+        {"id": id, "type": info["deployment_type"] , "duration": datetime.timedelta(seconds=int(info["duration"]))}
+        for id, info in usages.items()
     ]
     deployment_usage_table.render(deployments)
 
@@ -251,6 +255,9 @@ def create(
     ),
     deployment_name: str = typer.Option(
         ..., "--name", "-n", help="The name of deployment. "
+    ),
+    deployment_type: DeploymentType = typer.Option(
+        ..., "--type", "-t", help="Type of deployment(dev/prod)."
     ),
     gpu_type: GpuType = typer.Option(
         ..., "--gpu-type", "-g", help="The GPU type where the deployment is deployed."
@@ -287,6 +294,7 @@ def create(
     request_data = {
         "project_id": str(project_id),
         "model_id": checkpoint_id,
+        "deployment_type": deployment_type,
         "name": deployment_name,
         "gpu_type": gpu_type,
         "cloud": cloud,

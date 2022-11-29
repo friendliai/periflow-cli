@@ -165,6 +165,11 @@ class EngineType(str, Enum):
     TRITON = "triton"
 
 
+class DeploymentType(str, Enum):
+    DEVELOPMENT = "dev"
+    PRODUCTION = "prod"
+
+
 storage_type_map: Dict[StorageType, str] = {
     StorageType.S3: "aws",
     StorageType.BLOB: "azure.blob",
