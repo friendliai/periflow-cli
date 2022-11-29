@@ -163,7 +163,7 @@ def passwd(
 
 def _verify(
     _,
-    token: str = typer.Option(..., prompt="Enter verification code"),
+    token: str = typer.Option(..., prompt="Enter email token"),
     key: str = typer.Option(..., prompt="Enter verification key"),
 ):
     client: UserSignUpService = build_client(ServiceType.SIGNUP)
