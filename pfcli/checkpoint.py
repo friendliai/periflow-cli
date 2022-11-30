@@ -3,6 +3,7 @@
 """CLI for Checkpoint"""
 
 import os
+from click import secho
 from dateutil.parser import parse
 from typing import Optional, List
 from uuid import UUID
@@ -82,6 +83,23 @@ panel_formatter = PanelFormatter(
 )
 tree_formatter = TreeFormatter(name="Files")
 
+model_info_panel = PanelFormatter(
+    name="Model Info",
+    fields=[
+        "head_size",
+        "num_heads",
+        "num_layers",
+        "max_length",
+        "vocab_size",
+    ],
+    headers=[
+        "Head Size",
+        "#Heads",
+        "#Layers",
+        "Max Length",
+        "Vocab Size",
+    ]
+)
 
 @app.command()
 def list(
@@ -119,6 +137,11 @@ def view(
     ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
 
     panel_formatter.render([ckpt])
+
+    # serving model info.
+    if "attributes" in ckpt and "head_size" in ckpt["attributes"]:
+        model_info_panel.render(ckpt["attributes"])
+
     tree_formatter.render(ckpt["forms"][0]["files"])
 
 
