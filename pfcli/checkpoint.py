@@ -18,7 +18,6 @@ from pfcli.service import (
     StorageType,
     cred_type_map,
     cred_type_map_inv,
-    storage_type_map_inv,
 )
 from pfcli.service.client import (
     CheckpointClientService,
@@ -116,8 +115,6 @@ def list(
     )
     checkpoints = client.list_checkpoints(category)
     for ckpt in checkpoints:
-        for form in ckpt["forms"]:
-            form["vendor"] = storage_type_map_inv[form["vendor"]].value
         ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
 
     table_formatter.render(checkpoints)
@@ -132,8 +129,6 @@ def view(
     """Show details of a checkpoint."""
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
     ckpt = client.get_checkpoint(checkpoint_id)
-    for form in ckpt["forms"]:
-        form["vendor"] = storage_type_map_inv[form["vendor"]].value
     ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
 
     panel_formatter.render([ckpt])
@@ -251,12 +246,10 @@ def create(
         data_config={},
         job_setting_config=None,  # TODO: make configurable
     )
-    for form in ckpt["forms"]:
-        form["vendor"] = storage_type_map_inv[form["vendor"]].value
     ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
 
     panel_formatter.render([ckpt])
-    tree_formatter.render(ckpt["files"])
+    tree_formatter.render(ckpt["forms"][0]["files"])
 
 
 @app.command()

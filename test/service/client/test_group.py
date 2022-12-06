@@ -377,7 +377,8 @@ def test_group_checkpoint_create_checkpoints(
             "job_setting_json": {"k": "v"},
             "data_json": {"k": "v"},
         },
-        "credential_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "secret_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "secret_type": "credential",
         "iteration": 1000,
         "user_id": "22222222-2222-2222-2222-222222222222",  # TODO: change after PFA integration
         "files": [
