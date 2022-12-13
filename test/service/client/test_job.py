@@ -64,14 +64,14 @@ def test_job_client_list_jobs(
         ),
         json={"results": [{"id": 1}, {"id": 2}], "next_cursor": None},
     )
-    assert project_job_client.list_jobs() == [{"id": 1}, {"id": 2}]
+    assert project_job_client.list_jobs(limit=10) == [{"id": 1}, {"id": 2}]
 
     # Failed due to HTTP error
     requests_mock.get(project_job_client.url_template.render(
         **project_job_client.url_kwargs
     ), status_code=404)
     with pytest.raises(typer.Exit):
-        project_job_client.list_jobs()
+        project_job_client.list_jobs(limit=10)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")

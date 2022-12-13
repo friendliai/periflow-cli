@@ -292,14 +292,14 @@ def test_group_checkpoint_list_checkpoints(
     requests_mock.get(url, json=user_data)
     assert (
         group_project_checkpoint_client.list_checkpoints(
-            CheckpointCategory.USER_PROVIDED
+            CheckpointCategory.USER_PROVIDED, 10
         )
         == user_data["results"]
     )
     requests_mock.get(url, json=job_data)
     assert (
         group_project_checkpoint_client.list_checkpoints(
-            CheckpointCategory.JOB_GENERATED
+            CheckpointCategory.JOB_GENERATED, 10
         )
         == job_data["results"]
     )
@@ -308,7 +308,7 @@ def test_group_checkpoint_list_checkpoints(
     requests_mock.get(url, status_code=400)
     with pytest.raises(typer.Exit):
         group_project_checkpoint_client.list_checkpoints(
-            CheckpointCategory.USER_PROVIDED
+            CheckpointCategory.USER_PROVIDED, 10
         )
 
 
@@ -347,7 +347,7 @@ def test_group_checkpoint_create_checkpoints(
             model_form_category=ModelFormCategory.MEGATRON,
             vendor=StorageType.S3,
             region="us-east-1",
-            credential_id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            credential_id=uuid.UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
             iteration=1000,
             storage_name="my-ckpt",
             files=[
@@ -359,8 +359,10 @@ def test_group_checkpoint_create_checkpoints(
                 }
             ],
             dist_config={"k": "v"},
-            data_config={"k": "v"},
-            job_setting_config={"k": "v"},
+            attributes={
+                "job_setting_json": {"k": "v"},
+                "data_json": {"k": "v"},
+            }
         )
         == data
     )
@@ -398,7 +400,7 @@ def test_group_checkpoint_create_checkpoints(
             model_form_category=ModelFormCategory.MEGATRON,
             vendor=StorageType.S3,
             region="busan",
-            credential_id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            credential_id=uuid.UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
             iteration=1000,
             storage_name="my-ckpt",
             files=[
@@ -410,8 +412,7 @@ def test_group_checkpoint_create_checkpoints(
                 }
             ],
             dist_config={"k": "v"},
-            data_config={"k": "v"},
-            job_setting_config={"k": "v"},
+            attributes={"k": "v"}
         )
 
     # Failed due to HTTP error
@@ -422,7 +423,7 @@ def test_group_checkpoint_create_checkpoints(
             model_form_category=ModelFormCategory.MEGATRON,
             vendor=StorageType.S3,
             region="us-east-1",
-            credential_id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            credential_id=uuid.UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
             iteration=1000,
             storage_name="my-ckpt",
             files=[
@@ -434,8 +435,7 @@ def test_group_checkpoint_create_checkpoints(
                 }
             ],
             dist_config={"k": "v"},
-            data_config={"k": "v"},
-            job_setting_config={"k": "v"},
+            attributes={"k": "v"},
         )
 
 
