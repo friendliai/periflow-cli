@@ -25,7 +25,6 @@ from pfcli.service.client import (
     ProjectDataClientService,
     build_client,
 )
-from pfcli.service.client.data import FileSizeType, expand_paths
 from pfcli.service.cloud import build_storage_helper
 from pfcli.service.config import build_data_configurator
 from pfcli.service.formatter import (
@@ -35,7 +34,7 @@ from pfcli.service.formatter import (
     TreeFormatter,
 )
 from pfcli.utils.format import secho_error_and_exit
-from pfcli.utils.fs import get_file_info
+from pfcli.utils.fs import expand_paths, FileSizeType, get_file_info
 from pfcli.utils.validate import validate_cloud_storage_type
 
 app = typer.Typer(

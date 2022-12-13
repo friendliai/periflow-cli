@@ -289,11 +289,11 @@ def run(
 
 @app.command()
 def list(
-    tail: Optional[int] = typer.Option(
-        None, "--tail", help="The number of job list to view at the tail"
-    ),
-    head: Optional[int] = typer.Option(
-        None, "--head", help="The number of job list to view at the head"
+    limit: int = typer.Option(
+        20,
+        "--limit",
+        "-l",
+        help="The number of recent jobs to see.",
     ),
     show_all: bool = typer.Option(
         False,
@@ -341,6 +341,7 @@ def list(
 
     real_statuses = job_status_map_inv[status] if status is not None else None
     jobs = client.list_jobs(
+        limit=limit,
         since=since,
         until=until,
         job_name=job_name,
@@ -374,16 +375,7 @@ def list(
             job["progress"] = "{:.2f}%".format(job["progress"])
         job["status"] = job_status_map[job["status"]].value
 
-    if tail is not None or head is not None:
-        target_job_list = []
-        if tail:
-            target_job_list.extend(jobs[:tail])
-        if head:
-            target_job_list.extend(jobs[-head:])
-    else:
-        target_job_list = jobs
-
-    job_table.render(target_job_list)
+    job_table.render(jobs)
 
 
 @app.command()

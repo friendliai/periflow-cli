@@ -5,20 +5,22 @@
 import math
 import os
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
-from enum import Enum
-from functools import wraps
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import typer
 from requests import Request, Session
 from tqdm import tqdm
-from tqdm.utils import CallbackIOWrapper
 
 from pfcli.service import StorageType, storage_type_map_inv
 from pfcli.service.client.base import ClientService, safe_request
 from pfcli.utils.format import secho_error_and_exit
-from pfcli.utils.fs import storage_path_to_local_path
+from pfcli.utils.fs import (
+    CustomCallbackIOWrapper,
+    get_file_size,
+    get_total_file_size,
+    storage_path_to_local_path,
+    upload_file,
+)
 from pfcli.utils.validate import validate_storage_region
 
 # The actual hard limit of a part size is 5 GiB, and we use 200 MiB part size.
@@ -84,8 +86,8 @@ class DataClientService(ClientService):
         """Get single part upload URLs for multiple files.
 
         Args:
-            dataset_id (T): _description_
-            paths (List[str]): _description_
+            dataset_id (T): Dataset Id
+            paths (List[str]): A list of local dataset paths
 
         Returns:
             List[Dict[str, Any]]: _description_
@@ -179,7 +181,7 @@ class DataClientService(ClientService):
                     f.seek(cursor)
                     # Only the last part can be smaller than ``S3_MPU_PART_MAX_SIZE``.
                     chunk_size = min(S3_MPU_PART_MAX_SIZE, total_file_size - cursor)
-                    wrapped_object = _CustomCallbackIOWrapper(
+                    wrapped_object = CustomCallbackIOWrapper(
                         ctx.update, f, "read", chunk_size
                     )
                     s = Session()
@@ -227,7 +229,7 @@ class DataClientService(ClientService):
             with ThreadPoolExecutor() as executor:
                 # Normal upload for files with size < 5 GiB
                 futs = [
-                    executor.submit(_upload_file, local_path, upload_url, t)
+                    executor.submit(upload_file, local_path, upload_url, t)
                     for (local_path, upload_url) in zip(spu_local_paths, spu_urls)
                 ]
                 # Multipart upload for large files with sizes >= 5 GiB
@@ -250,127 +252,3 @@ class DataClientService(ClientService):
                     exc = fut.exception()
                     if exc is not None:
                         raise exc
-
-
-class FileSizeType(Enum):
-    LARGE = "LARGE"
-    SMALL = "SMALL"
-
-
-def filter_files_by_size(paths: List[str], size_type: FileSizeType) -> List[str]:
-    if size_type is FileSizeType.LARGE:
-        return [path for path in paths if get_file_size(path) >= S3_UPLOAD_SIZE_LIMIT]
-    if size_type is FileSizeType.SMALL:
-        res = []
-        for path in paths:
-            size = get_file_size(path)
-            if size == 0:
-                # NOTE: S3 does not support file uploading for 0B size files.
-                typer.secho(
-                    f"Skip uploading file ({path}) with size 0B.", fg=typer.colors.RED
-                )
-                continue
-            if size < S3_UPLOAD_SIZE_LIMIT:
-                res.append(path)
-        return res
-
-
-def expand_paths(path: Path, expand: bool, size_type: FileSizeType) -> List[str]:
-    if path.is_file():
-        paths = [str(path.name)]
-        paths = filter_files_by_size(paths, size_type)
-    else:
-        paths = [str(p) for p in path.rglob("*")]
-        paths = filter_files_by_size(paths, size_type)
-        rel_path = path if expand else path.parent
-        paths = [str(Path(p).relative_to(rel_path)) for p in paths if Path(p).is_file()]
-
-    return paths
-
-
-def _upload_file(file_path: str, url: str, ctx: tqdm) -> None:
-    try:
-        with open(file_path, "rb") as f:
-            fileno = f.fileno()
-            total_file_size = os.fstat(fileno).st_size
-            if total_file_size == 0:
-                typer.secho(
-                    f"The file with 0B size ({file_path}) is skipped.",
-                    fg=typer.colors.RED,
-                )
-                return
-
-            wrapped_object = CallbackIOWrapper(ctx.update, f, "read")
-            s = Session()
-            req = Request("PUT", url, data=wrapped_object)
-            prep = req.prepare()
-            prep.headers["Content-Length"] = str(
-                total_file_size
-            )  # necessary to use ``CallbackIOWrapper``
-            response = s.send(prep)
-            if response.status_code != 200:
-                secho_error_and_exit(
-                    f"Failed to upload file ({file_path}): {response.content}"
-                )
-    except FileNotFoundError:
-        secho_error_and_exit(f"{file_path} is not found.")
-
-
-def get_file_size(file_path: str, prefix: Optional[str] = None) -> int:
-    """Calculate a file size in bytes.
-
-    Args:
-        file_path (str): Path to the target file.
-        prefix (Optional[str], optional): If it is not None, attach the prefix to the path. Defaults to None.
-
-    Returns:
-        int: The size of a file.
-    """
-    if prefix is not None:
-        file_path = os.path.join(prefix, file_path)
-
-    return os.stat(file_path).st_size
-
-
-def get_total_file_size(file_paths: List[str], prefix: Optional[str] = None) -> int:
-    return sum([get_file_size(file_path, prefix) for file_path in file_paths])
-
-
-class _CustomCallbackIOWrapper(CallbackIOWrapper):
-    def __init__(self, callback, stream, method="read", chunk_size=None):
-        """
-        Wrap a given `file`-like object's `read()` or `write()` to report
-        lengths to the given `callback`
-        """
-        super().__init__(callback, stream, method)
-        self._chunk_size = chunk_size
-        self._cursor = 0
-
-        func = getattr(stream, method)
-        if method == "write":
-
-            @wraps(func)
-            def write(data, *args, **kwargs):
-                res = func(data, *args, **kwargs)
-                callback(len(data))
-                return res
-
-            self.wrapper_setattr("write", write)
-        elif method == "read":
-
-            @wraps(func)
-            def read(*args, **kwargs):
-                assert chunk_size is not None
-                if self._cursor >= chunk_size:
-                    self._cursor = 0
-                    return
-
-                data = func(*args, **kwargs)
-                data_size = len(data)  # default to 8 KiB
-                callback(data_size)
-                self._cursor += data_size
-                return data
-
-            self.wrapper_setattr("read", read)
-        else:
-            raise KeyError("Can only wrap read/write methods")

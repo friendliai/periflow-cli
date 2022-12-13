@@ -116,7 +116,7 @@ class GroupProjectCheckpointClientService(
         )
 
     def list_checkpoints(
-        self, category: Optional[CheckpointCategory]
+        self, category: Optional[CheckpointCategory], limit: int
     ) -> List[Dict[str, Any]]:
         request_data = {}
         if category is not None:
@@ -125,7 +125,7 @@ class GroupProjectCheckpointClientService(
         get_response_dict = safe_request(
             self.list, err_prefix="Failed to list checkpoints."
         )
-        return paginated_get(get_response_dict, **request_data)
+        return paginated_get(get_response_dict, **request_data, limit=limit)
 
     def create_checkpoint(
         self,
@@ -133,23 +133,19 @@ class GroupProjectCheckpointClientService(
         model_form_category: ModelFormCategory,
         vendor: StorageType,
         region: str,
-        credential_id: UUID,
+        credential_id: Optional[UUID],
         iteration: int,
         storage_name: str,
         files: List[Dict[str, Any]],
         dist_config: Dict[str, Any],
-        data_config: Dict[str, Any],
-        job_setting_config: Optional[Dict[str, Any]],
+        attributes: Dict[str, Any],
     ) -> Dict[str, Any]:
         validate_storage_region(vendor, region)
 
         request_data = {
             "job_id": None,
             "name": name,
-            "attributes": {
-                "data_json": data_config,
-                "job_setting_json": job_setting_config,
-            },
+            "attributes": attributes,
             "user_id": str(self.user_id),
             "secret_type": "credential",
             "secret_id": str(credential_id) if credential_id else None,
