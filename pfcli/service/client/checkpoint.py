@@ -70,7 +70,9 @@ class CheckpointClientService(ClientService[UUID]):
 
 class CheckpointFormClientService(ClientService[UUID]):
     def update_checkpoint_files(
-        self, ckpt_form_id: UUID, files: List[Dict[str, Any]],
+        self,
+        ckpt_form_id: UUID,
+        files: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
 
         response = safe_request(
@@ -79,13 +81,14 @@ class CheckpointFormClientService(ClientService[UUID]):
         return response.json()
 
     def get_checkpoint_download_urls(self, ckpt_form_id: UUID) -> List[Dict[str, Any]]:
-        response = safe_request(self.retrieve, err_prefix="Failed to get presigned URLs.")(
-            pk=ckpt_form_id,
-            path="download/"
-        )
+        response = safe_request(
+            self.retrieve, err_prefix="Failed to get presigned URLs."
+        )(pk=ckpt_form_id, path="download/")
         return response.json()["files"]
 
-    def get_spu_urls(self, ckpt_form_id: UUID, paths: List[str]) -> List[Dict[str, Any]]:
+    def get_spu_urls(
+        self, ckpt_form_id: UUID, paths: List[str]
+    ) -> List[Dict[str, Any]]:
         """Get single part upload URLs for multiple files.
 
         Args:

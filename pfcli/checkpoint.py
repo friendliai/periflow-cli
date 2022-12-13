@@ -125,7 +125,7 @@ def list(
         "--limit",
         "-l",
         help="The number of recent checkpoints to see.",
-    )
+    ),
 ):
     """List all checkpoints that belong to the user's organization."""
     client: GroupProjectCheckpointClientService = build_client(
@@ -223,7 +223,7 @@ def create(
         None,
         "--attr-file",
         "-f",
-        help="Path to file that has the checkpoint attributes. The file should be the YAML format."
+        help="Path to file that has the checkpoint attributes. The file should be the YAML format.",
     ),
 ):
     """Create a checkpoint object by registering user's cloud storage to PeriFlow."""
@@ -240,7 +240,9 @@ def create(
         try:
             attr = yaml.safe_load(attr_file)
         except yaml.YAMLError as exc:
-            secho_error_and_exit(f"Error occurred while parsing atrribute file... {exc}")
+            secho_error_and_exit(
+                f"Error occurred while parsing atrribute file... {exc}"
+            )
 
     credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     credential = credential_client.get_credential(credential_id)
@@ -369,11 +371,10 @@ def upload(
         None,
         "--attr-file",
         "-f",
-        help="Path to file that has the checkpoint attributes. The file should be the YAML format."
+        help="Path to file that has the checkpoint attributes. The file should be the YAML format.",
     ),
 ):
-    """Create a checkpoint by uploading local checkpoint files.
-    """
+    """Create a checkpoint by uploading local checkpoint files."""
     expand = source_path.endswith("/")
     src_path: Path = Path(source_path)
 
@@ -390,7 +391,9 @@ def upload(
         try:
             attr = yaml.safe_load(attr_file)
         except yaml.YAMLError as exc:
-            secho_error_and_exit(f"Error occurred while parsing atrribute file... {exc}")
+            secho_error_and_exit(
+                f"Error occurred while parsing atrribute file... {exc}"
+            )
 
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
     form_client: CheckpointFormClientService = build_client(ServiceType.CHECKPOINT_FORM)
@@ -450,9 +453,7 @@ def upload(
                 for url_info in mpu_url_dicts
             ]
         )
-        form_client.update_checkpoint_files(
-            ckpt_form_id=ckpt_form_id, files=files
-        )
+        form_client.update_checkpoint_files(ckpt_form_id=ckpt_form_id, files=files)
     except Exception as exc:
         client.delete_checkpoint(checkpoint_id=ckpt_id)
         raise exc
