@@ -3,7 +3,7 @@
 """Test GroupClient Service"""
 
 from copy import deepcopy
-from tokenize import group
+from typing import Any, Dict
 import uuid
 
 import pytest
@@ -231,7 +231,7 @@ def test_group_checkpoint_list_checkpoints(
     requests_mock: requests_mock.Mocker,
     group_project_checkpoint_client: GroupProjectCheckpointClientService,
 ):
-    def build_response_item(category: str, vendor: str, region: str) -> dict:
+    def build_response_item(category: str, vendor: str, region: str) -> Dict[str, Any]:
         return {
             "id": "22222222-2222-2222-2222-222222222222",
             "user_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",

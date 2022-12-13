@@ -2,7 +2,7 @@
 
 from enum import Enum
 from string import Template
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pfcli.service.client.base import (
     ClientService,
@@ -34,7 +34,7 @@ class PFTBillingClientService(
         end_date: str,
         agg_by: str = "user_id",
         time_granularity: Optional[TimeGranularity] = None,
-    ) -> List[dict]:
+    ) -> List[Dict[str, Any]]:
         params = {
             "organization_id": str(self.group_id),
             "project_id": str(self.project_id),

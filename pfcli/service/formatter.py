@@ -28,12 +28,12 @@ from rich.console import Console, RenderableType
 T = TypeVar("T", bound=Union[int, str])
 
 
-def get_value(data: dict, key: str) -> T:
+def get_value(data: Dict[str, Any], key: str) -> T:
     """Get value of `key` from `data`.
     Unlike dict.get method, it is available to access the nested value in `data`.
 
     Args:
-        data (dict): Data to read.
+        data (Dict[str, Any]): Data to read.
         key (str): Dot(.)-separated nested keys in data to access the value.
 
     Returns:
@@ -79,11 +79,11 @@ class ListFormatter(Formatter):
         self._styling_map: Dict[str, Dict[str, Any]] = {}
         self._substitution_rule: Dict[str, str] = {}
 
-    def render(self, data: List[dict], show_detail: bool = False) -> None:
+    def render(self, data: List[Dict[str, Any]], show_detail: bool = False) -> None:
         raise NotImplementedError  # pragma: no cover
 
     def get_renderable(
-        self, data: List[dict], show_detail: bool = False
+        self, data: List[Dict[str, Any]], show_detail: bool = False
     ) -> RenderableType:
         raise NotImplementedError  # pragma: no cover
 
@@ -109,15 +109,17 @@ class TableFormatter(ListFormatter):
         self._table = Table(title=self.name, caption=self.caption, box=box.SIMPLE)
         self._make_header(show_detail)
 
-    def render(self, data: List[dict], show_detail: bool = False) -> None:
+    def render(self, data: List[Dict[str, Any]], show_detail: bool = False) -> None:
         self._build_table(data, show_detail)
         self._console.print(self._table)
 
-    def get_renderable(self, data: List[dict], show_detail: bool = False) -> Table:
+    def get_renderable(
+        self, data: List[Dict[str, Any]], show_detail: bool = False
+    ) -> Table:
         self._build_table(data, show_detail)
         return self._table
 
-    def _build_table(self, data: List[dict], show_detail: bool):
+    def _build_table(self, data: List[Dict[str, Any]], show_detail: bool):
         self._init(show_detail)
 
         for d in data:
@@ -143,21 +145,27 @@ class PanelFormatter(ListFormatter):
 
     subtitle: Optional[str] = None
 
-    def render(self, data: Union[List[dict], dict], show_detail: bool = False) -> None:
+    def render(
+        self,
+        data: Union[List[Dict[str, Any]], Dict[str, Any]],
+        show_detail: bool = False,
+    ) -> None:
         if not isinstance(data, list):
             data = [data]
         self._build_panel(data, show_detail)
         self._console.print(self._panel)
 
     def get_renderable(
-        self, data: Union[List[dict], dict], show_detail: bool = False
+        self,
+        data: Union[List[Dict[str, Any]], Dict[str, Any]],
+        show_detail: bool = False,
     ) -> Panel:
         if not isinstance(data, list):
             data = [data]
         self._build_panel(data, show_detail)
         return self._panel
 
-    def _build_panel(self, data: List[dict], show_detail: bool):
+    def _build_panel(self, data: List[Dict[str, Any]], show_detail: bool):
         headers = self.headers + self.extra_headers if show_detail else self.headers
         table = Table(box=None, show_header=False)
         table.add_column("k", style="dim bold")
@@ -218,15 +226,15 @@ class TreeFormatter(Formatter):
         super().__init__(name=name)
         self._root = "/" + root.lstrip("/")
 
-    def render(self, data: List[dict]) -> None:
+    def render(self, data: List[Dict[str, Any]]) -> None:
         self._build_renderable(data)
         self._console.print(self._panel)
 
-    def get_renderable(self, data: List[dict]) -> Panel:
+    def get_renderable(self, data: List[Dict[str, Any]]) -> Panel:
         self._build_renderable(data)
         return self._panel
 
-    def _build_tree(self, data: List[dict]) -> Tree:
+    def _build_tree(self, data: List[Dict[str, Any]]) -> Tree:
         root = Tree("/")
         paths = [
             f"{d['path']}"
@@ -244,7 +252,7 @@ class TreeFormatter(Formatter):
             find_and_insert(root, edges)
         return root
 
-    def _build_renderable(self, data: List[dict]) -> None:
+    def _build_renderable(self, data: List[Dict[str, Any]]) -> None:
         root = self._build_tree(data)
         self._panel = Panel(root, title=self.name)
 
@@ -253,13 +261,13 @@ class TreeFormatter(Formatter):
 class JSONFormatter(Formatter):
     """JSON formatter for visualizing JSON data."""
 
-    def render(self, data: dict) -> None:
+    def render(self, data: Dict[str, Any]) -> None:
         self._build_json(data)
         self._console.print(self._panel)
 
-    def get_renderable(self, data: List[dict]) -> Panel:
+    def get_renderable(self, data: List[Dict[str, Any]]) -> Panel:
         self._build_json(data)
         return self._panel
 
-    def _build_json(self, data: dict) -> None:
+    def _build_json(self, data: Dict[str, Any]) -> None:
         self._panel = Panel(JSON(json.dumps(data)), title=self.name)

@@ -2,7 +2,7 @@
 
 """PeriFlow CheckpointClient Service"""
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import requests
@@ -14,7 +14,7 @@ from pfcli.service.client.base import ClientService, safe_request
 
 
 class CheckpointClientService(ClientService[UUID]):
-    def get_checkpoint(self, checkpoint_id: UUID) -> dict:
+    def get_checkpoint(self, checkpoint_id: UUID) -> Dict[str, Any]:
         response = safe_request(
             self.retrieve, err_prefix="Failed to get info of checkpoint"
         )(pk=checkpoint_id)
@@ -29,11 +29,11 @@ class CheckpointClientService(ClientService[UUID]):
         credential_id: Optional[str] = None,
         iteration: Optional[int] = None,
         storage_name: Optional[str] = None,
-        files: Optional[List[dict]] = None,
-        dist_config: Optional[dict] = None,
-        data_config: Optional[dict] = None,
-        job_setting_config: Optional[dict] = None
-    ) -> dict:
+        files: Optional[List[Dict[str, Any]]] = None,
+        dist_config: Optional[Dict[str, Any]] = None,
+        data_config: Optional[Dict[str, Any]] = None,
+        job_setting_config: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         request_data = {}
         if vendor is not None:
             request_data["vendor"] = vendor
@@ -79,7 +79,7 @@ class CheckpointClientService(ClientService[UUID]):
             headers=get_auth_header(),
         )
 
-    def get_checkpoint_download_urls(self, checkpoint_id: UUID) -> List[dict]:
+    def get_checkpoint_download_urls(self, checkpoint_id: UUID) -> List[Dict[str, Any]]:
         response = safe_request(
             self.download, err_prefix="Failed to get download URLs of checkpoint files."
         )(checkpoint_id=checkpoint_id)

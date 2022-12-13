@@ -2,7 +2,7 @@
 
 """PeriFlow CLI API Request Utilities"""
 
-from typing import Callable, List, Optional
+from typing import Any, Dict, Callable, List, Optional
 
 from requests.exceptions import HTTPError
 from requests.models import Response
@@ -36,7 +36,7 @@ def decode_http_err(exc: HTTPError) -> str:
 
 def paginated_get(
     response_getter: Callable[..., Response], path: Optional[str] = None, **params
-) -> List[dict]:
+) -> List[Dict[str, Any]]:
     """Pagination listing"""
     response_dict = response_getter(path=path, params={**params}).json()
     items = response_dict["results"]

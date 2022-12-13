@@ -7,6 +7,7 @@ import tempfile
 from dataclasses import dataclass, field
 from typing import (
     Any,
+    Dict,
     List,
     Tuple,
     TypeVar,
@@ -291,7 +292,7 @@ class PredefinedJobConfigService(JobConfigService):
     """Predefined job template configuration service"""
 
     template_id: Optional[UUID] = None
-    model_config: Optional[dict] = None
+    model_config: Optional[Dict[str, Any]] = None
 
     def start_interaction(self) -> None:
         job_template_client_service: JobTemplateClientService = build_client(
@@ -349,7 +350,7 @@ class CredentialConfigService(InteractiveConfigMixin):
     ready: bool = False
     name: Optional[str] = None
     cred_type: Optional[CredType] = None
-    value: Optional[dict] = None
+    value: Optional[Dict[str, Any]] = None
 
     def start_interaction(self) -> None:
         self.name = typer.prompt(
@@ -364,11 +365,12 @@ class CredentialConfigService(InteractiveConfigMixin):
             ServiceType.CREDENTIAL_TYPE
         )
         schema = cred_type_client.get_schema_by_type(self.cred_type)
-        properties: dict = schema["properties"]
+        assert schema is not None
+        properties: Dict[str, Any] = schema["properties"]
         self.value = {}
         typer.echo("Please fill in the following fields")
         for field, field_info in properties.items():
-            field_info: dict
+            field_info: Dict[str, Any]
             field_info_str = "\n".join(f"    - {k}: {v}" for k, v in field_info.items())
             hide_input = True if "password" in field else False
             entered = typer.prompt(
@@ -397,11 +399,12 @@ class CredentialConfigService(InteractiveConfigMixin):
             ServiceType.CREDENTIAL_TYPE
         )
         schema = cred_type_client.get_schema_by_type(self.cred_type)
-        properties: dict = schema["properties"]
+        assert schema is not None
+        properties: Dict[str, Any] = schema["properties"]
         self.value = {}
         typer.echo("Please fill in the following fields")
         for field, field_info in properties.items():
-            field_info: dict
+            field_info: Dict[str, Any]
             field_info_str = "\n".join(f"    - {k}: {v}" for k, v in field_info.items())
             hide_input = True if "password" in field else False
             entered = typer.prompt(
@@ -416,7 +419,7 @@ class CredentialConfigService(InteractiveConfigMixin):
         self._validate_schema(schema)
         self.ready = True
 
-    def _validate_schema(self, schema: dict) -> None:
+    def _validate_schema(self, schema: Dict[str, Any]) -> None:
         try:
             Draft7Validator(schema).validate(self.value)
         except ValidationError as exc:
@@ -437,10 +440,12 @@ class DataConfigService(InteractiveConfigMixin):
     region: Optional[str] = None
     storage_name: Optional[str] = None
     credential_id: Optional[UUID] = None
-    metadata: Optional[dict] = field(default_factory=dict)
-    files: Optional[List[dict]] = field(default_factory=list)
+    metadata: Optional[Dict[str, Any]] = field(default_factory=dict)
+    files: Optional[List[Dict[str, Any]]] = field(default_factory=list)
 
-    def _list_available_credentials(self, vendor_type: StorageType) -> List[dict]:
+    def _list_available_credentials(
+        self, vendor_type: StorageType
+    ) -> List[Dict[str, Any]]:
         cred_type: CredType = CredType(vendor_type.value)
         project_cred_client: ProjectCredentialClientService = build_client(
             ServiceType.PROJECT_CREDENTIAL
@@ -450,7 +455,7 @@ class DataConfigService(InteractiveConfigMixin):
 
         return creds
 
-    def _get_credential(self) -> dict:
+    def _get_credential(self) -> Dict[str, Any]:
         client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
         assert self.credential_id is not None
         return client.get_credential(self.credential_id)["value"]
@@ -524,13 +529,13 @@ class PredefinedDataConfigService(DataConfigService):
         assert template is not None
 
         schema = template["data_store_template"]["metadata_schema"]
-        properties: dict = schema["properties"]
+        properties: Dict[str, Any] = schema["properties"]
         self.metadata = {}
         typer.echo(
             "Please fill in the following fields (NOTE: Enter comma-separated string for array values)"
         )
         for field, field_info in properties.items():
-            field_info: dict
+            field_info: Dict[str, Any]
             field_info_str = "\n".join(f"    - {k}: {v}" for k, v in field_info.items())
             entered = typer.prompt(
                 f"  {field}:\n{field_info_str}", prompt_suffix="\n  >> "
