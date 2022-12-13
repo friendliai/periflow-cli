@@ -3,6 +3,7 @@
 """PeriFlow Cloud Service"""
 
 from typing import (
+    Any,
     Callable,
     Dict,
     List,
@@ -33,7 +34,7 @@ class CloudStorageHelper:
 
     def list_storage_files(
         self, storage_name: str, path_prefix: Optional[str] = None
-    ) -> List[dict]:
+    ) -> List[Dict[str, Any]]:
         raise NotImplementedError  # pragma: no cover
 
 
@@ -49,7 +50,7 @@ class AWSCloudStorageHelper(CloudStorageHelper):
 
     def list_storage_files(
         self, storage_name: str, path_prefix: Optional[str] = None
-    ) -> List[dict]:
+    ) -> List[Dict[str, Any]]:
         if not self._check_aws_bucket_exists(storage_name):
             secho_error_and_exit(f"Bucket {storage_name} does not exist")
 
@@ -133,7 +134,7 @@ vendor_helper_map: Dict[StorageType, Tuple[Type[C], Callable[[Dict[str, str]], T
 }
 
 
-def build_storage_helper(vendor: StorageType, credential_json: dict) -> C:
+def build_storage_helper(vendor: StorageType, credential_json: Dict[str, Any]) -> C:
     cls, client_build_fn = vendor_helper_map[vendor]
     client = client_build_fn(credential_json)
     return cls(client)

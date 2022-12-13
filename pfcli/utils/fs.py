@@ -8,7 +8,7 @@ from datetime import datetime
 from dateutil.tz import tzlocal
 import os
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List
 import zipfile
 
 import pathspec
@@ -67,7 +67,7 @@ def storage_path_to_local_path(
     return str(source_path / Path(storage_path.split("/", 1)[1]))
 
 
-def get_file_info(storage_path: str, source_path: Path, expand: bool) -> dict:
+def get_file_info(storage_path: str, source_path: Path, expand: bool) -> Dict[str, Any]:
     loacl_path = storage_path_to_local_path(storage_path, source_path, expand)
     return {
         "name": os.path.basename(storage_path),

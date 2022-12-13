@@ -4,7 +4,7 @@
 
 import json
 from datetime import datetime
-from typing import List, TypeVar
+from typing import Dict, List, TypeVar
 
 from pfcli.service.client.base import ClientService, safe_request
 from pfcli.utils.format import datetime_to_simple_string, utc_to_local
@@ -18,7 +18,7 @@ class MetricsClientService(ClientService):
     def list_metrics(
         self,
         job_id: int,
-    ) -> List[dict[str, str]]:
+    ) -> List[Dict[str, str]]:
         """Show available metrics."""
         fields = f'task: "{job_id}", telemetry: null, start: null, until: null'
         query = f"{{ sampleQuery(fields: {{ {fields} }}) {{name}} }}"
@@ -37,7 +37,7 @@ class MetricsClientService(ClientService):
         job_id: int,
         name: str,
         limit: int = 10,
-    ) -> List[dict[str, MetricsType]]:
+    ) -> List[Dict[str, MetricsType]]:
         fields = f'task: "{job_id}", telemetry: "{name}", limit: {limit}, goal: LAST'
         output_type = "created, value, labels {key, value}"
         query = f"{{ representativeSamples(fields:{{ {fields} }}){{ {output_type} }} }}"

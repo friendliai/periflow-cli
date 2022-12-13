@@ -3,6 +3,7 @@
 """PeriFlow Group (Organization) CLI"""
 
 from uuid import UUID
+from typing import Any, Dict
 
 import typer
 
@@ -94,7 +95,7 @@ def _get_org_user_id_by_name(org_id: UUID, username: str) -> UUID:
     secho_error_and_exit(f"{username} is not a member of this organization.")
 
 
-def get_current_org() -> dict:
+def get_current_org() -> Dict[str, Any]:
     user_group_client: UserGroupClientService = build_client(ServiceType.USER_GROUP)
 
     curr_org_id = get_current_group_id()

@@ -4,7 +4,7 @@
 
 import functools
 from enum import Enum
-from typing import Callable, Union
+from typing import Any, Callable, Dict, Union
 
 import requests
 
@@ -31,7 +31,7 @@ token_path_map = {
 }
 
 
-def get_auth_header() -> dict:
+def get_auth_header() -> Dict[str, Any]:
     return {"Authorization": f"Bearer {get_token(TokenType.ACCESS)}"}
 
 

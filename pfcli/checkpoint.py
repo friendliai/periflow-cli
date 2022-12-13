@@ -97,8 +97,9 @@ model_info_panel = PanelFormatter(
         "#Layers",
         "Max Length",
         "Vocab Size",
-    ]
+    ],
 )
+
 
 @app.command()
 def list(

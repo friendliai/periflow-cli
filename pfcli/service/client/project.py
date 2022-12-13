@@ -5,7 +5,7 @@
 
 from requests import HTTPError
 from string import Template
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pfcli.service import (
@@ -27,7 +27,7 @@ from pfcli.utils.request import paginated_get
 from pfcli.utils.validate import validate_storage_region
 
 
-def find_project_id(projects: List[dict], project_name: str) -> UUID:
+def find_project_id(projects: List[Dict[str, Any]], project_name: str) -> UUID:
     for project in projects:
         if project["name"] == project_name:
             return UUID(project["id"])
@@ -35,7 +35,7 @@ def find_project_id(projects: List[dict], project_name: str) -> UUID:
 
 
 class ProjectClientService(ClientService[UUID]):
-    def get_project(self, pf_project_id: UUID) -> dict:
+    def get_project(self, pf_project_id: UUID) -> Dict[str, Any]:
         response = safe_request(self.retrieve, err_prefix="Failed to get a project.")(
             pk=pf_project_id
         )
@@ -54,7 +54,7 @@ class ProjectClientService(ClientService[UUID]):
             pk=pf_project_id
         )
 
-    def list_users(self, pf_project_id: UUID) -> List[dict]:
+    def list_users(self, pf_project_id: UUID) -> List[Dict[str, Any]]:
         get_response_dict = safe_request(
             self.list, err_prefix="Failed to list users in the current project"
         )
@@ -66,7 +66,7 @@ class ProjectDataClientService(ClientService[int], ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_datasets(self) -> List[dict]:
+    def list_datasets(self) -> List[Dict[str, Any]]:
         response = safe_request(self.list, err_prefix="Failed to list dataset info.")()
         return response.json()
 
@@ -84,10 +84,10 @@ class ProjectDataClientService(ClientService[int], ProjectRequestMixin):
         region: str,
         storage_name: str,
         credential_id: Optional[UUID],
-        metadata: dict,
-        files: List[dict],
+        metadata: Dict[str, Any],
+        files: List[Dict[str, Any]],
         active: bool,
-    ) -> dict:
+    ) -> Dict[str, Any]:
         validate_storage_region(vendor, region)
 
         vendor_name = storage_type_map[vendor]
@@ -116,7 +116,7 @@ class PFTProjectVMQuotaClientService(ClientService, ProjectRequestMixin):
         self,
         vendor: Optional[CloudType] = None,
         device_type: Optional[str] = None,
-    ) -> List[dict]:
+    ) -> List[Dict[str, Any]]:
         response = safe_request(self.list, err_prefix="Failed to list VM quota info.")()
         vm_dict_list = response.json()
         if vendor is not None:
@@ -141,7 +141,7 @@ class ProjectCredentialClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_credentials(self, cred_type: CredType) -> List[dict]:
+    def list_credentials(self, cred_type: CredType) -> List[Dict[str, Any]]:
         type_name = cred_type_map[cred_type]
         response = safe_request(
             self.list, err_prefix=f"Failed to list credential for {cred_type}."
@@ -149,8 +149,8 @@ class ProjectCredentialClientService(ClientService, ProjectRequestMixin):
         return response.json()
 
     def create_credential(
-        self, cred_type: CredType, name: str, type_version: int, value: dict
-    ) -> dict:
+        self, cred_type: CredType, name: str, type_version: int, value: Dict[str, Any]
+    ) -> Dict[str, Any]:
         type_name = cred_type_map[cred_type]
         request_data = {
             "type": type_name,
@@ -171,7 +171,7 @@ class PFTProjectVMConfigClientService(ClientService[int], ProjectRequestMixin):
 
     def list_vm_locks(
         self, vm_config_id: int, lock_status_list: List[LockStatus]
-    ) -> List[dict]:
+    ) -> List[Dict[str, Any]]:
         status_param = ",".join(lock_status_list)
         response = safe_request(self.list, err_prefix="Failed to inspect locked VMs.")(
             path=f"{vm_config_id}/vm_lock/", params={"status": status_param}

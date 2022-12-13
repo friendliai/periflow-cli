@@ -79,7 +79,7 @@ setup(
             "pf = pfcli:app",
         ]
     },
-    python_requires='>=3.6',
+    python_requires='>=3.8',
     include_package_data=True,
     install_requires=COMMON_DEPS,
     extras_require={

@@ -5,7 +5,7 @@
 import json
 import uuid
 from string import Template
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pfcli.service import CheckpointCategory, ModelFormCategory, StorageType
@@ -22,13 +22,13 @@ from pfcli.utils.validate import validate_storage_region
 
 
 class GroupClientService(ClientService):
-    def create_group(self, name: str) -> dict:
+    def create_group(self, name: str) -> Dict[str, Any]:
         response = safe_request(
             self.post, err_prefix="Failed to post an organization."
         )(data=json.dumps({"name": name, "hosting_type": "hosted"}))
         return response.json()
 
-    def get_group(self, pf_group_id: uuid.UUID) -> dict:
+    def get_group(self, pf_group_id: uuid.UUID) -> Dict[str, Any]:
         response = safe_request(
             self.retrieve, err_prefix="Failed to get an organization."
         )(pk=pf_group_id)
@@ -44,7 +44,7 @@ class GroupClientService(ClientService):
             path="invite/confirm", json={"email_token": token, "key": key}
         )
 
-    def get_users(self, pf_group_id: uuid.UUID, username: str) -> List[dict]:
+    def get_users(self, pf_group_id: uuid.UUID, username: str) -> List[Dict[str, Any]]:
         get_response_dict = safe_request(
             self.list, err_prefix="Failed to get user in organization"
         )
@@ -52,7 +52,7 @@ class GroupClientService(ClientService):
             get_response_dict, path=f"{pf_group_id}/pf_user", search=username
         )
 
-    def list_users(self, pf_group_id: uuid.UUID) -> List[dict]:
+    def list_users(self, pf_group_id: uuid.UUID) -> List[Dict[str, Any]]:
         get_response_dict = safe_request(
             self.list, err_prefix="Failed to list users in organization"
         )
@@ -64,13 +64,13 @@ class GroupProjectClientService(ClientService, GroupRequestMixin):
         self.initialize_group()
         super().__init__(template, pf_group_id=self.group_id, **kwargs)
 
-    def create_project(self, name: str) -> dict:
+    def create_project(self, name: str) -> Dict[str, Any]:
         response = safe_request(self.post, err_prefix="Failed to post a project.")(
             data=json.dumps({"name": name})
         )
         return response.json()
 
-    def list_projects(self) -> List[dict]:
+    def list_projects(self) -> List[Dict[str, Any]]:
         get_response_dict = safe_request(
             self.list, err_prefix="Failed to list projects."
         )
@@ -82,7 +82,7 @@ class PFTGroupVMConfigClientService(ClientService, GroupRequestMixin):
         self.initialize_group()
         super().__init__(template, group_id=self.group_id, **kwargs)
 
-    def list_vm_configs(self) -> List[dict]:
+    def list_vm_configs(self) -> List[Dict[str, Any]]:
         response = safe_request(
             self.list, err_prefix="Failed to list available VM list."
         )()
@@ -115,7 +115,9 @@ class GroupProjectCheckpointClientService(
             **kwargs,
         )
 
-    def list_checkpoints(self, category: Optional[CheckpointCategory]) -> List[dict]:
+    def list_checkpoints(
+        self, category: Optional[CheckpointCategory]
+    ) -> List[Dict[str, Any]]:
         request_data = {}
         if category is not None:
             request_data["category"] = category.value
@@ -134,11 +136,11 @@ class GroupProjectCheckpointClientService(
         credential_id: UUID,
         iteration: int,
         storage_name: str,
-        files: List[dict],
-        dist_config: dict,
-        data_config: dict,
-        job_setting_config: Optional[dict],
-    ) -> dict:
+        files: List[Dict[str, Any]],
+        dist_config: Dict[str, Any],
+        data_config: Dict[str, Any],
+        job_setting_config: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
         validate_storage_region(vendor, region)
 
         request_data = {

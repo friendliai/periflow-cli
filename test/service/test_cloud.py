@@ -3,6 +3,7 @@
 """Test Client Service"""
 
 from datetime import datetime
+from typing import Any, Dict
 from unittest.mock import Mock
 
 import pytest
@@ -20,7 +21,7 @@ from pfcli.service.cloud import (
 
 
 @pytest.fixture
-def s3_credential_json() -> dict:
+def s3_credential_json() -> Dict[str, Any]:
     return {
         "aws_access_key_id": "fake_aws_access_key_id",
         "aws_secret_access_key": "fake_aws_secret_access_key",
@@ -29,7 +30,7 @@ def s3_credential_json() -> dict:
 
 
 @pytest.fixture
-def blob_credential_json() -> dict:
+def blob_credential_json() -> Dict[str, Any]:
     return {
         "storage_account_name": "fakestorageaccountname",
         "storage_account_key": "fake_storage_account_key",
@@ -61,7 +62,7 @@ def azure_storage_helper(blob_client_mock) -> AzureCloudStorageHelper:
     return AzureCloudStorageHelper(blob_client_mock)
 
 
-def test_build_storage_helper(s3_credential_json: dict, blob_credential_json: dict):
+def test_build_storage_helper(s3_credential_json: Dict[str, Any], blob_credential_json: Dict[str, Any]):
     aws_storage_helper = build_storage_helper(StorageType.S3, s3_credential_json)
     assert isinstance(aws_storage_helper, AWSCloudStorageHelper)
     assert isinstance(aws_storage_helper.client, BaseClient)

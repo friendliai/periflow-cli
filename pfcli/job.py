@@ -6,7 +6,7 @@ import asyncio
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple
 from uuid import UUID
 
 import ruamel.yaml
@@ -176,7 +176,7 @@ metrics_table = TableFormatter(
 
 
 def refine_config(
-    config: dict,
+    config: Dict[str, Any],
     vm_name: Optional[str],
     num_devices: Optional[int],
     job_name: Optional[str],
@@ -265,7 +265,7 @@ def run(
 ):
     """Run a job."""
     try:
-        config: dict = yaml.safe_load(config_file)
+        config: Dict[str, Any] = yaml.safe_load(config_file)
     except yaml.YAMLError as e:
         secho_error_and_exit(f"Error occurred while parsing config file... {e}")
 
@@ -512,7 +512,10 @@ def _split_machine_ids(value: Optional[str]) -> Optional[List[int]]:
 
 
 def _format_log_string(
-    log_record: dict, show_time: bool, show_machine_id: bool, use_style: bool = True
+    log_record: Dict[str, Any],
+    show_time: bool,
+    show_machine_id: bool,
+    use_style: bool = True,
 ) -> Generator[Tuple[str, bool], None, None]:
     timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(log_record['timestamp'])))} "
     node_rank = log_record["node_rank"]

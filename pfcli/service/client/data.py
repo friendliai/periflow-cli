@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 from enum import Enum
 from functools import wraps
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import typer
 from requests import Request, Session
@@ -28,7 +28,7 @@ S3_UPLOAD_SIZE_LIMIT = 5 * 1024 * 1024 * 1024  # 5 GiB
 
 
 class DataClientService(ClientService):
-    def get_dataset(self, dataset_id: int) -> dict:
+    def get_dataset(self, dataset_id: int) -> Dict[str, Any]:
         response = safe_request(
             self.retrieve, err_prefix=f"Dataset ({dataset_id}) is not found."
         )(pk=dataset_id)
@@ -43,10 +43,10 @@ class DataClientService(ClientService):
         region: Optional[str] = None,
         storage_name: Optional[str] = None,
         credential_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
-        files: Optional[List[dict]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        files: Optional[List[Dict[str, Any]]] = None,
         active: Optional[bool] = None,
-    ) -> dict:
+    ) -> Dict[str, Any]:
         # Valdiate region
         if vendor is not None or region is not None:
             prev_info = self.get_dataset(dataset_id)
@@ -80,7 +80,7 @@ class DataClientService(ClientService):
     def delete_dataset(self, dataset_id: int) -> None:
         safe_request(self.delete, err_prefix="Failed to delete dataset")(pk=dataset_id)
 
-    def get_spu_urls(self, dataset_id: int, paths: List[str]) -> List[dict]:
+    def get_spu_urls(self, dataset_id: int, paths: List[str]) -> List[Dict[str, Any]]:
         """Get single part upload URLs for multiple files.
 
         Args:
@@ -88,7 +88,7 @@ class DataClientService(ClientService):
             paths (List[str]): _description_
 
         Returns:
-            List[dict]: _description_
+            List[Dict[str, Any]]: _description_
         """
         response = safe_request(self.post, err_prefix="Failed to get presigned URLs.")(
             path=f"{dataset_id}/upload/", json={"paths": paths}
@@ -97,7 +97,7 @@ class DataClientService(ClientService):
 
     def get_mpu_urls(
         self, dataset_id: int, paths: List[str], src_path: Optional[str] = None
-    ) -> List[dict]:
+    ) -> List[Dict[str, Any]]:
         """Get multipart upload URLs for multiple datasets
 
         Args:
@@ -105,7 +105,7 @@ class DataClientService(ClientService):
             paths (List[str]): A list of upload target paths
 
         Returns:
-            List[dict]: A list of multipart upload responses for multiple target files.
+            List[Dict[str, Any]]: A list of multipart upload responses for multiple target files.
             {
                 "path": "string",
                 "upload_id": "string",
@@ -139,7 +139,7 @@ class DataClientService(ClientService):
         return start_mpu_resps
 
     def complete_mpu(
-        self, dataset_id: int, path: str, upload_id: str, parts: List[dict]
+        self, dataset_id: int, path: str, upload_id: str, parts: List[Dict[str, Any]]
     ) -> None:
         safe_request(
             self.post, err_prefix=f"Failed to complete multipart upload for {path}"
@@ -164,7 +164,7 @@ class DataClientService(ClientService):
         )
 
     def _multipart_upload_file(
-        self, dataset_id: int, file_path: str, url_dict: dict, ctx: tqdm
+        self, dataset_id: int, file_path: str, url_dict: Dict[str, Any], ctx: tqdm
     ) -> None:
         # TODO (ym): parallelize each part upload.
         parts = []
@@ -208,7 +208,7 @@ class DataClientService(ClientService):
         self,
         dataset_id: int,
         spu_url_dicts: List[Dict[str, str]],
-        mpu_url_dicts: List[dict],
+        mpu_url_dicts: List[Dict[str, Any]],
         source_path: Path,
         expand: bool,
     ) -> None:

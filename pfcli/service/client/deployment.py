@@ -2,27 +2,27 @@
 
 """PeriFlow DeploymentClient Service"""
 
-from typing import List
+from typing import Any, Dict
 from string import Template
 
 from pfcli.service.client.base import ClientService, safe_request, ProjectRequestMixin
- 
+
 
 class DeploymentClientService(ClientService[str]):
-    def get_deployment(self, deployment_id: str) -> dict:
+    def get_deployment(self, deployment_id: str) -> Dict[str, Any]:
         response = safe_request(
             self.retrieve,
             err_prefix=f"Deployment ({deployment_id}) is not found. You may enter wrongID.",
         )(pk=deployment_id)
         return response.json()
 
-    def create_deployment(self, config: dict) -> dict:
+    def create_deployment(self, config: Dict[str, Any]) -> Dict[str, Any]:
         response = safe_request(self.post, err_prefix="Failed to post new deployment.")(
             json=config
         )
         return response.json()
 
-    def list_deployments(self, project_id: str) -> dict:
+    def list_deployments(self, project_id: str) -> Dict[str, Any]:
         response = safe_request(self.list, err_prefix="Failed to list deployments.")(
             params={"project_id": project_id}
         )
@@ -33,20 +33,22 @@ class DeploymentClientService(ClientService[str]):
             pk=deployment_id
         )
 
+
 class DeploymentMetricsClientService(ClientService):
-    def get_metrics(self, deployment_id: str, time_window: int) -> dict:
+    def get_metrics(self, deployment_id: str, time_window: int) -> Dict[str, Any]:
         response = safe_request(
             self.list,
             err_prefix=f"Deployment ({deployment_id}) is not found. You may enter wrongID.",
         )(data=str(time_window))
         return response.json()
 
+
 class PFSProjectUsageClientService(ClientService[str], ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def get_deployment_usage(self) -> dict:
+    def get_deployment_usage(self) -> Dict[str, Any]:
         response = safe_request(
             self.list,
             err_prefix=f"Deployment usages are not found in the project.",

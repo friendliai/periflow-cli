@@ -16,7 +16,7 @@ Please visit [docs.periflow.ai](https://docs.periflow.ai) for the detailed guide
 
 ## Installation
 
-You can simply install the package using `pip`.
+You can simply install the package using `pip`. Python version >= 3.8 is required.
 
 ```sh
 pip install periflow-cli

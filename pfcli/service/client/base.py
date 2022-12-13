@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from functools import wraps
 from requests.models import Response
 from string import Template
-from typing import Callable, Generic, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, Generic, Optional, TypeVar, Union
 from urllib.parse import urljoin, urlparse
 
 import uuid
@@ -150,7 +150,7 @@ class UserRequestMixin:
     def _userinfo(self) -> Response:
         return requests.get(get_auth_uri("oauth2/userinfo"), headers=get_auth_header())
 
-    def get_current_userinfo(self) -> dict:
+    def get_current_userinfo(self) -> Dict[str, Any]:
         response = safe_request(self._userinfo, err_prefix="Failed to get userinfo.")()
         return response.json()
 
