@@ -377,6 +377,10 @@ def upload(
     """Create a checkpoint by uploading local checkpoint files."""
     expand = source_path.endswith("/")
     src_path: Path = Path(source_path)
+    if not src_path.exists():
+        secho_error_and_exit(
+            f"The source path({src_path}) does not exist."
+        )
 
     dist_config = {
         "pp_degree": pp_degree,

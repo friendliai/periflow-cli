@@ -22,6 +22,7 @@ from pfcli.utils.fs import (
     storage_path_to_local_path,
     S3_MPU_PART_MAX_SIZE,
     upload_file,
+    upload_part,
 )
 
 
@@ -149,41 +150,39 @@ class CheckpointFormClientService(ClientService[UUID]):
         )
 
     def _multipart_upload_file(
-        self, ckpt_form_id: UUID, file_path: str, url_dict: Dict[str, Any], ctx: tqdm
+        self,
+        ckpt_form_id: UUID,
+        file_path: str,
+        url_dict: Dict[str, Any],
+        ctx: tqdm,
+        max_workers: int,
     ) -> None:
-        # TODO (ym): parallelize each part upload.
         parts = []
         upload_id = url_dict["upload_id"]
         object_path = url_dict["path"]
+        upload_urls = url_dict["upload_urls"]
+        total_num_parts = len(upload_urls)
         try:
-            with open(file_path, "rb") as f:
-                fileno = f.fileno()
-                total_file_size = os.fstat(fileno).st_size
-                for idx, url_info in enumerate(url_dict["upload_urls"]):
-                    cursor = idx * S3_MPU_PART_MAX_SIZE
-                    f.seek(cursor)
-                    # Only the last part can be smaller than ``S3_MPU_PART_MAX_SIZE``.
-                    chunk_size = min(S3_MPU_PART_MAX_SIZE, total_file_size - cursor)
-                    wrapped_object = CustomCallbackIOWrapper(
-                        ctx.update, f, "read", chunk_size
+            # NOTE: excessive concurrency may results in "No buffer space available" error.
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futs = [
+                    executor.submit(
+                        upload_part,
+                        file_path=file_path,
+                        chunk_index=idx,
+                        part_number=url_info["part_number"],
+                        upload_url=url_info["upload_url"],
+                        ctx=ctx,
+                        is_last_part=(idx == total_num_parts - 1)
                     )
-                    s = Session()
-                    req = Request("PUT", url_info["upload_url"], data=wrapped_object)
-                    prep = req.prepare()
-                    prep.headers["Content-Length"] = str(chunk_size)
-                    response = s.send(prep)
-                    response.raise_for_status()
-
-                    etag = response.headers["ETag"]
-                    parts.append(
-                        {
-                            "etag": etag,
-                            "part_number": url_info["part_number"],
-                        }
-                    )
-                assert not f.read(
-                    S3_MPU_PART_MAX_SIZE
-                ), "Some parts of your data is not uploaded. Please try again."
+                    for idx, url_info in enumerate(upload_urls)
+                ]
+                wait(futs, return_when=FIRST_EXCEPTION)
+                for fut in futs:
+                    exc = fut.exception()
+                    if exc is not None:
+                        raise exc
+                    parts.append(fut.result())
             self.complete_mpu(ckpt_form_id, object_path, upload_id, parts)
         except FileNotFoundError:
             secho_error_and_exit(f"{file_path} is not found.")
@@ -198,6 +197,7 @@ class CheckpointFormClientService(ClientService[UUID]):
         mpu_url_dicts: List[Dict[str, Any]],
         source_path: Path,
         expand: bool,
+        max_workers: int = min(32, (os.cpu_count() or 1) + 4),  # default of ``ThreadPoolExecutor``
     ) -> None:
         spu_local_paths = [
             storage_path_to_local_path(url_info["path"], source_path, expand)
@@ -211,7 +211,8 @@ class CheckpointFormClientService(ClientService[UUID]):
         spu_urls = [url_info["upload_url"] for url_info in spu_url_dicts]
 
         with tqdm(total=total_size, unit="B", unit_scale=True, unit_divisor=1024) as t:
-            with ThreadPoolExecutor() as executor:
+            # NOTE: excessive concurrency may results in "No buffer space available" error.
+            with ThreadPoolExecutor(max_workers=max_workers // 2) as executor:
                 # Normal upload for files with size < 5 GiB
                 futs = [
                     executor.submit(upload_file, local_path, upload_url, t)
@@ -226,6 +227,7 @@ class CheckpointFormClientService(ClientService[UUID]):
                             local_path,
                             url_dict,
                             t,
+                            max_workers // 2
                         )
                         for (local_path, url_dict) in zip(
                             mpu_local_paths, mpu_url_dicts
