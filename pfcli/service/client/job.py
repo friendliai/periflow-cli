@@ -163,6 +163,7 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
 
     def list_jobs(
         self,
+        limit: int,
         since: Optional[str] = None,
         until: Optional[str] = None,
         job_name: Optional[str] = None,
@@ -182,6 +183,7 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
         }
         return paginated_get(
             safe_request(self.list, err_prefix="Failed to list jobs in project."),
+            limit=limit,
             **params,
         )
 

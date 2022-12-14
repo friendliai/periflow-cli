@@ -15,7 +15,7 @@ from pfcli.service.client.user import (
     UserClientService,
     UserGroupClientService,
     UserMFAService,
-    UserSignUpService
+    UserSignUpService,
 )
 
 
@@ -230,7 +230,8 @@ def test_user_group_client_get_group_info(
         json=[{"id": "00000000-0000-0000-0000-000000000000", "name": "my-group"}],
     )
     assert user_group_client.get_group_info() == {
-        "id": "00000000-0000-0000-0000-000000000000", "name": "my-group"
+        "id": "00000000-0000-0000-0000-000000000000",
+        "name": "my-group",
     }
 
     # Failed
@@ -241,9 +242,10 @@ def test_user_group_client_get_group_info(
         user_group_client.get_group_info()
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_user_sign_up_client_sign_up(requests_mock: requests_mock.Mocker,
-                                     user_sign_up_client: UserSignUpService):
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_user_sign_up_client_sign_up(
+    requests_mock: requests_mock.Mocker, user_sign_up_client: UserSignUpService
+):
     assert isinstance(user_sign_up_client, UserSignUpService)
 
     # Success
@@ -252,52 +254,49 @@ def test_user_sign_up_client_sign_up(requests_mock: requests_mock.Mocker,
         url_template.render(**user_sign_up_client.url_kwargs),
         json=[
             {
-                'username': 'user1',
-                'name': 'tester',
-                'email': 'test@friendli.ai',
-                'password': 'passwd1234'
+                "username": "user1",
+                "name": "tester",
+                "email": "test@friendli.ai",
+                "password": "passwd1234",
             }
-        ]
+        ],
     )
     try:
         user_sign_up_client.sign_up(
-            username='user1',
-            name='tester',
-            email='test@friendli.ai',
-            password='passwd1234'
+            username="user1",
+            name="tester",
+            email="test@friendli.ai",
+            password="passwd1234",
         )
     except typer.Exit:
         raise pytest.fail("Test add to project failed.")
 
     # Failed
-    requests_mock.post(url_template.render(**user_sign_up_client.url_kwargs), status_code=400)
+    requests_mock.post(
+        url_template.render(**user_sign_up_client.url_kwargs), status_code=400
+    )
     with pytest.raises(typer.Exit):
         user_sign_up_client.sign_up(
-            username='user1',
-            name='tester',
-            email='test@friendli.ai',
-            password='passwd1234'
+            username="user1",
+            name="tester",
+            email="test@friendli.ai",
+            password="passwd1234",
         )
 
 
-@pytest.mark.usefixtures('patch_auto_token_refresh')
-def test_user_sign_up_client_verify(requests_mock: requests_mock.Mocker,
-                                    user_sign_up_client: UserSignUpService):
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_user_sign_up_client_verify(
+    requests_mock: requests_mock.Mocker, user_sign_up_client: UserSignUpService
+):
     assert isinstance(user_sign_up_client, UserSignUpService)
 
     # Success
     url_template = deepcopy(user_sign_up_client.url_template)
-    url_template.attach_pattern('confirm')
+    url_template.attach_pattern("confirm")
     requests_mock.post(
         url_template.render(**user_sign_up_client.url_kwargs),
-        json=[
-            {
-                'email_token': '00000000-0000-0000-0000-000000000000',
-                'key': '123456'
-            }
-        ]
+        json=[{"email_token": "00000000-0000-0000-0000-000000000000", "key": "123456"}],
     )
     user_sign_up_client.verify(
-        token='00000000-0000-0000-0000-000000000000',
-        key='123456'
+        token="00000000-0000-0000-0000-000000000000", key="123456"
     )

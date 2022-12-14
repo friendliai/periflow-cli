@@ -3,12 +3,13 @@
 """CLI for Checkpoint"""
 
 import os
-from click import secho
 from dateutil.parser import parse
-from typing import Optional, List
+from pathlib import Path
+from typing import Optional
 from uuid import UUID
 
 import typer
+import yaml
 
 from pfcli.service import (
     CheckpointCategory,
@@ -21,14 +22,25 @@ from pfcli.service import (
 )
 from pfcli.service.client import (
     CheckpointClientService,
+    CheckpointFormClientService,
     CredentialClientService,
     GroupProjectCheckpointClientService,
     build_client,
 )
 from pfcli.service.cloud import build_storage_helper
-from pfcli.service.formatter import PanelFormatter, TableFormatter, TreeFormatter
+from pfcli.service.formatter import (
+    JSONFormatter,
+    PanelFormatter,
+    TableFormatter,
+    TreeFormatter,
+)
 from pfcli.utils.format import datetime_to_pretty_str, secho_error_and_exit
-from pfcli.utils.fs import download_file
+from pfcli.utils.fs import (
+    download_file,
+    expand_paths,
+    FileSizeType,
+    get_file_info,
+)
 from pfcli.utils.validate import validate_cloud_storage_type, validate_parallelism_order
 
 
@@ -44,7 +56,6 @@ table_formatter = TableFormatter(
         "id",
         "name",
         "model_category",
-        "forms[0].vendor",
         "iteration",
         "created_at",
     ],
@@ -52,7 +63,6 @@ table_formatter = TableFormatter(
         "ID",
         "Name",
         "Category",
-        "Cloud",
         "Iteration",
         "Created At",
     ],
@@ -80,6 +90,7 @@ panel_formatter = PanelFormatter(
         "Created At",
     ],
 )
+json_formatter = JSONFormatter(name="Attributes")
 tree_formatter = TreeFormatter(name="Files")
 
 model_info_panel = PanelFormatter(
@@ -108,13 +119,19 @@ def list(
         "--category",
         "-c",
         help="Category of checkpoints. One of 'user_provided' and 'job_generated'.",
-    )
+    ),
+    limit: int = typer.Option(
+        20,
+        "--limit",
+        "-l",
+        help="The number of recent checkpoints to see.",
+    ),
 ):
     """List all checkpoints that belong to the user's organization."""
     client: GroupProjectCheckpointClientService = build_client(
         ServiceType.GROUP_PROJECT_CHECKPOINT
     )
-    checkpoints = client.list_checkpoints(category)
+    checkpoints = client.list_checkpoints(category, limit=limit)
     for ckpt in checkpoints:
         ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
 
@@ -133,11 +150,9 @@ def view(
     ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
 
     panel_formatter.render([ckpt])
-
-    # serving model info.
+    # Serving model info.
     if "attributes" in ckpt and "head_size" in ckpt["attributes"]:
         model_info_panel.render(ckpt["attributes"])
-
     tree_formatter.render(ckpt["forms"][0]["files"])
 
 
@@ -183,8 +198,8 @@ def create(
         "-i",
         help="UUID of crendential to access cloud storage.",
     ),
-    iteration: int = typer.Option(
-        ..., "--iteration", help="The iteration number of the checkpoint."
+    iteration: Optional[int] = typer.Option(
+        None, "--iteration", help="The iteration number of the checkpoint."
     ),
     # advanced arguments
     dp_degree: int = typer.Option(
@@ -204,6 +219,12 @@ def create(
         callback=validate_parallelism_order,
         help="Order of device allocation in distributed training.",
     ),
+    attr_file: Optional[typer.FileText] = typer.Option(
+        None,
+        "--attr-file",
+        "-f",
+        help="Path to file that has the checkpoint attributes. The file should be the YAML format.",
+    ),
 ):
     """Create a checkpoint object by registering user's cloud storage to PeriFlow."""
     dist_config = {
@@ -213,6 +234,15 @@ def create(
         "dp_mode": "allreduce",
         "parallelism_order": parallelism_order,
     }
+
+    attr = {}
+    if attr_file is not None:
+        try:
+            attr = yaml.safe_load(attr_file)
+        except yaml.YAMLError as exc:
+            secho_error_and_exit(
+                f"Error occurred while parsing atrribute file... {exc}"
+            )
 
     credential_client: CredentialClientService = build_client(ServiceType.CREDENTIAL)
     credential = credential_client.get_credential(credential_id)
@@ -244,8 +274,7 @@ def create(
         storage_name=storage_name,
         files=files,
         dist_config=dist_config,
-        data_config={},
-        job_setting_config=None,  # TODO: make configurable
+        attributes=attr,
     )
     ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
 
@@ -292,10 +321,152 @@ def download(
     save_directory = save_directory or os.getcwd()
 
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
-    files = client.get_checkpoint_download_urls(checkpoint_id)
+    form_client: CheckpointFormClientService = build_client(ServiceType.CHECKPOINT_FORM)
+    ckpt_form_id = client.get_first_checkpoint_form(checkpoint_id)
+    files = form_client.get_checkpoint_download_urls(ckpt_form_id)
 
     for i, file in enumerate(files):
         typer.secho(f"Downloading files {i + 1}/{len(files)}...")
         download_file(
             file["download_url"], out=os.path.join(save_directory, file["name"])
         )
+
+
+@app.command()
+def upload(
+    name: str = typer.Option(
+        ..., "--name", "-n", help="Name of the checkpoint to upload"
+    ),
+    source_path: str = typer.Option(
+        ..., "--source-path", "-p", help="Path to source file or dircetory to upload"
+    ),
+    format: ModelFormCategory = typer.Option(
+        ModelFormCategory.ETC,
+        "-m",
+        "--format",
+        help="The format of your checkpoint",
+    ),
+    iteration: Optional[int] = typer.Option(
+        None, "--iteration", help="The iteration number of the checkpoint."
+    ),
+    # advanced arguments
+    dp_degree: int = typer.Option(
+        1, "--dp-degree", help="Data parallelism degree of the model checkpoint."
+    ),
+    pp_degree: int = typer.Option(
+        1,
+        "--pp-degree",
+        help="Pipelined model parallelism degree of the model checkpoint.",
+    ),
+    mp_degree: int = typer.Option(
+        1, "--mp-degree", help="Tensor parallelism degree of the model checkpoint."
+    ),
+    parallelism_order: str = typer.Option(
+        "pp,dp,mp",
+        "--parallelism-order",
+        callback=validate_parallelism_order,
+        help="Order of device allocation in distributed training.",
+    ),
+    attr_file: Optional[typer.FileText] = typer.Option(
+        None,
+        "--attr-file",
+        "-f",
+        help="Path to file that has the checkpoint attributes. The file should be the YAML format.",
+    ),
+):
+    """Create a checkpoint by uploading local checkpoint files."""
+    expand = source_path.endswith("/")
+    src_path: Path = Path(source_path)
+
+    dist_config = {
+        "pp_degree": pp_degree,
+        "dp_degree": dp_degree,
+        "mp_degree": mp_degree,
+        "dp_mode": "allreduce",
+        "parallelism_order": parallelism_order,
+    }
+
+    attr = {}
+    if attr_file is not None:
+        try:
+            attr = yaml.safe_load(attr_file)
+        except yaml.YAMLError as exc:
+            secho_error_and_exit(
+                f"Error occurred while parsing atrribute file... {exc}"
+            )
+
+    client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
+    form_client: CheckpointFormClientService = build_client(ServiceType.CHECKPOINT_FORM)
+    group_client: GroupProjectCheckpointClientService = build_client(
+        ServiceType.GROUP_PROJECT_CHECKPOINT
+    )
+    ckpt = group_client.create_checkpoint(
+        name=name,
+        model_form_category=format,
+        vendor=StorageType.FAI,
+        region="",
+        credential_id=None,
+        iteration=iteration,
+        storage_name="",
+        files=[],
+        dist_config=dist_config,
+        attributes=attr,
+    )
+    ckpt_id = UUID(ckpt["id"])
+    ckpt_form_id = UUID(ckpt["forms"][0]["id"])
+
+    try:
+        typer.echo(f"Start uploading objects to create a checkpoint({name})...")
+        spu_targets = expand_paths(src_path, expand, FileSizeType.SMALL)
+        mpu_targets = expand_paths(src_path, expand, FileSizeType.LARGE)
+        spu_url_dicts = (
+            form_client.get_spu_urls(ckpt_form_id=ckpt_form_id, paths=spu_targets)
+            if len(spu_targets) > 0
+            else []
+        )
+        mpu_url_dicts = (
+            form_client.get_mpu_urls(
+                ckpt_form_id=ckpt_form_id,
+                paths=mpu_targets,
+                src_path=src_path.name if expand else None,
+            )
+            if len(mpu_targets) > 0
+            else []
+        )
+
+        form_client.upload_files(
+            ckpt_form_id=ckpt_form_id,
+            spu_url_dicts=spu_url_dicts,
+            mpu_url_dicts=mpu_url_dicts,
+            source_path=src_path,
+            expand=expand,
+        )
+
+        files = [
+            get_file_info(url_info["path"], src_path, expand)
+            for url_info in spu_url_dicts
+        ]
+        files.extend(
+            [
+                get_file_info(url_info["path"], src_path, expand)
+                for url_info in mpu_url_dicts
+            ]
+        )
+        form_client.update_checkpoint_files(ckpt_form_id=ckpt_form_id, files=files)
+    except Exception as exc:
+        client.delete_checkpoint(checkpoint_id=ckpt_id)
+        raise exc
+
+    typer.secho(
+        f"Objects are uploaded and checkpoint({name}) is successfully created!",
+        fg=typer.colors.BLUE,
+    )
+
+    # Visualize the uploaded checkpoint info
+    ckpt = client.get_checkpoint(ckpt_id)
+    ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
+    panel_formatter.render([ckpt])
+    # Serving model info.
+    if "attributes" in ckpt and "head_size" in ckpt["attributes"]:
+        model_info_panel.render(ckpt["attributes"])
+    tree_formatter.render(ckpt["forms"][0]["files"])

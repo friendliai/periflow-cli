@@ -31,7 +31,9 @@ def project_data_client(user_project_group_context) -> ProjectDataClientService:
 
 
 @pytest.fixture
-def project_vm_quota_client(user_project_group_context) -> PFTProjectVMQuotaClientService:
+def project_vm_quota_client(
+    user_project_group_context,
+) -> PFTProjectVMQuotaClientService:
     return build_client(ServiceType.PFT_PROJECT_VM_QUOTA)
 
 

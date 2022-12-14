@@ -189,28 +189,24 @@ def test_data_client_complete_mpu(
     requests_mock.post(url_template.render(dataset_id=0))
     data_client.complete_mpu(
         0,
-        ["/path/to/file"],
+        "/path/to/file",
         "fakeuploadid",
-        {
-            "part": [
-                {"etag": "fakeetag", "part_number": 1},
-                {"etag": "fakeetag", "part_number": 2},
-            ],
-        },
+        [
+            {"etag": "fakeetag", "part_number": 1},
+            {"etag": "fakeetag", "part_number": 2},
+        ],
     )
 
     requests_mock.post(url_template.render(dataset_id=0), status_code=500)
     with pytest.raises(typer.Exit):
         data_client.complete_mpu(
             0,
-            ["/path/to/file"],
+            "/path/to/file",
             "fakeuploadid",
-            {
-                "part": [
-                    {"etag": "fakeetag", "part_number": 1},
-                    {"etag": "fakeetag", "part_number": 2},
-                ],
-            },
+            [
+                {"etag": "fakeetag", "part_number": 1},
+                {"etag": "fakeetag", "part_number": 2},
+            ],
         )
 
 
@@ -226,7 +222,7 @@ def test_data_client_abort_mpu(
     requests_mock.post(url_template.render(dataset_id=0))
     data_client.abort_mpu(
         0,
-        ["/path/to/file"],
+        "/path/to/file",
         "fakeuploadid",
     )
 
@@ -234,7 +230,7 @@ def test_data_client_abort_mpu(
     with pytest.raises(typer.Exit):
         data_client.abort_mpu(
             0,
-            ["/path/to/file"],
+            "/path/to/file",
             "fakeuploadid",
         )
 

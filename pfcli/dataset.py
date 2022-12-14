@@ -25,7 +25,6 @@ from pfcli.service.client import (
     ProjectDataClientService,
     build_client,
 )
-from pfcli.service.client.data import FileSizeType, expand_paths
 from pfcli.service.cloud import build_storage_helper
 from pfcli.service.config import build_data_configurator
 from pfcli.service.formatter import (
@@ -35,7 +34,7 @@ from pfcli.service.formatter import (
     TreeFormatter,
 )
 from pfcli.utils.format import secho_error_and_exit
-from pfcli.utils.fs import get_file_info
+from pfcli.utils.fs import expand_paths, FileSizeType, get_file_info
 from pfcli.utils.validate import validate_cloud_storage_type
 
 app = typer.Typer(
@@ -131,7 +130,7 @@ def view(
 
     dataset_id = project_client.get_id_by_name(name)
     if dataset_id is None:
-        secho_error_and_exit(f"Dataset with name ({name}) is not found.")
+        secho_error_and_exit(f"Dataset with name({name}) is not found.")
     dataset = client.get_dataset(dataset_id)  # type: ignore
     dataset["vendor"] = storage_type_map_inv[dataset["vendor"]].value
     panel_formatter.render([dataset], show_detail=True)
@@ -253,9 +252,9 @@ def upload(
 
     dataset_id = project_client.get_id_by_name(name)
     if dataset_id is not None:
-        secho_error_and_exit(f"The dataset with the same name ({name}) already exists.")
+        secho_error_and_exit(f"The dataset with the same name({name}) already exists.")
 
-    typer.echo(f"Creating dataset ({name})...")
+    typer.echo(f"Creating dataset({name})...")
     metadata = {}
     if metadata_file is not None:
         try:
@@ -276,7 +275,7 @@ def upload(
     dataset_id = dataset["id"]
 
     try:
-        typer.echo(f"Start uploading objects to dataset ({name})...")
+        typer.echo(f"Start uploading objects to craete a dataset({name})...")
         spu_targets = expand_paths(src_path, expand, FileSizeType.SMALL)
         mpu_targets = expand_paths(src_path, expand, FileSizeType.LARGE)
         spu_url_dicts = (
@@ -316,7 +315,7 @@ def upload(
     dataset["vendor"] = storage_type_map_inv[dataset["vendor"]].value
 
     typer.secho(
-        f"Objects are uploaded to dataset ({name}) successfully!",
+        f"Objects are uploaded and dataset({name}) is created successfully!",
         fg=typer.colors.BLUE,
     )
     panel_formatter.render([dataset], show_detail=True)
@@ -392,8 +391,8 @@ def delete(
 
     dataset_id = project_client.get_id_by_name(name)
     if dataset_id is None:
-        secho_error_and_exit(f"Dataset ({name}) is not found.")
+        secho_error_and_exit(f"Dataset({name}) is not found.")
 
     client.delete_dataset(dataset_id)
 
-    typer.secho(f"Dataset ({name}) deleted successfully!", fg=typer.colors.BLUE)
+    typer.secho(f"Dataset({name}) deleted successfully!", fg=typer.colors.BLUE)
