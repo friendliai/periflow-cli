@@ -305,9 +305,7 @@ def upload_part(
         cursor = chunk_index * S3_MPU_PART_MAX_SIZE
         f.seek(cursor)
         chunk_size = min(S3_MPU_PART_MAX_SIZE, total_file_size - cursor)
-        wrapped_object = CustomCallbackIOWrapper(
-            ctx.update, f, "read", chunk_size
-        )
+        wrapped_object = CustomCallbackIOWrapper(ctx.update, f, "read", chunk_size)
         with Session() as s:
             req = Request("PUT", upload_url, data=wrapped_object)
             prep = req.prepare()
@@ -316,7 +314,9 @@ def upload_part(
         response.raise_for_status()
 
         if is_last_part:
-            assert not f.read(S3_MPU_PART_MAX_SIZE), "Some parts of your data is not uploaded. Please try again."
+            assert not f.read(
+                S3_MPU_PART_MAX_SIZE
+            ), "Some parts of your data is not uploaded. Please try again."
 
     etag = response.headers["ETag"]
     return {

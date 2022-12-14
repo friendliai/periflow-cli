@@ -249,6 +249,8 @@ def upload(
     project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
     expand = source_path.endswith("/")
     src_path: Path = Path(source_path)
+    if not src_path.exists():
+        secho_error_and_exit(f"The source path({src_path}) does not exist.")
 
     dataset_id = project_client.get_id_by_name(name)
     if dataset_id is not None:

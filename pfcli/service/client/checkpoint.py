@@ -9,14 +9,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from requests import Request, Session
 from requests.models import Response
 from tqdm import tqdm
 
 from pfcli.service.client.base import ClientService, safe_request
 from pfcli.utils.format import secho_error_and_exit
 from pfcli.utils.fs import (
-    CustomCallbackIOWrapper,
     get_file_size,
     get_total_file_size,
     storage_path_to_local_path,
@@ -173,7 +171,7 @@ class CheckpointFormClientService(ClientService[UUID]):
                         part_number=url_info["part_number"],
                         upload_url=url_info["upload_url"],
                         ctx=ctx,
-                        is_last_part=(idx == total_num_parts - 1)
+                        is_last_part=(idx == total_num_parts - 1),
                     )
                     for idx, url_info in enumerate(upload_urls)
                 ]
@@ -197,7 +195,9 @@ class CheckpointFormClientService(ClientService[UUID]):
         mpu_url_dicts: List[Dict[str, Any]],
         source_path: Path,
         expand: bool,
-        max_workers: int = min(32, (os.cpu_count() or 1) + 4),  # default of ``ThreadPoolExecutor``
+        max_workers: int = min(
+            32, (os.cpu_count() or 1) + 4
+        ),  # default of ``ThreadPoolExecutor``
     ) -> None:
         spu_local_paths = [
             storage_path_to_local_path(url_info["path"], source_path, expand)
@@ -227,7 +227,7 @@ class CheckpointFormClientService(ClientService[UUID]):
                             local_path,
                             url_dict,
                             t,
-                            max_workers // 2
+                            max_workers // 2,
                         )
                         for (local_path, url_dict) in zip(
                             mpu_local_paths, mpu_url_dicts
