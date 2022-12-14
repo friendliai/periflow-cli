@@ -134,7 +134,7 @@ class GroupProjectCheckpointClientService(
         vendor: StorageType,
         region: str,
         credential_id: Optional[UUID],
-        iteration: int,
+        iteration: Optional[int],
         storage_name: str,
         files: List[Dict[str, Any]],
         dist_config: Dict[str, Any],

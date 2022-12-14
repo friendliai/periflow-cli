@@ -62,7 +62,9 @@ def azure_storage_helper(blob_client_mock) -> AzureCloudStorageHelper:
     return AzureCloudStorageHelper(blob_client_mock)
 
 
-def test_build_storage_helper(s3_credential_json: Dict[str, Any], blob_credential_json: Dict[str, Any]):
+def test_build_storage_helper(
+    s3_credential_json: Dict[str, Any], blob_credential_json: Dict[str, Any]
+):
     aws_storage_helper = build_storage_helper(StorageType.S3, s3_credential_json)
     assert isinstance(aws_storage_helper, AWSCloudStorageHelper)
     assert isinstance(aws_storage_helper.client, BaseClient)

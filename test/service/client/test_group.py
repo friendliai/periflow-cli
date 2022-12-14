@@ -155,7 +155,7 @@ def test_group_vm_config_client_get_id_by_name(
                 "region": "eastus",
                 "device_type": "V100",
                 "num_devices_per_vm": 8,
-                "per_gpu_memory": 32.,
+                "per_gpu_memory": 32.0,
                 "vcpu": 40,
                 "cpu_memory": 512,
                 "is_spot": False,
@@ -171,7 +171,7 @@ def test_group_vm_config_client_get_id_by_name(
                 "region": "us-east-1",
                 "device_type": "A100",
                 "num_devices_per_vm": 8,
-                "per_gpu_memory": 40.,
+                "per_gpu_memory": 40.0,
                 "vcpu": 96,
                 "cpu_memory": 1024,
                 "is_spot": False,
@@ -362,7 +362,7 @@ def test_group_checkpoint_create_checkpoints(
             attributes={
                 "job_setting_json": {"k": "v"},
                 "data_json": {"k": "v"},
-            }
+            },
         )
         == data
     )
@@ -412,7 +412,7 @@ def test_group_checkpoint_create_checkpoints(
                 }
             ],
             dist_config={"k": "v"},
-            attributes={"k": "v"}
+            attributes={"k": "v"},
         )
 
     # Failed due to HTTP error
@@ -442,7 +442,7 @@ def test_group_checkpoint_create_checkpoints(
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_group_project_vm_quota_client(
     requests_mock: requests_mock.Mocker,
-    group_project_vm_quota_client: GroupProjectVMQuotaClientService
+    group_project_vm_quota_client: GroupProjectVMQuotaClientService,
 ):
     data = {
         "id": 1,
@@ -464,8 +464,9 @@ def test_group_project_vm_quota_client(
     )
     requests_mock.post(url, json=data)
 
-    assert group_project_vm_quota_client.create_project_quota(
-        "azure-v100",
-        uuid.UUID("11111111-1111-1111-1111-111111111111"),
-        10
-    ) == data
+    assert (
+        group_project_vm_quota_client.create_project_quota(
+            "azure-v100", uuid.UUID("11111111-1111-1111-1111-111111111111"), 10
+        )
+        == data
+    )

@@ -32,7 +32,9 @@ def project_job_client(user_project_group_context) -> ProjectJobClientService:
 
 
 @pytest.fixture
-def job_checkpoint_client(user_project_group_context) -> ProjectJobCheckpointClientService:
+def job_checkpoint_client(
+    user_project_group_context,
+) -> ProjectJobCheckpointClientService:
     return build_client(ServiceType.PROJECT_JOB_CHECKPOINT, job_number=1)
 
 
@@ -59,17 +61,16 @@ def test_job_client_list_jobs(
 
     # Success
     requests_mock.get(
-        project_job_client.url_template.render(
-            **project_job_client.url_kwargs
-        ),
+        project_job_client.url_template.render(**project_job_client.url_kwargs),
         json={"results": [{"id": 1}, {"id": 2}], "next_cursor": None},
     )
     assert project_job_client.list_jobs(limit=10) == [{"id": 1}, {"id": 2}]
 
     # Failed due to HTTP error
-    requests_mock.get(project_job_client.url_template.render(
-        **project_job_client.url_kwargs
-    ), status_code=404)
+    requests_mock.get(
+        project_job_client.url_template.render(**project_job_client.url_kwargs),
+        status_code=404,
+    )
     with pytest.raises(typer.Exit):
         project_job_client.list_jobs(limit=10)
 
@@ -81,17 +82,17 @@ def test_job_client_get_job(
     assert isinstance(project_job_client, ProjectJobClientService)
 
     # Success
-    requests_mock.get(project_job_client.url_template.render(
-        **project_job_client.url_kwargs,
-        pk=1
-    ), json={"id": 1})
+    requests_mock.get(
+        project_job_client.url_template.render(**project_job_client.url_kwargs, pk=1),
+        json={"id": 1},
+    )
     assert project_job_client.get_job(1) == {"id": 1}
 
     # Failed due to HTTP error
-    requests_mock.get(project_job_client.url_template.render(
-        **project_job_client.url_kwargs,
-        pk=1
-    ), status_code=404)
+    requests_mock.get(
+        project_job_client.url_template.render(**project_job_client.url_kwargs, pk=1),
+        status_code=404,
+    )
     with pytest.raises(typer.Exit):
         project_job_client.get_job(1)
 
@@ -104,20 +105,22 @@ def test_job_client_cancel_job(
     url_template.attach_pattern("$job_number/cancel/")
 
     # Success
-    requests_mock.post(url_template.render(
-        **project_job_client.url_kwargs,
-        job_number=1,
-    ))
+    requests_mock.post(
+        url_template.render(
+            **project_job_client.url_kwargs,
+            job_number=1,
+        )
+    )
     try:
         project_job_client.cancel_job(1)
     except typer.Exit as exc:
         raise pytest.fail(f"Test failed: {exc!r}") from exc
 
     # Failed
-    requests_mock.post(url_template.render(
-        **project_job_client.url_kwargs,
-        job_number=1
-    ), status_code=500)
+    requests_mock.post(
+        url_template.render(**project_job_client.url_kwargs, job_number=1),
+        status_code=500,
+    )
     with pytest.raises(typer.Exit):
         project_job_client.cancel_job(1)
 
@@ -130,20 +133,25 @@ def test_job_client_terminate_job(
     url_template.attach_pattern("$job_number/terminate/")
 
     # Success
-    requests_mock.post(url_template.render(
-        **project_job_client.url_kwargs,
-        job_number=1,
-    ))
+    requests_mock.post(
+        url_template.render(
+            **project_job_client.url_kwargs,
+            job_number=1,
+        )
+    )
     try:
         project_job_client.terminate_job(1)
     except typer.Exit as exc:
         raise pytest.fail(f"Test failed: {exc!r}") from exc
 
     # Failed
-    requests_mock.post(url_template.render(
-        **project_job_client.url_kwargs,
-        job_number=1,
-    ), status_code=500)
+    requests_mock.post(
+        url_template.render(
+            **project_job_client.url_kwargs,
+            job_number=1,
+        ),
+        status_code=500,
+    )
     with pytest.raises(typer.Exit):
         project_job_client.terminate_job(1)
 
@@ -174,10 +182,13 @@ def test_job_client_get_text_logs(
     }
 
     # Success
-    requests_mock.get(url_template.render(
-        **project_job_client.url_kwargs,
-        job_number=1,
-    ), json=data)
+    requests_mock.get(
+        url_template.render(
+            **project_job_client.url_kwargs,
+            job_number=1,
+        ),
+        json=data,
+    )
     assert project_job_client.get_text_logs(1, 2) == list(reversed(data["results"]))
 
     # Success w options
@@ -189,10 +200,13 @@ def test_job_client_get_text_logs(
     )
 
     # Failed
-    requests_mock.get(url_template.render(
-        **project_job_client.url_kwargs,
-        job_number=1,
-    ), status_code=500)
+    requests_mock.get(
+        url_template.render(
+            **project_job_client.url_kwargs,
+            job_number=1,
+        ),
+        status_code=500,
+    )
     with pytest.raises(typer.Exit):
         project_job_client.get_text_logs(1, 2)
 
@@ -236,7 +250,7 @@ async def test_job_ws_client(job_ws_client: JobWebSocketClientService):
         async with job_ws_client.open_connection(
             job_id="33333333-3333-3333-3333-333333333333",
             log_types=["stdout", "stderr", "vmlog"],
-            machines=[0]
+            machines=[0],
         ):
             async for resp in job_ws_client:
                 resp_list.append(resp)
@@ -289,7 +303,7 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
             async with job_ws_client.open_connection(
                 job_id="33333333-3333-3333-3333-333333333333",
                 log_types=None,
-                machines=None
+                machines=None,
             ):
                 pass
 
@@ -306,7 +320,7 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
             async with job_ws_client.open_connection(
                 job_id="33333333-3333-3333-3333-333333333333",
                 log_types=None,
-                machines=None
+                machines=None,
             ):
                 pass
 
@@ -323,7 +337,7 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
             async with job_ws_client.open_connection(
                 job_id="33333333-3333-3333-3333-333333333333",
                 log_types=[LogType.STDOUT],
-                machines=None
+                machines=None,
             ):
                 pass
 
@@ -341,7 +355,7 @@ async def test_job_ws_client_errors(job_ws_client: JobWebSocketClientService):
             async with job_ws_client.open_connection(
                 job_id="33333333-3333-3333-3333-333333333333",
                 log_types=None,
-                machines=None
+                machines=None,
             ):
                 async for _ in job_ws_client:
                     pass
@@ -358,7 +372,8 @@ def test_job_checkpoint_client_list_checkpoints(
     requests_mock.get(
         job_checkpoint_client.url_template.render(
             **job_checkpoint_client.url_kwargs,
-        ), json=[{"id": 1}]
+        ),
+        json=[{"id": 1}],
     )
     assert job_checkpoint_client.list_checkpoints() == [{"id": 1}]
 
@@ -366,7 +381,8 @@ def test_job_checkpoint_client_list_checkpoints(
     requests_mock.get(
         job_checkpoint_client.url_template.render(
             **job_checkpoint_client.url_kwargs,
-        ), status_code=404
+        ),
+        status_code=404,
     )
     with pytest.raises(typer.Exit):
         job_checkpoint_client.list_checkpoints()
@@ -374,7 +390,8 @@ def test_job_checkpoint_client_list_checkpoints(
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_job_artifact_client_list_artifacts(
-    requests_mock: requests_mock.Mocker, job_artifact_client: ProjectJobCheckpointClientService
+    requests_mock: requests_mock.Mocker,
+    job_artifact_client: ProjectJobCheckpointClientService,
 ):
     assert isinstance(job_artifact_client, ProjectJobArtifactClientService)
 
@@ -382,13 +399,15 @@ def test_job_artifact_client_list_artifacts(
     requests_mock.get(
         job_artifact_client.url_template.render(
             **job_artifact_client.url_kwargs,
-        ), json=[{"id": 1}]
+        ),
+        json=[{"id": 1}],
     )
     assert job_artifact_client.list_artifacts() == [{"id": 1}]
 
     # Failed due to HTTP error
     requests_mock.get(
-        job_artifact_client.url_template.render(**job_artifact_client.url_kwargs), status_code=404
+        job_artifact_client.url_template.render(**job_artifact_client.url_kwargs),
+        status_code=404,
     )
     with pytest.raises(typer.Exit):
         job_artifact_client.list_artifacts()
@@ -396,7 +415,8 @@ def test_job_artifact_client_list_artifacts(
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_job_artifact_client_get_download_urls(
-    requests_mock: requests_mock.Mocker, job_artifact_client: ProjectJobCheckpointClientService
+    requests_mock: requests_mock.Mocker,
+    job_artifact_client: ProjectJobCheckpointClientService,
 ):
     assert isinstance(job_artifact_client, ProjectJobArtifactClientService)
 
@@ -406,14 +426,17 @@ def test_job_artifact_client_get_download_urls(
     requests_mock.get(
         url_template.render(
             **job_artifact_client.url_kwargs,
-        ), json=[{"url": "https://hello.artifact.com"}]
+        ),
+        json=[{"url": "https://hello.artifact.com"}],
     )
     assert job_artifact_client.get_artifact_download_url(1) == [
         {"url": "https://hello.artifact.com"}
     ]
 
     # Failed due to HTTP error
-    requests_mock.get(url_template.render(**job_artifact_client.url_kwargs), status_code=404)
+    requests_mock.get(
+        url_template.render(**job_artifact_client.url_kwargs), status_code=404
+    )
     with pytest.raises(typer.Exit):
         job_artifact_client.get_artifact_download_url(1)
 
@@ -495,12 +518,9 @@ def test_project_job_client_run_job(
             f.seek(500 * 1024)  # 500KB
             f.write(b"0")
         assert project_job_client.run_job(
-            {
-                "job_setting": {
-                    "workspace": {
-                        "mount_path": "/workspace"
-                }
-            }, "k": "v"}, ws_dir) == {"id": 1}
+            {"job_setting": {"workspace": {"mount_path": "/workspace"}}, "k": "v"},
+            ws_dir,
+        ) == {"id": 1}
 
     # Failed due to large workspace dir exceeding the size limit
     with TemporaryDirectory() as dir:

@@ -198,8 +198,8 @@ def create(
         "-i",
         help="UUID of crendential to access cloud storage.",
     ),
-    iteration: int = typer.Option(
-        ..., "--iteration", help="The iteration number of the checkpoint."
+    iteration: Optional[int] = typer.Option(
+        None, "--iteration", help="The iteration number of the checkpoint."
     ),
     # advanced arguments
     dp_degree: int = typer.Option(
@@ -346,8 +346,8 @@ def upload(
         "--format",
         help="The format of your checkpoint",
     ),
-    iteration: int = typer.Option(
-        ..., "--iteration", help="The iteration number of the checkpoint."
+    iteration: Optional[int] = typer.Option(
+        None, "--iteration", help="The iteration number of the checkpoint."
     ),
     # advanced arguments
     dp_degree: int = typer.Option(
@@ -413,11 +413,10 @@ def upload(
         attributes=attr,
     )
     ckpt_id = UUID(ckpt["id"])
-    attr_in_resp = ckpt["attributes"]
     ckpt_form_id = UUID(ckpt["forms"][0]["id"])
 
     try:
-        typer.echo(f"Start uploading objects to dataset ({name})...")
+        typer.echo(f"Start uploading objects to create a checkpoint({name})...")
         spu_targets = expand_paths(src_path, expand, FileSizeType.SMALL)
         mpu_targets = expand_paths(src_path, expand, FileSizeType.LARGE)
         spu_url_dicts = (
@@ -459,7 +458,7 @@ def upload(
         raise exc
 
     typer.secho(
-        f"Objects are uploaded to dataset ({name}) successfully!",
+        f"Objects are uploaded and checkpoint({name}) is successfully created!",
         fg=typer.colors.BLUE,
     )
 

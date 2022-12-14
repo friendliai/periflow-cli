@@ -198,7 +198,9 @@ class DataClientService(ClientService):
                             "part_number": url_info["part_number"],
                         }
                     )
-                assert not f.read(S3_MPU_PART_MAX_SIZE)
+                assert not f.read(
+                    S3_MPU_PART_MAX_SIZE
+                ), "Some parts of your data is not uploaded. Please try again."
             self.complete_mpu(dataset_id, object_path, upload_id, parts)
         except FileNotFoundError:
             secho_error_and_exit(f"{file_path} is not found.")

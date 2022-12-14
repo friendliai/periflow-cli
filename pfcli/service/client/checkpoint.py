@@ -9,13 +9,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-import requests
 from requests import Request, Session
 from requests.models import Response
 from tqdm import tqdm
 
-from pfcli.service import StorageType
-from pfcli.service.auth import auto_token_refresh, get_auth_header
 from pfcli.service.client.base import ClientService, safe_request
 from pfcli.utils.format import secho_error_and_exit
 from pfcli.utils.fs import (
@@ -46,26 +43,6 @@ class CheckpointClientService(ClientService[UUID]):
             pk=checkpoint_id
         )
         return response
-
-    @auto_token_refresh
-    def download(self, checkpoint_id: UUID) -> Response:
-        response = safe_request(
-            self.retrieve, err_prefix="Failed to get info of checkpoint."
-        )(pk=checkpoint_id)
-        model_form_id = response.json()["forms"][0]["id"]
-
-        url_template = self.url_template.copy()
-        url_template.replace_path("model_forms/$model_form_id/download/")
-        return requests.get(
-            url_template.render(model_form_id=model_form_id, **self.url_kwargs),
-            headers=get_auth_header(),
-        )
-
-    def get_checkpoint_download_urls(self, checkpoint_id: UUID) -> List[Dict[str, Any]]:
-        response = safe_request(
-            self.download, err_prefix="Failed to get download URLs of checkpoint files."
-        )(checkpoint_id=checkpoint_id)
-        return response.json()["files"]
 
 
 class CheckpointFormClientService(ClientService[UUID]):
@@ -204,7 +181,9 @@ class CheckpointFormClientService(ClientService[UUID]):
                             "part_number": url_info["part_number"],
                         }
                     )
-                assert not f.read(S3_MPU_PART_MAX_SIZE)
+                assert not f.read(
+                    S3_MPU_PART_MAX_SIZE
+                ), "Some parts of your data is not uploaded. Please try again."
             self.complete_mpu(ckpt_form_id, object_path, upload_id, parts)
         except FileNotFoundError:
             secho_error_and_exit(f"{file_path} is not found.")
