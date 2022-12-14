@@ -170,7 +170,7 @@ class DataClientService(ClientService):
         file_path: str,
         url_dict: Dict[str, Any],
         ctx: tqdm,
-        max_workers: int,
+        executor: ThreadPoolExecutor,
     ) -> None:
         parts = []
         upload_id = url_dict["upload_id"]
@@ -178,26 +178,24 @@ class DataClientService(ClientService):
         upload_urls = url_dict["upload_urls"]
         total_num_parts = len(upload_urls)
         try:
-            # NOTE: excessive concurrency may results in "No buffer space available" error.
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futs = [
-                    executor.submit(
-                        upload_part,
-                        file_path=file_path,
-                        chunk_index=idx,
-                        part_number=url_info["part_number"],
-                        upload_url=url_info["upload_url"],
-                        ctx=ctx,
-                        is_last_part=(idx == total_num_parts - 1),
-                    )
-                    for idx, url_info in enumerate(upload_urls)
-                ]
-                wait(futs, return_when=FIRST_EXCEPTION)
-                for fut in futs:
-                    exc = fut.exception()
-                    if exc is not None:
-                        raise exc
-                    parts.append(fut.result())
+            futs = [
+                executor.submit(
+                    upload_part,
+                    file_path=file_path,
+                    chunk_index=idx,
+                    part_number=url_info["part_number"],
+                    upload_url=url_info["upload_url"],
+                    ctx=ctx,
+                    is_last_part=(idx == total_num_parts - 1),
+                )
+                for idx, url_info in enumerate(upload_urls)
+            ]
+            wait(futs, return_when=FIRST_EXCEPTION)
+            for fut in futs:
+                exc = fut.exception()
+                if exc is not None:
+                    raise exc
+                parts.append(fut.result())
             self.complete_mpu(dataset_id, object_path, upload_id, parts)
         except FileNotFoundError:
             secho_error_and_exit(f"{file_path} is not found.")
@@ -229,7 +227,7 @@ class DataClientService(ClientService):
 
         with tqdm(total=total_size, unit="B", unit_scale=True, unit_divisor=1024) as t:
             # NOTE: excessive concurrency may results in "No buffer space available" error.
-            with ThreadPoolExecutor(max_workers=max_workers // 2) as executor:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 # Normal upload for files with size < 5 GiB
                 futs = [
                     executor.submit(upload_file, local_path, upload_url, t)
@@ -244,7 +242,7 @@ class DataClientService(ClientService):
                             local_path,
                             url_dict,
                             t,
-                            max_workers // 2,
+                            executor,
                         )
                         for (local_path, url_dict) in zip(
                             mpu_local_paths, mpu_url_dicts
