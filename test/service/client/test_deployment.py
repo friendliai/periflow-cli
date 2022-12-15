@@ -47,7 +47,7 @@ def test_deployment_client_get_deployment(
             **deployment_client.url_kwargs,
             pk=1,
         ),
-        json={"id": "periflow-deployment-05246a6e"}
+        json={"id": "periflow-deployment-05246a6e"},
     )
     assert deployment_client.get_deployment(1) == {"id": "periflow-deployment-05246a6e"}
 
@@ -57,7 +57,7 @@ def test_deployment_client_get_deployment(
             **deployment_client.url_kwargs,
             pk=1,
         ),
-        status_code=404
+        status_code=404,
     )
     with pytest.raises(typer.Exit):
         deployment_client.get_deployment(1)
@@ -79,7 +79,7 @@ def test_deployment_client_list_deployment(
     requests_mock.get(
         deployment_client.url_template.render(
             **deployment_client.url_kwargs,
-            params={"project_id": "22222222-2222-2222-2222-222222222222"}
+            params={"project_id": "22222222-2222-2222-2222-222222222222"},
         ),
         json=results,
     )
@@ -89,9 +89,9 @@ def test_deployment_client_list_deployment(
     requests_mock.get(
         deployment_client.url_template.render(
             **deployment_client.url_kwargs,
-            params={"project_id": "22222222-2222-2222-2222-222222222222"}
+            params={"project_id": "22222222-2222-2222-2222-222222222222"},
         ),
-        status_code=404
+        status_code=404,
     )
     with pytest.raises(typer.Exit):
         deployment_client.list_deployments(project_id=1)
@@ -102,10 +102,7 @@ def test_deployment_client_create_deployment(
     requests_mock: requests_mock.Mocker, deployment_client: DeploymentClientService
 ):
     assert isinstance(deployment_client, DeploymentClientService)
-    result = {
-        "id": "1",
-        "endpoint": "https://friendli.ai/test/endpoint/"
-    }
+    result = {"id": "1", "endpoint": "https://friendli.ai/test/endpoint/"}
 
     config = {
         "project_id": "22222222-2222-2222-2222-222222222222",
@@ -123,7 +120,7 @@ def test_deployment_client_create_deployment(
             **deployment_client.url_kwargs,
             config=config,
         ),
-        json=result
+        json=result,
     )
     assert deployment_client.create_deployment(config) == result
 
@@ -147,25 +144,20 @@ def test_deployment_client_delete_deployment(
 
     # Success
     requests_mock.delete(
-        deployment_client.url_template.render(
-            **deployment_client.url_kwargs,
-            pk=1
-        ),
+        deployment_client.url_template.render(**deployment_client.url_kwargs, pk=1),
     )
     deployment_client.delete_deployment(1)
 
     # Failed due to HTTP error
     requests_mock.delete(
-        deployment_client.url_template.render(
-            **deployment_client.url_kwargs,
-            pk=1
-        ),
+        deployment_client.url_template.render(**deployment_client.url_kwargs, pk=1),
         status_code=404,
     )
     with pytest.raises(typer.Exit):
         deployment_client.delete_deployment(1)
 
 
+@pytest.mark.skip
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_deployment_metrics_client(
     requests_mock: requests_mock.Mocker,
@@ -183,8 +175,10 @@ def test_deployment_usage_client(
     assert isinstance(project_usage_client, PFSProjectUsageClientService)
 
     result = {
-        "deployment_type": "dev",
-        "duration": "13"
+        "periflow-deployment-05246a6e": {
+            "deployment_type": "dev",
+            "duration": "13",
+        }
     }
 
     # Success
@@ -202,7 +196,7 @@ def test_deployment_usage_client(
         project_usage_client.url_template.render(
             **project_usage_client.url_kwargs,
         ),
-        status_code=404
+        status_code=404,
     )
     with pytest.raises(typer.Exit):
         project_usage_client.get_deployment_usage()
