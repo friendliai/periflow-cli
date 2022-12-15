@@ -101,6 +101,8 @@ model_info_panel = PanelFormatter(
         "num_layers",
         "max_length",
         "vocab_size",
+        "eos_token",
+        "special_token_ids",
     ],
     headers=[
         "Head Size",
@@ -108,6 +110,8 @@ model_info_panel = PanelFormatter(
         "#Layers",
         "Max Length",
         "Vocab Size",
+        "EOS Token",
+        "Special Token IDs",
     ],
 )
 

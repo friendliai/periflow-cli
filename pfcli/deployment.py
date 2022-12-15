@@ -148,6 +148,12 @@ deployment_metrics_table.add_substitution_rule("cancelling", "[bold magenta]canc
 
 @app.command()
 def list(
+    show_all: bool = typer.Option(
+        False,
+        "--all",
+        "-a",
+        help="Show all deployments in my project including terminated deployments",
+    ),
     tail: Optional[int] = typer.Option(
         None, "--tail", help="The number of deployment list to view at the tail"
     ),
@@ -163,6 +169,7 @@ def list(
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
     deployments = client.list_deployments(str(project_id))["deployments"]
 
+    deployments.sort(key=lambda x: x["start"], reverse=True)
     for deployment in deployments:
         started_at = deployment.get("start")
         if started_at is not None:
@@ -182,6 +189,11 @@ def list(
             target_deployment_list.extend(deployments[-head:])
     else:
         target_deployment_list = deployments
+
+    if not show_all:
+        target_deployment_list = [
+            d for d in target_deployment_list if "Terminated" not in d["status"]
+        ]
 
     deployment_table.render(target_deployment_list)
 
@@ -300,6 +312,20 @@ def create(
     except yaml.YAMLError as e:
         secho_error_and_exit(f"Error occurred while parsing engine config file... {e}")
 
+    total_gpus = 1
+    if engine == EngineType.ORCA:
+        try:
+            orca_config: dict = config["orca_config"]
+        except KeyError:
+            secho_error_and_exit(
+                "The config file does not include the `orca_config` key as root."
+            )
+
+        num_devices = orca_config.get("num_devices", 1)
+        num_workers = orca_config.get("num_workers", 1)
+        num_sessions = orca_config.get("num_sessions", 1)
+        total_gpus = num_devices * num_workers * num_sessions
+
     request_data = {
         "project_id": str(project_id),
         "model_id": checkpoint_id,
@@ -308,6 +334,7 @@ def create(
         "gpu_type": gpu_type,
         "cloud": cloud,
         "region": region,
+        "total_gpus": total_gpus,
         **config,
     }
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
