@@ -373,6 +373,12 @@ def upload(
         "-f",
         help="Path to file that has the checkpoint attributes. The file should be the YAML format.",
     ),
+    max_workers: int = typer.Option(
+        min(32, (os.cpu_count() or 1) + 4),  # default of ``ThreadPoolExecutor``
+        "--max-workers",
+        "-w",
+        help="The number of threads to upload files.",
+    ),
 ):
     """Create a checkpoint by uploading local checkpoint files."""
     expand = source_path.endswith("/")
@@ -422,13 +428,13 @@ def upload(
         spu_targets = expand_paths(src_path, expand, FileSizeType.SMALL)
         mpu_targets = expand_paths(src_path, expand, FileSizeType.LARGE)
         spu_url_dicts = (
-            form_client.get_spu_urls(ckpt_form_id=ckpt_form_id, paths=spu_targets)
+            form_client.get_spu_urls(obj_id=ckpt_form_id, paths=spu_targets)
             if len(spu_targets) > 0
             else []
         )
         mpu_url_dicts = (
             form_client.get_mpu_urls(
-                ckpt_form_id=ckpt_form_id,
+                obj_id=ckpt_form_id,
                 paths=mpu_targets,
                 src_path=src_path.name if expand else None,
             )
@@ -437,11 +443,12 @@ def upload(
         )
 
         form_client.upload_files(
-            ckpt_form_id=ckpt_form_id,
+            obj_id=ckpt_form_id,
             spu_url_dicts=spu_url_dicts,
             mpu_url_dicts=mpu_url_dicts,
             source_path=src_path,
             expand=expand,
+            max_workers=max_workers,
         )
 
         files = [

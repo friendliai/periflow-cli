@@ -248,7 +248,7 @@ def test_upload_small_files(
         # Success
         requests_mock.put(fake_upload_url)
         data_client.upload_files(
-            dataset_id=0,
+            obj_id=0,
             spu_url_dicts=[
                 {
                     "path": "small_file",
@@ -264,7 +264,7 @@ def test_upload_small_files(
         requests_mock.put(fake_upload_url, status_code=400)
         with pytest.raises(typer.Exit):
             data_client.upload_files(
-                dataset_id=0,
+                obj_id=0,
                 spu_url_dicts=[
                     {
                         "path": "small_file",
@@ -298,7 +298,7 @@ def test_upload_large_files(
         # Success
         requests_mock.put(fake_upload_url, headers={"ETag": "fakeetag"})
         data_client.upload_files(
-            dataset_id=0,
+            obj_id=0,
             spu_url_dicts=[],
             mpu_url_dicts=[
                 {
@@ -324,7 +324,7 @@ def test_upload_large_files(
         requests_mock.put(fake_upload_url, status_code=400)
         with pytest.raises(typer.Exit):
             data_client.upload_files(
-                dataset_id=0,
+                obj_id=0,
                 spu_url_dicts=[],
                 mpu_url_dicts=[
                     {

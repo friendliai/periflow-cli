@@ -3,22 +3,35 @@
 """PeriFlow Client Service"""
 
 import copy
-import typer
+import math
+import os
 import requests
+import uuid
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 from dataclasses import dataclass
 from functools import wraps
+from pathlib import Path
 from requests.models import Response
 from string import Template
-from typing import Any, Callable, Dict, Generic, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
 from urllib.parse import urljoin, urlparse
 
-import uuid
+from requests.models import Response
+from tqdm import tqdm
 
 from pfcli.context import get_current_group_id, get_current_project_id
 from pfcli.service.auth import auto_token_refresh, get_auth_header
 from pfcli.utils.format import secho_error_and_exit
 from pfcli.utils.request import decode_http_err
 from pfcli.utils.url import get_auth_uri
+from pfcli.utils.fs import (
+    get_file_size,
+    get_total_file_size,
+    storage_path_to_local_path,
+    S3_MPU_PART_MAX_SIZE,
+    upload_file,
+    upload_part,
+)
 
 
 T = TypeVar("T", bound=Union[int, str, uuid.UUID])
@@ -180,3 +193,179 @@ class ProjectRequestMixin:
         if project_id is None:
             secho_error_and_exit("Project is not set.")
         self.project_id = project_id
+
+
+class UploadableClientService(ClientService[T], Generic[T]):
+    def get_spu_urls(self, obj_id: T, paths: List[str]) -> List[Dict[str, Any]]:
+        """Get single part upload URLs for multiple files.
+
+        Args:
+            obj_id (UUID): Uploadable object ID
+            paths (List[str]): A list of local dataset paths
+
+        Returns:
+            List[Dict[str, Any]]: A response body that has presigned URL info to download files.
+        """
+        response = safe_request(self.post, err_prefix="Failed to get presigned URLs.")(
+            path=f"{obj_id}/upload/", json={"paths": paths}
+        )
+        return response.json()
+
+    def get_mpu_urls(
+        self, obj_id: T, paths: List[str], src_path: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Get multipart upload URLs for multiple datasets
+
+        Args:
+            obj_id (UUID): Uploadable object ID
+            paths (List[str]): A list of upload target paths
+
+        Returns:
+            List[Dict[str, Any]]: A list of multipart upload responses for multiple target files.
+            {
+                "path": "string",
+                "upload_id": "string",
+                "upload_urls": [
+                    {
+                        "upload_url": "string",
+                        "part_number": 0
+                    }
+                ]
+            }
+        """
+        start_mpu_resps = []
+        for path in paths:
+            if src_path is not None and not os.path.isfile(path):
+                num_parts = math.ceil(
+                    get_file_size(os.path.join(src_path, path)) / S3_MPU_PART_MAX_SIZE
+                )
+            else:
+                num_parts = math.ceil(get_file_size(path) / S3_MPU_PART_MAX_SIZE)
+            response = safe_request(
+                self.post,
+                err_prefix="Failed to get presigned URLs for multipart upload.",
+            )(
+                path=f"{obj_id}/start_mpu/",
+                json={
+                    "path": path,
+                    "num_parts": num_parts,
+                },
+            )
+            start_mpu_resps.append(response.json())
+        return start_mpu_resps
+
+    def complete_mpu(
+        self, obj_id: T, path: str, upload_id: str, parts: List[Dict[str, Any]]
+    ) -> None:
+        safe_request(
+            self.post, err_prefix=f"Failed to complete multipart upload for {path}"
+        )(
+            path=f"{obj_id}/complete_mpu/",
+            json={
+                "path": path,
+                "upload_id": upload_id,
+                "parts": parts,
+            },
+        )
+
+    def abort_mpu(self, obj_id: T, path: str, upload_id: str) -> None:
+        safe_request(
+            self.post, err_prefix=f"Failed to abort multipart upload for {path}"
+        )(
+            path=f"{obj_id}/abort_mpu/",
+            json={
+                "path": path,
+                "upload_id": upload_id,
+            },
+        )
+
+    def _multipart_upload_file(
+        self,
+        obj_id: T,
+        file_path: str,
+        url_dict: Dict[str, Any],
+        ctx: tqdm,
+        executor: ThreadPoolExecutor,
+    ) -> None:
+        parts = []
+        upload_id = url_dict["upload_id"]
+        object_path = url_dict["path"]
+        upload_urls = url_dict["upload_urls"]
+        total_num_parts = len(upload_urls)
+        try:
+            futs = [
+                executor.submit(
+                    upload_part,
+                    file_path=file_path,
+                    chunk_index=idx,
+                    part_number=url_info["part_number"],
+                    upload_url=url_info["upload_url"],
+                    ctx=ctx,
+                    is_last_part=(idx == total_num_parts - 1),
+                )
+                for idx, url_info in enumerate(upload_urls)
+            ]
+            wait(futs, return_when=FIRST_EXCEPTION)
+            for fut in futs:
+                exc = fut.exception()
+                if exc is not None:
+                    raise exc
+                parts.append(fut.result())
+            self.complete_mpu(obj_id, object_path, upload_id, parts)
+        except KeyboardInterrupt:
+            secho_error_and_exit("File upload is aborted.")
+        except Exception as exc:
+            self.abort_mpu(obj_id, object_path, upload_id)
+            secho_error_and_exit(f"File upload is aborted: ({exc!r})")
+
+    def upload_files(
+        self,
+        obj_id: T,
+        spu_url_dicts: List[Dict[str, str]],
+        mpu_url_dicts: List[Dict[str, Any]],
+        source_path: Path,
+        expand: bool,
+        max_workers: int = min(
+            32, (os.cpu_count() or 1) + 4
+        ),  # default of ``ThreadPoolExecutor``
+    ) -> None:
+        spu_local_paths = [
+            storage_path_to_local_path(url_info["path"], source_path, expand)
+            for url_info in spu_url_dicts
+        ]
+        mpu_local_paths = [
+            storage_path_to_local_path(url_info["path"], source_path, expand)
+            for url_info in mpu_url_dicts
+        ]
+        total_size = get_total_file_size(spu_local_paths + mpu_local_paths)
+        spu_urls = [url_info["upload_url"] for url_info in spu_url_dicts]
+
+        with tqdm(total=total_size, unit="B", unit_scale=True, unit_divisor=1024) as t:
+            # NOTE: excessive concurrency may results in "No buffer space available" error.
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # Normal upload for files with size < 5 GiB
+                futs = [
+                    executor.submit(upload_file, local_path, upload_url, t)
+                    for (local_path, upload_url) in zip(spu_local_paths, spu_urls)
+                ]
+                # Multipart upload for large files with sizes >= 5 GiB
+                futs.extend(
+                    [
+                        executor.submit(
+                            self._multipart_upload_file,
+                            obj_id=obj_id,
+                            file_path=local_path,
+                            url_dict=url_dict,
+                            ctx=t,
+                            executor=executor,
+                        )
+                        for (local_path, url_dict) in zip(
+                            mpu_local_paths, mpu_url_dicts
+                        )
+                    ]
+                )
+                wait(futs, return_when=FIRST_EXCEPTION)
+                for fut in futs:
+                    exc = fut.exception()
+                    if exc is not None:
+                        raise exc
