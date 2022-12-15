@@ -6,7 +6,10 @@ from typing import Dict, Tuple, Type, TypeVar
 from pfcli.service import ServiceType
 from pfcli.service.client.base import ClientService
 from pfcli.service.client.billing import PFTBillingClientService
-from pfcli.service.client.checkpoint import CheckpointClientService
+from pfcli.service.client.checkpoint import (
+    CheckpointClientService,
+    CheckpointFormClientService,
+)
 from pfcli.service.client.credential import (
     CredentialClientService,
     CredentialTypeClientService,
@@ -122,6 +125,10 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         Template(get_uri("project/$project_id/vm_quota/")),
     ),
     ServiceType.CHECKPOINT: (CheckpointClientService, Template(get_mr_uri("models/"))),
+    ServiceType.CHECKPOINT_FORM: (
+        CheckpointFormClientService,
+        Template(get_mr_uri("model_forms/")),
+    ),
     ServiceType.GROUP_PROJECT_CHECKPOINT: (
         GroupProjectCheckpointClientService,
         Template(get_mr_uri("orgs/$group_id/prjs/$project_id/models/")),

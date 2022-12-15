@@ -3,7 +3,7 @@
 """CLI for Deployment"""
 
 from dateutil.parser import parse
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import ruamel.yaml
 import typer
@@ -231,8 +231,12 @@ def metrics(
     )
     metrics["id"] = metrics["deployment_id"]
     # ns => ms
-    metrics["latency"] = "{:.3f}".format(metrics["latency"] / 1000000) if "latency" in metrics else None
-    metrics["throughput"] = "{:.3f}".format(metrics["throughput"]) if "throughput" in metrics else None
+    metrics["latency"] = (
+        "{:.3f}".format(metrics["latency"] / 1000000) if "latency" in metrics else None
+    )
+    metrics["throughput"] = (
+        "{:.3f}".format(metrics["throughput"]) if "throughput" in metrics else None
+    )
     deployment_metrics_table.render([metrics])
 
 
@@ -243,10 +247,15 @@ def usage():
     usages = client.get_deployment_usage()
 
     deployments = [
-        {"id": id, "type": info["deployment_type"] , "duration": datetime.timedelta(seconds=int(info["duration"]))}
+        {
+            "id": id,
+            "type": info["deployment_type"],
+            "duration": datetime.timedelta(seconds=int(info["duration"])),
+        }
         for id, info in usages.items()
     ]
     deployment_usage_table.render(deployments)
+
 
 @app.command()
 def create(
@@ -287,7 +296,7 @@ def create(
         secho_error_and_exit("Checkpoint ID should be in UUID format.")
 
     try:
-        config: dict = yaml.safe_load(config_file)
+        config: Dict[str, Any] = yaml.safe_load(config_file)
     except yaml.YAMLError as e:
         secho_error_and_exit(f"Error occurred while parsing engine config file... {e}")
 

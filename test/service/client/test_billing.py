@@ -35,18 +35,20 @@ def test_billing_summary_client_get_summary(
                 {
                     "start_time": now.isoformat(),
                     "end_time": ten_days_after.isoformat(),
-                    "price_list": [{"agg_unit": "user_id", "id": "some_id", "price": 1.557}],
+                    "price_list": [
+                        {"agg_unit": "user_id", "id": "some_id", "price": 1.557}
+                    ],
                 }
             ],
         },
     )
-    assert billing_summary_client.list_prices(start_date=now.isoformat(),
-                                              end_date=ten_days_after.isoformat())
+    assert billing_summary_client.list_prices(
+        start_date=now.isoformat(), end_date=ten_days_after.isoformat()
+    )
 
     # Failed due to HTTP error
     requests_mock.get(url_template.render(), status_code=404)
     with pytest.raises(typer.Exit):
         assert billing_summary_client.list_prices(
-            start_date=now.isoformat(),
-            end_date=ten_days_after.isoformat()
+            start_date=now.isoformat(), end_date=ten_days_after.isoformat()
         )

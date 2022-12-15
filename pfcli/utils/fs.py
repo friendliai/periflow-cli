@@ -6,18 +6,26 @@ from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 from contextlib import contextmanager
 from datetime import datetime
 from dateutil.tz import tzlocal
+from enum import Enum
+from functools import wraps
 import os
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List, Optional
 import zipfile
 
 import pathspec
 import requests
+from requests import Request, Session
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
 import typer
 
 from pfcli.utils.format import secho_error_and_exit
+
+# The actual hard limit of a part size is 5 GiB, and we use 200 MiB part size.
+# See https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html.
+S3_MPU_PART_MAX_SIZE = 200 * 1024 * 1024  # 200 MiB
+S3_UPLOAD_SIZE_LIMIT = 5 * 1024 * 1024 * 1024  # 5 GiB
 
 periflow_directory = Path.home() / ".periflow"
 
@@ -67,7 +75,7 @@ def storage_path_to_local_path(
     return str(source_path / Path(storage_path.split("/", 1)[1]))
 
 
-def get_file_info(storage_path: str, source_path: Path, expand: bool) -> dict:
+def get_file_info(storage_path: str, source_path: Path, expand: bool) -> Dict[str, Any]:
     loacl_path = storage_path_to_local_path(storage_path, source_path, expand)
     return {
         "name": os.path.basename(storage_path),
@@ -157,3 +165,127 @@ def download_file(url: str, out: str) -> None:
         download_file_parallel(url, out, file_size)
     else:
         download_file_simple(url, out, file_size)
+
+
+class FileSizeType(Enum):
+    LARGE = "LARGE"
+    SMALL = "SMALL"
+
+
+def filter_files_by_size(paths: List[str], size_type: FileSizeType) -> List[str]:
+    if size_type is FileSizeType.LARGE:
+        return [path for path in paths if get_file_size(path) >= S3_UPLOAD_SIZE_LIMIT]
+    if size_type is FileSizeType.SMALL:
+        res = []
+        for path in paths:
+            size = get_file_size(path)
+            if size == 0:
+                # NOTE: S3 does not support file uploading for 0B size files.
+                typer.secho(
+                    f"Skip uploading file ({path}) with size 0B.", fg=typer.colors.RED
+                )
+                continue
+            if size < S3_UPLOAD_SIZE_LIMIT:
+                res.append(path)
+        return res
+
+
+def expand_paths(path: Path, expand: bool, size_type: FileSizeType) -> List[str]:
+    if path.is_file():
+        paths = [str(path.name)]
+        paths = filter_files_by_size(paths, size_type)
+    else:
+        paths = [str(p) for p in path.rglob("*")]
+        paths = filter_files_by_size(paths, size_type)
+        rel_path = path if expand else path.parent
+        paths = [str(Path(p).relative_to(rel_path)) for p in paths if Path(p).is_file()]
+
+    return paths
+
+
+def upload_file(file_path: str, url: str, ctx: tqdm) -> None:
+    try:
+        with open(file_path, "rb") as f:
+            fileno = f.fileno()
+            total_file_size = os.fstat(fileno).st_size
+            if total_file_size == 0:
+                typer.secho(
+                    f"The file with 0B size ({file_path}) is skipped.",
+                    fg=typer.colors.RED,
+                )
+                return
+
+            wrapped_object = CallbackIOWrapper(ctx.update, f, "read")
+            s = Session()
+            req = Request("PUT", url, data=wrapped_object)
+            prep = req.prepare()
+            prep.headers["Content-Length"] = str(
+                total_file_size
+            )  # necessary to use ``CallbackIOWrapper``
+            response = s.send(prep)
+            if response.status_code != 200:
+                secho_error_and_exit(
+                    f"Failed to upload file ({file_path}): {response.content}"
+                )
+    except FileNotFoundError:
+        secho_error_and_exit(f"{file_path} is not found.")
+
+
+def get_file_size(file_path: str, prefix: Optional[str] = None) -> int:
+    """Calculate a file size in bytes.
+
+    Args:
+        file_path (str): Path to the target file.
+        prefix (Optional[str], optional): If it is not None, attach the prefix to the path. Defaults to None.
+
+    Returns:
+        int: The size of a file.
+    """
+    if prefix is not None:
+        file_path = os.path.join(prefix, file_path)
+
+    return os.stat(file_path).st_size
+
+
+def get_total_file_size(file_paths: List[str], prefix: Optional[str] = None) -> int:
+    return sum([get_file_size(file_path, prefix) for file_path in file_paths])
+
+
+class CustomCallbackIOWrapper(CallbackIOWrapper):
+    def __init__(self, callback, stream, method="read", chunk_size=None):
+        """
+        Wrap a given `file`-like object's `read()` or `write()` to report
+        lengths to the given `callback`
+        """
+        super().__init__(callback, stream, method)
+        self._chunk_size = chunk_size
+        self._cursor = 0
+
+        func = getattr(stream, method)
+        if method == "write":
+
+            @wraps(func)
+            def write(data, *args, **kwargs):
+                res = func(data, *args, **kwargs)
+                callback(len(data))
+                return res
+
+            self.wrapper_setattr("write", write)
+        elif method == "read":
+
+            @wraps(func)
+            def read(*args, **kwargs):
+                assert chunk_size is not None
+                if self._cursor >= chunk_size:
+                    self._cursor = 0
+                    return
+
+                data = func(*args, **kwargs)
+                data_size = len(data)  # default to 8 KiB
+                callback(data_size)
+                self._cursor += data_size
+                return data
+
+            self.wrapper_setattr("read", read)
+        else:
+            raise KeyError("Can only wrap read/write methods")

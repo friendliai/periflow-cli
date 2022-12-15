@@ -3,7 +3,7 @@
 """Test GroupClient Service"""
 
 from copy import deepcopy
-from tokenize import group
+from typing import Any, Dict
 import uuid
 
 import pytest
@@ -155,7 +155,7 @@ def test_group_vm_config_client_get_id_by_name(
                 "region": "eastus",
                 "device_type": "V100",
                 "num_devices_per_vm": 8,
-                "per_gpu_memory": 32.,
+                "per_gpu_memory": 32.0,
                 "vcpu": 40,
                 "cpu_memory": 512,
                 "is_spot": False,
@@ -171,7 +171,7 @@ def test_group_vm_config_client_get_id_by_name(
                 "region": "us-east-1",
                 "device_type": "A100",
                 "num_devices_per_vm": 8,
-                "per_gpu_memory": 40.,
+                "per_gpu_memory": 40.0,
                 "vcpu": 96,
                 "cpu_memory": 1024,
                 "is_spot": False,
@@ -231,7 +231,7 @@ def test_group_checkpoint_list_checkpoints(
     requests_mock: requests_mock.Mocker,
     group_project_checkpoint_client: GroupProjectCheckpointClientService,
 ):
-    def build_response_item(category: str, vendor: str, region: str) -> dict:
+    def build_response_item(category: str, vendor: str, region: str) -> Dict[str, Any]:
         return {
             "id": "22222222-2222-2222-2222-222222222222",
             "user_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -292,14 +292,14 @@ def test_group_checkpoint_list_checkpoints(
     requests_mock.get(url, json=user_data)
     assert (
         group_project_checkpoint_client.list_checkpoints(
-            CheckpointCategory.USER_PROVIDED
+            CheckpointCategory.USER_PROVIDED, 10
         )
         == user_data["results"]
     )
     requests_mock.get(url, json=job_data)
     assert (
         group_project_checkpoint_client.list_checkpoints(
-            CheckpointCategory.JOB_GENERATED
+            CheckpointCategory.JOB_GENERATED, 10
         )
         == job_data["results"]
     )
@@ -308,7 +308,7 @@ def test_group_checkpoint_list_checkpoints(
     requests_mock.get(url, status_code=400)
     with pytest.raises(typer.Exit):
         group_project_checkpoint_client.list_checkpoints(
-            CheckpointCategory.USER_PROVIDED
+            CheckpointCategory.USER_PROVIDED, 10
         )
 
 
@@ -347,7 +347,7 @@ def test_group_checkpoint_create_checkpoints(
             model_form_category=ModelFormCategory.MEGATRON,
             vendor=StorageType.S3,
             region="us-east-1",
-            credential_id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            credential_id=uuid.UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
             iteration=1000,
             storage_name="my-ckpt",
             files=[
@@ -359,8 +359,10 @@ def test_group_checkpoint_create_checkpoints(
                 }
             ],
             dist_config={"k": "v"},
-            data_config={"k": "v"},
-            job_setting_config={"k": "v"},
+            attributes={
+                "job_setting_json": {"k": "v"},
+                "data_json": {"k": "v"},
+            },
         )
         == data
     )
@@ -398,7 +400,7 @@ def test_group_checkpoint_create_checkpoints(
             model_form_category=ModelFormCategory.MEGATRON,
             vendor=StorageType.S3,
             region="busan",
-            credential_id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            credential_id=uuid.UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
             iteration=1000,
             storage_name="my-ckpt",
             files=[
@@ -410,8 +412,7 @@ def test_group_checkpoint_create_checkpoints(
                 }
             ],
             dist_config={"k": "v"},
-            data_config={"k": "v"},
-            job_setting_config={"k": "v"},
+            attributes={"k": "v"},
         )
 
     # Failed due to HTTP error
@@ -422,7 +423,7 @@ def test_group_checkpoint_create_checkpoints(
             model_form_category=ModelFormCategory.MEGATRON,
             vendor=StorageType.S3,
             region="us-east-1",
-            credential_id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            credential_id=uuid.UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
             iteration=1000,
             storage_name="my-ckpt",
             files=[
@@ -434,15 +435,14 @@ def test_group_checkpoint_create_checkpoints(
                 }
             ],
             dist_config={"k": "v"},
-            data_config={"k": "v"},
-            job_setting_config={"k": "v"},
+            attributes={"k": "v"},
         )
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_group_project_vm_quota_client(
     requests_mock: requests_mock.Mocker,
-    group_project_vm_quota_client: GroupProjectVMQuotaClientService
+    group_project_vm_quota_client: GroupProjectVMQuotaClientService,
 ):
     data = {
         "id": 1,
@@ -464,8 +464,9 @@ def test_group_project_vm_quota_client(
     )
     requests_mock.post(url, json=data)
 
-    assert group_project_vm_quota_client.create_project_quota(
-        "azure-v100",
-        uuid.UUID("11111111-1111-1111-1111-111111111111"),
-        10
-    ) == data
+    assert (
+        group_project_vm_quota_client.create_project_quota(
+            "azure-v100", uuid.UUID("11111111-1111-1111-1111-111111111111"), 10
+        )
+        == data
+    )

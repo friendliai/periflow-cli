@@ -2,12 +2,14 @@
 
 """PeriFlow CLI API Request Utilities"""
 
-from typing import Callable, List, Optional
+from typing import Any, Dict, Callable, List, Optional
 
 from requests.exceptions import HTTPError
 from requests.models import Response
 
 from pfcli.utils.url import periflow_discuss_url
+
+DEFAULT_PAGINATION_SIZE = 50
 
 
 def decode_http_err(exc: HTTPError) -> str:
@@ -35,14 +37,19 @@ def decode_http_err(exc: HTTPError) -> str:
 
 
 def paginated_get(
-    response_getter: Callable[..., Response], path: Optional[str] = None, **params
-) -> List[dict]:
+    response_getter: Callable[..., Response],
+    path: Optional[str] = None,
+    limit: int = 20,
+    **params,
+) -> List[Dict[str, Any]]:
     """Pagination listing"""
+    page_size = min(DEFAULT_PAGINATION_SIZE, limit)
+    params = {"limit": page_size, **params}
     response_dict = response_getter(path=path, params={**params}).json()
     items = response_dict["results"]
     next_cursor = response_dict["next_cursor"]
 
-    while next_cursor is not None:
+    while next_cursor is not None and len(items) < limit:
         response_dict = response_getter(
             path=path, params={**params, "cursor": next_cursor}
         ).json()

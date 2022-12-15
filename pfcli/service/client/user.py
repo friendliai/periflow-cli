@@ -3,7 +3,7 @@
 """PeriFlow UserClient Service"""
 
 from string import Template
-from typing import List
+from typing import Any, Dict, List
 from uuid import UUID
 
 from pfcli.service import GroupRole, ProjectRole
@@ -63,7 +63,7 @@ class UserClientService(ClientService, UserRequestMixin):
             json={"privilege_level": privilege_level.value},
         )
 
-    def get_project_membership(self, pf_project_id: UUID) -> dict:
+    def get_project_membership(self, pf_project_id: UUID) -> Dict[str, Any]:
         response = safe_request(
             self.retrieve, err_prefix="Failed identify member in project"
         )(
@@ -81,7 +81,9 @@ class UserClientService(ClientService, UserRequestMixin):
         )
 
     def delete_from_project(
-        self, pf_user_id: UUID, pf_project_id: UUID,
+        self,
+        pf_user_id: UUID,
+        pf_project_id: UUID,
     ) -> None:
         safe_request(self.delete, err_prefix="Failed to remove user from proejct")(
             pk=pf_user_id,
@@ -106,7 +108,7 @@ class UserGroupClientService(ClientService, UserRequestMixin):
         self.initialize_user()
         super().__init__(template, pf_user_id=self.user_id, **kwargs)
 
-    def get_group_info(self) -> dict:
+    def get_group_info(self) -> Dict[str, Any]:
         response = safe_request(self.list, err_prefix="Failed to get my group info.")()
         return response.json()[0]
 
@@ -119,7 +121,7 @@ class UserGroupProjectClientService(ClientService, UserRequestMixin, GroupReques
             template, pf_user_id=self.user_id, pf_group_id=self.group_id, **kwargs
         )
 
-    def list_projects(self) -> List[dict]:
+    def list_projects(self) -> List[Dict[str, Any]]:
         get_response_dict = safe_request(
             self.list, err_prefix="Failed to list projects."
         )

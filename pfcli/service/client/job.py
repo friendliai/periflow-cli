@@ -103,7 +103,7 @@ class ProjectJobCheckpointClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_checkpoints(self) -> List[dict]:
+    def list_checkpoints(self) -> List[Dict[str, Any]]:
         response = safe_request(self.list, err_prefix="Failed to list checkpoints.")()
         return response.json()
 
@@ -113,7 +113,7 @@ class ProjectJobArtifactClientService(ClientService, ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def list_artifacts(self) -> List[dict]:
+    def list_artifacts(self) -> List[Dict[str, Any]]:
         response = safe_request(self.list, err_prefix="Failed to list artifacts.")()
         return response.json()
 
@@ -125,7 +125,7 @@ class ProjectJobArtifactClientService(ClientService, ProjectRequestMixin):
             url_template.render(**self.url_kwargs), headers=get_auth_header()
         )
 
-    def get_artifact_download_url(self, artifact_id: int) -> dict:
+    def get_artifact_download_url(self, artifact_id: int) -> Dict[str, Any]:
         response = safe_request(
             self.download, err_prefix="Failed to get artifact download url"
         )(artifact_id)
@@ -139,7 +139,7 @@ class JobTemplateClientService(ClientService[UUID]):
         )()
         return [template["name"] for template in response.json()]
 
-    def get_job_template_by_name(self, name: str) -> Optional[dict]:
+    def get_job_template_by_name(self, name: str) -> Optional[Dict[str, Any]]:
         response = safe_request(
             self.list, err_prefix="Failed to list job template names."
         )()
@@ -148,7 +148,7 @@ class JobTemplateClientService(ClientService[UUID]):
                 return template
         return None
 
-    def get_job_template(self, job_template_id: UUID) -> dict:
+    def get_job_template(self, job_template_id: UUID) -> Dict[str, Any]:
         response = safe_request(
             self.retrieve,
             err_prefix=f"Job template (ID: {job_template_id}) is not found.",
@@ -163,13 +163,14 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
 
     def list_jobs(
         self,
+        limit: int,
         since: Optional[str] = None,
         until: Optional[str] = None,
         job_name: Optional[str] = None,
         vm: Optional[str] = None,
         statuses: Optional[Tuple[JobStatus]] = None,
         user_ids: Optional[List[UUID]] = None,
-    ) -> List[dict]:
+    ) -> List[Dict[str, Any]]:
         params = {
             "created_at.since": since,
             "created_at.until": until,
@@ -182,10 +183,11 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
         }
         return paginated_get(
             safe_request(self.list, err_prefix="Failed to list jobs in project."),
+            limit=limit,
             **params,
         )
 
-    def run_job(self, config: Dict, workspace_dir: Optional[Path]) -> dict:
+    def run_job(self, config: Dict, workspace_dir: Optional[Path]) -> Dict[str, Any]:
         job_request = safe_request(self.post, err_prefix="Failed to run job.")
         if workspace_dir is not None:
             typer.secho("Preparing workspace directory...", fg=typer.colors.MAGENTA)
@@ -225,7 +227,7 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
             pk=job_number
         )
 
-    def get_job(self, job_number: int) -> dict:
+    def get_job(self, job_number: int) -> Dict[str, Any]:
         response = safe_request(
             self.retrieve, err_prefix=f"Failed to get job ({job_number})."
         )(pk=job_number)
@@ -249,7 +251,7 @@ class ProjectJobClientService(ClientService, ProjectRequestMixin):
         log_types: Optional[List[str]] = None,
         machines: Optional[List[int]] = None,
         content: Optional[str] = None,
-    ) -> List[dict]:
+    ) -> List[Dict[str, Any]]:
         request_data: Dict[str, Any] = {"limit": num_records}
         if head:
             request_data["ascending"] = "true"

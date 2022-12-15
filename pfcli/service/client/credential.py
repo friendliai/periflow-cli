@@ -3,7 +3,7 @@
 """PeriFlow CredentialClient Service"""
 
 
-from typing import Optional
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 from pfcli.service import CredType, cred_type_map
@@ -11,7 +11,7 @@ from pfcli.service.client.base import ClientService, safe_request
 
 
 class CredentialClientService(ClientService[UUID]):
-    def get_credential(self, credential_id: UUID) -> dict:
+    def get_credential(self, credential_id: UUID) -> Dict[str, Any]:
         response = safe_request(self.retrieve, err_prefix="Credential is not found.")(
             pk=credential_id
         )
@@ -23,8 +23,8 @@ class CredentialClientService(ClientService[UUID]):
         *,
         name: Optional[str] = None,
         type_version: Optional[str] = None,
-        value: Optional[dict] = None
-    ) -> dict:
+        value: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         request_data = {}
         if name is not None:
             request_data["name"] = name
@@ -44,7 +44,7 @@ class CredentialClientService(ClientService[UUID]):
 
 
 class CredentialTypeClientService(ClientService):
-    def get_schema_by_type(self, cred_type: CredType) -> Optional[dict]:
+    def get_schema_by_type(self, cred_type: CredType) -> Optional[Dict[str, Any]]:
         type_name = cred_type_map[cred_type]
         response = safe_request(
             self.list, err_prefix="Failed to get credential schema."
