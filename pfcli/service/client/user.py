@@ -80,14 +80,14 @@ class UserClientService(ClientService, UserRequestMixin):
             json={"access_level": access_level.value},
         )
 
-    def delete_from_project(
-        self,
-        pf_user_id: UUID,
-        pf_project_id: UUID,
-    ) -> None:
+    def delete_from_org(self, pf_user_id: UUID, pf_org_id: UUID) -> None:
+        safe_request(self.delete, err_prefix="Failed to remove user from organization")(
+            pk=pf_user_id, path=f"pf_group/{pf_org_id}"
+        )
+
+    def delete_from_project(self, pf_user_id: UUID, pf_project_id: UUID) -> None:
         safe_request(self.delete, err_prefix="Failed to remove user from proejct")(
-            pk=pf_user_id,
-            path=f"pf_project/{pf_project_id}",
+            pk=pf_user_id, path=f"pf_project/{pf_project_id}"
         )
 
     def set_project_privilege(
