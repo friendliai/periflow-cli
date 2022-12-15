@@ -200,7 +200,7 @@ class UploadableClientService(ClientService[T], Generic[T]):
         """Get single part upload URLs for multiple files.
 
         Args:
-            obj_id (UUID): Uploadable object ID
+            obj_id (T): Uploadable object ID
             paths (List[str]): A list of local dataset paths
 
         Returns:
@@ -217,7 +217,7 @@ class UploadableClientService(ClientService[T], Generic[T]):
         """Get multipart upload URLs for multiple datasets
 
         Args:
-            obj_id (UUID): Uploadable object ID
+            obj_id (T): Uploadable object ID
             paths (List[str]): A list of upload target paths
 
         Returns:
@@ -257,6 +257,14 @@ class UploadableClientService(ClientService[T], Generic[T]):
     def complete_mpu(
         self, obj_id: T, path: str, upload_id: str, parts: List[Dict[str, Any]]
     ) -> None:
+        """Complete multipart upload.
+
+        Args:
+            obj_id (T): Uploadable object ID
+            path (str): Path to the uploaded file
+            upload_id (str): Upload ID
+            parts (List[Dict[str, Any]]): A list of upload part info
+        """
         safe_request(
             self.post, err_prefix=f"Failed to complete multipart upload for {path}"
         )(
@@ -269,6 +277,14 @@ class UploadableClientService(ClientService[T], Generic[T]):
         )
 
     def abort_mpu(self, obj_id: T, path: str, upload_id: str) -> None:
+        """Abort multipart upload.
+
+        Args:
+            obj_id (T): Uploadable object ID
+            path (str): Path to the target file
+            upload_id (str): Upload ID
+            parts (List[Dict[str, Any]]): A list of upload part info
+        """
         safe_request(
             self.post, err_prefix=f"Failed to abort multipart upload for {path}"
         )(
