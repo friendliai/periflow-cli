@@ -3,12 +3,14 @@
 """PeriFlow CLI Validation Utilities"""
 
 from datetime import datetime
+from importlib.metadata import version
 from typing import List, Optional
 
 import typer
 
 from pfcli.service import CloudType, cloud_region_map, StorageType, storage_region_map
 from pfcli.utils.format import secho_error_and_exit
+from pfcli.utils.version import get_latest_cli_version, is_latest_cli_version, PERIFLOW_CLI_NAME
 
 
 def validate_storage_region(vendor: StorageType, region: str):
@@ -55,3 +57,13 @@ def validate_parallelism_order(value: str) -> List[str]:
             "Invalid Argument: parallelism_order should contain 'pp', 'dp', 'mp'"
         )
     return parallelism_order
+
+
+def validate_cli_version() -> None:
+    installed_version = version(PERIFLOW_CLI_NAME)
+    if not is_latest_cli_version(installed_version):
+        latest_version = get_latest_cli_version()
+        secho_error_and_exit(
+            f"CLI version({installed_version}) is deprecated. "
+            f"Please install the latest version({latest_version}) with 'pip install {PERIFLOW_CLI_NAME}=={latest_version} -U --no-cache-dir'."
+        )

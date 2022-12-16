@@ -37,12 +37,14 @@ from pfcli.service.client import (
 from pfcli.service.formatter import PanelFormatter
 from pfcli.utils.format import secho_error_and_exit
 from pfcli.utils.url import get_uri
+from pfcli.utils.validate import validate_cli_version
 
 app = typer.Typer(
     help="Welcome to PeriFlow 🤗",
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,
+    callback=validate_cli_version,
 )
 
 app.add_typer(credential.app, name="credential", help="Manage credentials")
