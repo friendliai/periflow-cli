@@ -59,7 +59,7 @@ deployment_panel = PanelFormatter(
         "status",
         "ready_replicas",
         "vms",
-        "config.gpu_type",
+        "config.vm.gpu_type",
         "config.total_gpus",
         "start",
         "endpoint",
@@ -88,7 +88,7 @@ deployment_table = TableFormatter(
         "status",
         "ready_replicas",
         "vms",
-        "config.gpu_type",
+        "config.vm.gpu_type",
         "config.total_gpus",
         "start",
     ],
@@ -115,9 +115,12 @@ deployment_usage_table = TableFormatter(
     fields=[
         "id",
         "type",
+        "cloud",
+        "vm",
+        "gpu_type",
         "duration",
     ],
-    headers=["ID", "Type", "Total Usage (days, HH:MM:SS)"],
+    headers=["ID", "Type", "Cloud", "VM", "GPU", "Total Usage (days, HH:MM:SS)"],
 )
 
 deployment_panel.add_substitution_rule("waiting", "[bold]waiting")
@@ -249,11 +252,13 @@ def usage():
     """Show total usage of deployments in project."""
     client: PFSProjectUsageClientService = build_client(ServiceType.PFS_PROJECT_USAGE)
     usages = client.get_deployment_usage()
-
     deployments = [
         {
             "id": id,
             "type": info["deployment_type"],
+            "cloud": info["cloud"].upper() if "cloud" in info else None,
+            "vm": info["vm"]["name"] if info["vm"] in info else None,
+            "gpu_type": info["vm"]["gpu_type"].upper() if info["vm"] in info else None,
             "duration": datetime.timedelta(seconds=int(info["duration"])),
         }
         for id, info in usages.items()
