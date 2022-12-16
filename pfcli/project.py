@@ -189,11 +189,24 @@ def delete_user(
         ...,
         help="Username to delete from the current working project",
     ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Forcefully delete without confirmation prompt",
+    ),
 ):
     user_client: UserClientService = build_client(ServiceType.USER)
 
     org_id, project_id = _check_project_and_get_id()
     user_id = _get_org_user_id_by_name(org_id, username)
+
+    if not force:
+        do_delete = typer.confirm(
+            f"Are you sure to remove user({username}) from the project?"
+        )
+        if not do_delete:
+            raise typer.Abort()
 
     user_client.delete_from_project(user_id, project_id)
     typer.secho(f"User is successfully deleted from project", fg=typer.colors.BLUE)
