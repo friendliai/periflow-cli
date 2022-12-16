@@ -257,8 +257,8 @@ def usage():
             "id": id,
             "type": info["deployment_type"],
             "cloud": info["cloud"].upper() if "cloud" in info else None,
-            "vm": info["vm"]["name"] if info["vm"] in info else None,
-            "gpu_type": info["vm"]["gpu_type"].upper() if info["vm"] in info else None,
+            "vm": info["vm"]["name"] if info.get("vm") else None,
+            "gpu_type": info["vm"]["gpu_type"].upper() if info.get("vm") else None,
             "duration": datetime.timedelta(seconds=int(info["duration"])),
         }
         for id, info in usages.items()
