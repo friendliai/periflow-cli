@@ -20,6 +20,7 @@ from pfcli.service import (
 )
 from pfcli.service.client import (
     DeploymentClientService,
+    DeploymentLogClientService,
     build_client,
 )
 from pfcli.context import get_current_project_id
@@ -157,9 +158,7 @@ def list(
         "-a",
         help="Show all deployments in my project including terminated deployments",
     ),
-    limit: int = typer.Option(
-        20, "--limit", help="The number of deployments to view"
-    ),
+    limit: int = typer.Option(20, "--limit", help="The number of deployments to view"),
     from_oldest: bool = typer.Option(
         False, "--from-oldest", help="Show oldest deployments first"
     ),
@@ -185,9 +184,7 @@ def list(
         )
 
     if not show_all:
-        deployments = [
-            d for d in deployments if "Terminated" not in d["status"]
-        ]
+        deployments = [d for d in deployments if "Terminated" not in d["status"]]
 
     target_deployment_list = deployments[:limit]
     deployment_table.render(target_deployment_list)
@@ -265,6 +262,17 @@ def usage():
 
 
 @app.command()
+def log(deployment_id: str = typer.Argument(..., help="deployment id to get log.")):
+    """Show deployments log."""
+    client: DeploymentLogClientService = build_client(
+        ServiceType.DEPLOYMENT_LOG, deployment_id=deployment_id
+    )
+    log = client.get_deployment_log(deployment_id=deployment_id)
+    for line in log:
+        typer.echo(line["data"])
+
+
+@app.command()
 def create(
     checkpoint_id: str = typer.Option(
         ..., "--checkpoint-id", "-id", help="Checkpoint id to deploy."
@@ -326,7 +334,7 @@ def create(
         "model_id": checkpoint_id,
         "deployment_type": deployment_type,
         "name": deployment_name,
-        "gpu_type": gpu_type,
+        "vm": {"gpu_type": gpu_type},
         "cloud": cloud,
         "region": region,
         "total_gpus": total_gpus,
