@@ -114,9 +114,12 @@ deployment_usage_table = TableFormatter(
     fields=[
         "id",
         "type",
+        "cloud",
+        "vm",
+        "gpu_type",
         "duration",
     ],
-    headers=["ID", "Type", "Total Usage (days, HH:MM:SS)"],
+    headers=["ID", "Type", "Cloud", "VM", "GPU", "Total Usage (days, HH:MM:SS)"],
 )
 
 deployment_panel.add_substitution_rule("waiting", "[bold]waiting")
@@ -251,12 +254,25 @@ def metrics(
 def usage():
     """Show total usage of deployments in project."""
     client: PFSProjectUsageClientService = build_client(ServiceType.PFS_PROJECT_USAGE)
-    usages = client.get_deployment_usage()
-
+    # usages = client.get_deployment_usage()
+    usages = {
+        "asdfasdf": {
+            "deployment_type": "dev",
+            "cloud": "aws",
+            "vm": {
+                "name": "g4dn.xlarge",
+                "gpu_type": "t4",
+            },
+            "duration": 104293,
+        }
+    }
     deployments = [
         {
             "id": id,
             "type": info["deployment_type"],
+            "cloud": info["cloud"].upper(),
+            "vm": info["vm"]["name"],
+            "gpu_type": info["vm"]["gpu_type"].upper(),
             "duration": datetime.timedelta(seconds=int(info["duration"])),
         }
         for id, info in usages.items()
