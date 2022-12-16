@@ -84,7 +84,7 @@ serving_formatter = TableFormatter(
     fields=[
         "vm.name",
         "cloud",
-        "vm.gpu_type",
+        "gpu_type",
         "vm.total_gpus",
         "region",
     ],
@@ -161,9 +161,10 @@ def vm_list_for_serve(cloud: Optional[CloudType], device_type: Optional[str]) ->
 
     vm_dict_list = [
         {
-            "cloud": nodegroup_list_dict["cloud"],
+            "cloud": nodegroup_list_dict["cloud"].upper(),
             "region": nodegroup_list_dict["region"],
-            "vm": nodegroup["vm"]
+            "vm":nodegroup["vm"],
+            "gpu_type": nodegroup["vm"]["gpu_type"].upper(),
         }
         for nodegroup_list_dict in response
         for nodegroup in nodegroup_list_dict["nodegroup_list"]
