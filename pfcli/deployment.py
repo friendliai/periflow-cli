@@ -56,6 +56,7 @@ deployment_panel = PanelFormatter(
         "config.name",
         "config.deployment_type",
         "status",
+        "ready_replicas",
         "vms",
         "config.gpu_type",
         "config.total_gpus",
@@ -67,6 +68,7 @@ deployment_panel = PanelFormatter(
         "Name",
         "Type",
         "Status",
+        "#Ready",
         "VM Type",
         "GPU Type",
         "#GPUs",
@@ -155,11 +157,11 @@ def list(
         "-a",
         help="Show all deployments in my project including terminated deployments",
     ),
-    tail: Optional[int] = typer.Option(
-        None, "--tail", help="The number of deployment list to view at the tail"
+    limit: int = typer.Option(
+        20, "--limit", help="The number of deployments to view"
     ),
-    head: Optional[int] = typer.Option(
-        None, "--head", help="The number of deployment list to view at the head"
+    from_oldest: bool = typer.Option(
+        False, "--from-oldest", help="Show oldest deployments first"
     ),
 ):
     """List all deployments."""
@@ -170,7 +172,7 @@ def list(
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
     deployments = client.list_deployments(str(project_id))["deployments"]
 
-    deployments.sort(key=lambda x: x["start"], reverse=True)
+    deployments.sort(key=lambda x: x["start"], reverse=not from_oldest)
     for deployment in deployments:
         started_at = deployment.get("start")
         if started_at is not None:
@@ -182,20 +184,12 @@ def list(
             deployment["vms"][0]["name"] if deployment["vms"] else "None"
         )
 
-    if tail is not None or head is not None:
-        target_deployment_list = []
-        if tail:
-            target_deployment_list.extend(deployments[:tail])
-        if head:
-            target_deployment_list.extend(deployments[-head:])
-    else:
-        target_deployment_list = deployments
-
     if not show_all:
-        target_deployment_list = [
-            d for d in target_deployment_list if "Terminated" not in d["status"]
+        deployments = [
+            d for d in deployments if "Terminated" not in d["status"]
         ]
 
+    target_deployment_list = deployments[:limit]
     deployment_table.render(target_deployment_list)
 
 
