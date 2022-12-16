@@ -216,13 +216,13 @@ def upload_file(file_path: str, url: str, ctx: tqdm) -> None:
                 return
 
             wrapped_object = CallbackIOWrapper(ctx.update, f, "read")
-            s = Session()
-            req = Request("PUT", url, data=wrapped_object)
-            prep = req.prepare()
-            prep.headers["Content-Length"] = str(
-                total_file_size
-            )  # necessary to use ``CallbackIOWrapper``
-            response = s.send(prep)
+            with Session() as s:
+                req = Request("PUT", url, data=wrapped_object)
+                prep = req.prepare()
+                prep.headers["Content-Length"] = str(
+                    total_file_size
+                )  # necessary to use ``CallbackIOWrapper``
+                response = s.send(prep)
             if response.status_code != 200:
                 secho_error_and_exit(
                     f"Failed to upload file ({file_path}): {response.content}"
@@ -289,3 +289,37 @@ class CustomCallbackIOWrapper(CallbackIOWrapper):
             self.wrapper_setattr("read", read)
         else:
             raise KeyError("Can only wrap read/write methods")
+
+
+def upload_part(
+    file_path: str,
+    chunk_index: int,
+    part_number: int,
+    upload_url: str,
+    ctx: tqdm,
+    is_last_part: bool,
+) -> Dict[str, Any]:
+    with open(file_path, "rb") as f:
+        fileno = f.fileno()
+        total_file_size = os.fstat(fileno).st_size
+        cursor = chunk_index * S3_MPU_PART_MAX_SIZE
+        f.seek(cursor)
+        chunk_size = min(S3_MPU_PART_MAX_SIZE, total_file_size - cursor)
+        wrapped_object = CustomCallbackIOWrapper(ctx.update, f, "read", chunk_size)
+        with Session() as s:
+            req = Request("PUT", upload_url, data=wrapped_object)
+            prep = req.prepare()
+            prep.headers["Content-Length"] = str(chunk_size)
+            response = s.send(prep)
+        response.raise_for_status()
+
+        if is_last_part:
+            assert not f.read(
+                S3_MPU_PART_MAX_SIZE
+            ), "Some parts of your data is not uploaded. Please try again."
+
+    etag = response.headers["ETag"]
+    return {
+        "etag": etag,
+        "part_number": part_number,
+    }

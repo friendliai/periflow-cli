@@ -2,6 +2,7 @@
 
 """PeriFlow Dataset CLI"""
 
+import os
 from pathlib import Path
 from typing import Optional
 from uuid import UUID
@@ -241,6 +242,12 @@ def upload(
         help="Path to file containing the metadata describing your dataset."
         "The metadata should be written in YAML format.",
     ),
+    max_workers: int = typer.Option(
+        min(32, (os.cpu_count() or 1) + 4),  # default of ``ThreadPoolExecutor``
+        "--max-workers",
+        "-w",
+        help="The number of threads to upload files.",
+    ),
 ):
     """Create a dataset by uploading dataset files in my local file system.
     The created dataset will have "fai" cloud type.
@@ -249,6 +256,8 @@ def upload(
     project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
     expand = source_path.endswith("/")
     src_path: Path = Path(source_path)
+    if not src_path.exists():
+        secho_error_and_exit(f"The source path({src_path}) does not exist.")
 
     dataset_id = project_client.get_id_by_name(name)
     if dataset_id is not None:
@@ -279,13 +288,13 @@ def upload(
         spu_targets = expand_paths(src_path, expand, FileSizeType.SMALL)
         mpu_targets = expand_paths(src_path, expand, FileSizeType.LARGE)
         spu_url_dicts = (
-            client.get_spu_urls(dataset_id=dataset_id, paths=spu_targets)
+            client.get_spu_urls(obj_id=dataset_id, paths=spu_targets)
             if len(spu_targets) > 0
             else []
         )
         mpu_url_dicts = (
             client.get_mpu_urls(
-                dataset_id=dataset_id,
+                obj_id=dataset_id,
                 paths=mpu_targets,
                 src_path=src_path.name if expand else None,
             )
@@ -293,7 +302,14 @@ def upload(
             else []
         )
 
-        client.upload_files(dataset_id, spu_url_dicts, mpu_url_dicts, src_path, expand)
+        client.upload_files(
+            obj_id=dataset_id,
+            spu_url_dicts=spu_url_dicts,
+            mpu_url_dicts=mpu_url_dicts,
+            source_path=src_path,
+            expand=expand,
+            max_workers=max_workers,
+        )
 
         files = [
             get_file_info(url_info["path"], src_path, expand)

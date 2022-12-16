@@ -181,12 +181,12 @@ def test_checkpoint_client_upload(
 
     requests_mock.post(url, json=resp_body)
     assert (
-        checkpoint_form_client.get_spu_urls(ckpt_form_id=ckpt_form_id, paths=paths)
+        checkpoint_form_client.get_spu_urls(obj_id=ckpt_form_id, paths=paths)
         == resp_body
     )
     requests_mock.post(url, status_code=404)
     with pytest.raises(typer.Exit):
-        checkpoint_form_client.get_spu_urls(ckpt_form_id=ckpt_form_id, paths=paths)
+        checkpoint_form_client.get_spu_urls(obj_id=ckpt_form_id, paths=paths)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
@@ -220,12 +220,12 @@ def test_checkpoint_client_start_multipart_upload(
 
         requests_mock.post(url, json=resp_body)
         assert checkpoint_form_client.get_mpu_urls(
-            ckpt_form_id=ckpt_form_id, paths=paths, src_path=dir
+            obj_id=ckpt_form_id, paths=paths, src_path=dir
         ) == [resp_body]
         requests_mock.post(url, status_code=404)
         with pytest.raises(typer.Exit):
             checkpoint_form_client.get_mpu_urls(
-                ckpt_form_id=ckpt_form_id, paths=paths, src_path=dir
+                obj_id=ckpt_form_id, paths=paths, src_path=dir
             )
 
 
@@ -253,13 +253,13 @@ def test_checkpoint_client_complete_multipart_upload(
 
     requests_mock.post(url, status_code=204)
     checkpoint_form_client.complete_mpu(
-        ckpt_form_id=ckpt_form_id, path=path, upload_id=fake_upload_id, parts=parts
+        obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id, parts=parts
     )
 
     requests_mock.post(url, status_code=404)
     with pytest.raises(typer.Exit):
         checkpoint_form_client.complete_mpu(
-            ckpt_form_id=ckpt_form_id, path=path, upload_id=fake_upload_id, parts=parts
+            obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id, parts=parts
         )
 
 
@@ -277,13 +277,13 @@ def test_checkpoint_client_abort_multipart_upload(
 
     requests_mock.post(url, status_code=204)
     checkpoint_form_client.abort_mpu(
-        ckpt_form_id=ckpt_form_id, path=path, upload_id=fake_upload_id
+        obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id
     )
 
     requests_mock.post(url, status_code=404)
     with pytest.raises(typer.Exit):
         checkpoint_form_client.abort_mpu(
-            ckpt_form_id=ckpt_form_id, path=path, upload_id=fake_upload_id
+            obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id
         )
 
 
@@ -342,7 +342,7 @@ def test_actual_s3_upload(
             f_4.write(b"\0")
 
         checkpoint_form_client.upload_files(
-            ckpt_form_id=ckpt_form_id,
+            obj_id=ckpt_form_id,
             spu_url_dicts=[
                 {
                     "path": small_file_1_name,
