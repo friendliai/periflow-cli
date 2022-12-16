@@ -166,7 +166,7 @@ def create(
         ..., "--name", "-n", help="Name of your checkpoint to create."
     ),
     format: ModelFormCategory = typer.Option(
-        ModelFormCategory.ETC,
+        ModelFormCategory.ETC.value,
         "-m",
         "--format",
         help="The format of your checkpoint",
@@ -345,7 +345,7 @@ def upload(
         ..., "--source-path", "-p", help="Path to source file or dircetory to upload"
     ),
     format: ModelFormCategory = typer.Option(
-        ModelFormCategory.ETC,
+        ModelFormCategory.ETC.value,
         "-m",
         "--format",
         help="The format of your checkpoint",

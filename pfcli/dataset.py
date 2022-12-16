@@ -179,7 +179,7 @@ def create(
         None,
         "--metadata-file",
         "-f",
-        help="Path to file containing the metadata describing your dataset."
+        help="Path to file containing the metadata describing your dataset. "
         "The metadata should be written in YAML format.",
     ),
 ):
@@ -239,7 +239,7 @@ def upload(
         None,
         "--metadata-file",
         "-f",
-        help="Path to file containing the metadata describing your dataset."
+        help="Path to file containing the metadata describing your dataset. "
         "The metadata should be written in YAML format.",
     ),
     max_workers: int = typer.Option(
