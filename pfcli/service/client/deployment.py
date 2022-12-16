@@ -54,3 +54,12 @@ class PFSProjectUsageClientService(ClientService[str], ProjectRequestMixin):
             err_prefix=f"Deployment usages are not found in the project.",
         )()
         return response.json()
+
+
+class PFSVMClientService(ClientService):
+    def list_vms(self) -> Dict[str, Any]:
+        response = safe_request(
+            self.list,
+            err_prefix="Cannot get vm whitelist from PFS server.",
+        )()
+        return response.json()

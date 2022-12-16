@@ -15,6 +15,7 @@ from pfcli.service.client import (
     PFTProjectVMQuotaClientService,
     build_client,
 )
+from pfcli.service.client.deployment import PFSVMClientService
 from pfcli.service.client.project import (
     PFTProjectVMConfigClientService,
     find_project_id,
@@ -78,6 +79,24 @@ quota_detail_panel = PanelFormatter(
 )
 
 
+serving_formatter = TableFormatter(
+    name="Serving VM instances",
+    fields=[
+        "vm.name",
+        "cloud",
+        "vm.gpu_type",
+        "vm.total_gpus",
+        "region",
+    ],
+    headers=[
+        "VM",
+        "Cloud",
+        "GPU",
+        "GPU COUNT",
+        "Region",
+    ]
+)
+
 def vm_list_for_train(cloud: Optional[CloudType], device_type: Optional[str]) -> None:
     """List all VM information for training."""
     vm_quota_client: PFTProjectVMQuotaClientService = build_client(
@@ -113,10 +132,43 @@ def vm_list_for_train(cloud: Optional[CloudType], device_type: Optional[str]) ->
 
 
 def vm_list_for_serve(cloud: Optional[CloudType], device_type: Optional[str]) -> None:
-    # TODO: FILL ME
-    secho_error_and_exit(
-        "VM list for the deployment is not supported yet. Please contact the support team."
+    pfs_vm_client: PFSVMClientService = build_client(
+        ServiceType.PFS_VM
     )
+    # response = pfs_vm_client.list_vms()
+    response = [
+        {
+            "cloud": "aws",
+            "region": "us-east-2",
+            "nodegroup_list": [
+                {
+                    "nodegroup_name": "nodegroup name",
+                    "vm": {
+                        "name": "g4dn.xlarge",
+                        "gpu_type": "t4",
+                        "allocated_gpus": 0,
+                        "total_gpus": 1
+                    },
+                    "current_size": 0,
+                    "min_size": 0,
+                    "max_size": 0,
+                    "status": "string",
+                    "created_at": "2022-12-16T09:55:00.610Z"
+                }
+            ]
+        }
+    ]
+
+    vm_dict_list = [
+        {
+            "cloud": nodegroup_list_dict["cloud"],
+            "region": nodegroup_list_dict["region"],
+            "vm": nodegroup["vm"]
+        }
+        for nodegroup_list_dict in response
+        for nodegroup in nodegroup_list_dict["nodegroup_list"]
+    ]
+    serving_formatter.render(vm_dict_list)
 
 
 @app.command("list", help="list up available VMs")
