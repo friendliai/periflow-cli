@@ -12,7 +12,7 @@ class DeploymentClientService(ClientService[str]):
     def get_deployment(self, deployment_id: str) -> Dict[str, Any]:
         response = safe_request(
             self.retrieve,
-            err_prefix=f"Deployment ({deployment_id}) is not found. You may enter wrongID.",
+            err_prefix=f"Deployment ({deployment_id}) is not found. You may entered wrong ID.",
         )(pk=deployment_id)
         return response.json()
 
@@ -33,12 +33,19 @@ class DeploymentClientService(ClientService[str]):
             pk=deployment_id
         )
 
+class DeploymentLogClientService(ClientService[str]):
+    def get_deployment_log(self, deployment_id: str) -> Dict[str, Any]:
+        response = safe_request(
+            self.list,
+            err_prefix=f"Log is not available for Deployment ({deployment_id}). You may entered wrong ID or the deployment is not running.",
+        )()
+        return response.json()
 
 class DeploymentMetricsClientService(ClientService):
     def get_metrics(self, deployment_id: str, time_window: int) -> Dict[str, Any]:
         response = safe_request(
             self.list,
-            err_prefix=f"Deployment ({deployment_id}) is not found. You may enter wrongID.",
+            err_prefix=f"Deployment ({deployment_id}) is not found. You may entered wrong ID.",
         )(data=str(time_window))
         return response.json()
 

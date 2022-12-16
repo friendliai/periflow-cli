@@ -20,6 +20,7 @@ from pfcli.service import (
 )
 from pfcli.service.client import (
     DeploymentClientService,
+    DeploymentLogClientService,
     build_client,
 )
 from pfcli.context import get_current_project_id
@@ -58,7 +59,7 @@ deployment_panel = PanelFormatter(
         "status",
         "ready_replicas",
         "vms",
-        "config.gpu_type",
+        "config.vm.gpu_type",
         "config.total_gpus",
         "start",
         "endpoint",
@@ -87,7 +88,7 @@ deployment_table = TableFormatter(
         "status",
         "ready_replicas",
         "vms",
-        "config.gpu_type",
+        "config.vm.gpu_type",
         "config.total_gpus",
         "start",
     ],
@@ -114,9 +115,12 @@ deployment_usage_table = TableFormatter(
     fields=[
         "id",
         "type",
+        "cloud",
+        "vm",
+        "gpu_type",
         "duration",
     ],
-    headers=["ID", "Type", "Total Usage (days, HH:MM:SS)"],
+    headers=["ID", "Type", "Cloud", "VM", "GPU", "Total Usage (days, HH:MM:SS)"],
 )
 
 deployment_panel.add_substitution_rule("waiting", "[bold]waiting")
@@ -157,9 +161,7 @@ def list(
         "-a",
         help="Show all deployments in my project including terminated deployments",
     ),
-    limit: int = typer.Option(
-        20, "--limit", help="The number of deployments to view"
-    ),
+    limit: int = typer.Option(20, "--limit", help="The number of deployments to view"),
     from_oldest: bool = typer.Option(
         False, "--from-oldest", help="Show oldest deployments first"
     ),
@@ -185,9 +187,7 @@ def list(
         )
 
     if not show_all:
-        deployments = [
-            d for d in deployments if "Terminated" not in d["status"]
-        ]
+        deployments = [d for d in deployments if "Terminated" not in d["status"]]
 
     target_deployment_list = deployments[:limit]
     deployment_table.render(target_deployment_list)
@@ -252,16 +252,29 @@ def usage():
     """Show total usage of deployments in project."""
     client: PFSProjectUsageClientService = build_client(ServiceType.PFS_PROJECT_USAGE)
     usages = client.get_deployment_usage()
-
     deployments = [
         {
             "id": id,
             "type": info["deployment_type"],
+            "cloud": info["cloud"].upper() if "cloud" in info else None,
+            "vm": info["vm"]["name"] if info["vm"] in info else None,
+            "gpu_type": info["vm"]["gpu_type"].upper() if info["vm"] in info else None,
             "duration": datetime.timedelta(seconds=int(info["duration"])),
         }
         for id, info in usages.items()
     ]
     deployment_usage_table.render(deployments)
+
+
+@app.command()
+def log(deployment_id: str = typer.Argument(..., help="deployment id to get log.")):
+    """Show deployments log."""
+    client: DeploymentLogClientService = build_client(
+        ServiceType.DEPLOYMENT_LOG, deployment_id=deployment_id
+    )
+    log = client.get_deployment_log(deployment_id=deployment_id)
+    for line in log:
+        typer.echo(line["data"])
 
 
 @app.command()
@@ -326,7 +339,7 @@ def create(
         "model_id": checkpoint_id,
         "deployment_type": deployment_type,
         "name": deployment_name,
-        "gpu_type": gpu_type,
+        "vm": {"gpu_type": gpu_type},
         "cloud": cloud,
         "region": region,
         "total_gpus": total_gpus,

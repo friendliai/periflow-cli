@@ -39,6 +39,7 @@ from pfcli.service.client.project import (
 )
 from pfcli.service.client.deployment import (
     DeploymentClientService,
+    DeploymentLogClientService,
     DeploymentMetricsClientService,
     PFSProjectUsageClientService,
     PFSVMClientService,
@@ -146,6 +147,10 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.DEPLOYMENT: (
         DeploymentClientService,
         Template(get_pfs_uri("deployment/")),
+    ),
+    ServiceType.DEPLOYMENT_LOG: (
+        DeploymentLogClientService,
+        Template(get_pfs_uri("deployment/$deployment_id/log/")),
     ),
     ServiceType.DEPLOYMENT_METRICS: (
         DeploymentMetricsClientService,
