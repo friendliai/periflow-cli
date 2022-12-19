@@ -33,6 +33,7 @@ class DeploymentClientService(ClientService[str]):
             pk=deployment_id
         )
 
+
 class DeploymentLogClientService(ClientService[str]):
     def get_deployment_log(self, deployment_id: str) -> Dict[str, Any]:
         response = safe_request(
@@ -40,6 +41,7 @@ class DeploymentLogClientService(ClientService[str]):
             err_prefix=f"Log is not available for Deployment ({deployment_id}). You may entered wrong ID or the deployment is not running.",
         )()
         return response.json()
+
 
 class DeploymentMetricsClientService(ClientService):
     def get_metrics(self, deployment_id: str, time_window: int) -> Dict[str, Any]:

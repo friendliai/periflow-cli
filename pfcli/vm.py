@@ -5,6 +5,7 @@
 from typing import Optional
 
 import typer
+from dateutil.parser import parse
 
 from pfcli.service import CloudType, PeriFlowService, ServiceType
 from pfcli.service.client import (
@@ -21,7 +22,7 @@ from pfcli.service.client.project import (
     find_project_id,
 )
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils.format import secho_error_and_exit
+from pfcli.utils.format import datetime_to_pretty_str, secho_error_and_exit
 
 
 app = typer.Typer(
@@ -80,7 +81,7 @@ quota_detail_panel = PanelFormatter(
 
 
 serving_formatter = TableFormatter(
-    name="Serving VM instances",
+    name="Serving VM Instances",
     fields=[
         "vm.name",
         "cloud",
@@ -94,8 +95,39 @@ serving_formatter = TableFormatter(
         "GPU",
         "GPU COUNT",
         "Region",
-    ]
+    ],
 )
+
+serving_formatter_for_admin = TableFormatter(
+    name="Serving VM Instances",
+    fields=[
+        "vm.name",
+        "nodegroup_name",
+        "cloud",
+        "gpu_type",
+        "vm.total_gpus",
+        "region",
+        "current_size",
+        "min_size",
+        "max_size",
+        "status",
+        "start",
+    ],
+    headers=[
+        "VM",
+        "Nodegroup Name",
+        "Cloud",
+        "GPU",
+        "GPU Count",
+        "Region",
+        "Current Size",
+        "Min Size",
+        "Max Size",
+        "Status",
+        "Start",
+    ],
+)
+
 
 def vm_list_for_train(cloud: Optional[CloudType], device_type: Optional[str]) -> None:
     """List all VM information for training."""
@@ -132,23 +164,35 @@ def vm_list_for_train(cloud: Optional[CloudType], device_type: Optional[str]) ->
 
 
 def vm_list_for_serve(cloud: Optional[CloudType], device_type: Optional[str]) -> None:
-    pfs_vm_client: PFSVMClientService = build_client(
-        ServiceType.PFS_VM
-    )
+    pfs_vm_client: PFSVMClientService = build_client(ServiceType.PFS_VM)
+    pass
     response = pfs_vm_client.list_vms()
 
     vm_dict_list = [
         {
             "cloud": nodegroup_list_dict["cloud"].upper(),
             "region": nodegroup_list_dict["region"],
-            "vm": nodegroup["vm"],
             "gpu_type": nodegroup["vm"]["gpu_type"].upper(),
+            "start": datetime_to_pretty_str(parse(nodegroup["created_at"]))
+            if nodegroup["created_at"]
+            else None,
+            **nodegroup,
         }
         for nodegroup_list_dict in response
         for nodegroup in nodegroup_list_dict["nodegroup_list"]
         if nodegroup["vm"]["gpu_type"] != "cpu"
     ]
-    serving_formatter.render(vm_dict_list)
+
+    is_admin = False
+    for vm_dict in vm_dict_list:
+        if vm_dict["current_size"]:
+            is_admin = True
+            break
+        is_admin = False
+        break
+
+    formatter = serving_formatter_for_admin if is_admin else serving_formatter
+    formatter.render(vm_dict_list)
 
 
 @app.command("list", help="list up available VMs")
