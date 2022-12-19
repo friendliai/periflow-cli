@@ -185,7 +185,7 @@ def vm_list_for_serve(cloud: Optional[CloudType], device_type: Optional[str]) ->
 
     is_admin = False
     for vm_dict in vm_dict_list:
-        if vm_dict["current_size"]:
+        if vm_dict["status"]:
             is_admin = True
             break
         is_admin = False
