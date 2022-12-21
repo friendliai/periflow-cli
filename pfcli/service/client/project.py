@@ -183,3 +183,27 @@ class PFTProjectVMConfigClientService(ClientService[int], ProjectRequestMixin):
             vm_config_id, [LockStatus.ACTIVE, LockStatus.DELETING]
         )
         return len(vm_locks)
+
+
+class ProjectVMLockClientService(ClientService, ProjectRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_project()
+        super().__init__(template, project_id=self.project_id, **kwargs)
+
+    def list_vm_locks(self, lock_status_list: List[LockStatus]) -> List[Dict[str, Any]]:
+        status_param = ",".join(lock_status_list)
+        response = safe_request(self.list, err_prefix="Failed to inspect locked VMs.")(
+            params={"status": status_param}
+        )
+        return response.json()
+
+    def get_vm_availabilities(self) -> Dict[int, int]:
+        vm_locks = self.list_vm_locks([LockStatus.ACTIVE, LockStatus.DELETING])
+        info = {}
+        for lock in vm_locks:
+            vm_config_id = lock["vm_config_id"]
+            if vm_config_id in info:
+                info[vm_config_id] += 1
+            else:
+                info[vm_config_id] = 1
+        return info
