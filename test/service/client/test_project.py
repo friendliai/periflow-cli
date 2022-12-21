@@ -3,11 +3,11 @@
 """Test ProjectClient Service"""
 
 from copy import deepcopy
+from uuid import UUID
 
 import pytest
 import requests_mock
 import typer
-from uuid import UUID
 
 from pfcli.service import CloudType, CredType, ServiceType, StorageType
 from pfcli.service.client import build_client
