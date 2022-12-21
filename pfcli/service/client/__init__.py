@@ -34,6 +34,7 @@ from pfcli.service.client.project import (
     ProjectClientService,
     ProjectCredentialClientService,
     ProjectDataClientService,
+    ProjectVMLockClientService,
     PFTProjectVMConfigClientService,
     PFTProjectVMQuotaClientService,
 )
@@ -135,6 +136,10 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
         GroupProjectCheckpointClientService,
         Template(get_mr_uri("orgs/$group_id/prjs/$project_id/models/")),
     ),  # pylint: disable=line-too-long
+    ServiceType.PROJECT_VM_LOCK: (
+        ProjectVMLockClientService,
+        Template(get_uri("project/$project_id/vm_lock/")),
+    ),
     ServiceType.PFT_PROJECT_VM_CONFIG: (
         PFTProjectVMConfigClientService,
         Template(get_uri("project/$project_id/vm_config/")),

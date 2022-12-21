@@ -13,6 +13,7 @@ from pfcli.service.client import (
     PFTGroupVMConfigClientService,
     PFTProjectVMConfigClientService,
     PFTProjectVMQuotaClientService,
+    ProjectVMLockClientService,
     build_client,
 )
 from pfcli.service.client.deployment import PFSVMClientService
@@ -77,8 +78,6 @@ quota_detail_panel = PanelFormatter(
         "Organization Limit",
     ],
 )
-
-
 serving_formatter = TableFormatter(
     name="Serving VM instances",
     fields=[
@@ -97,6 +96,7 @@ serving_formatter = TableFormatter(
     ]
 )
 
+
 def vm_list_for_train(cloud: Optional[CloudType], device_type: Optional[str]) -> None:
     """List all VM information for training."""
     vm_quota_client: PFTProjectVMQuotaClientService = build_client(
@@ -108,22 +108,25 @@ def vm_list_for_train(cloud: Optional[CloudType], device_type: Optional[str]) ->
     group_vm_config_client: PFTGroupVMConfigClientService = build_client(
         ServiceType.PFT_GROUP_VM_CONFIG
     )
+    project_vm_lock_client: ProjectVMLockClientService = build_client(
+        ServiceType.PROJECT_VM_LOCK,
+    )
 
-    vm_dict_list = vm_quota_client.list_vm_quotas(vendor=cloud, device_type=device_type)
-    vm_id_map = group_vm_config_client.get_vm_config_id_map()
+    vm_info_list = vm_quota_client.list_vm_quotas(vendor=cloud, device_type=device_type)
+    vm_name_to_id_map = group_vm_config_client.get_vm_config_id_map()
     available_vm_dict_list = []
-    for vm_dict in vm_dict_list:
-        vm_instance_name = vm_dict["vm_config_type"]["code"]
+    vm_availabilities = project_vm_lock_client.get_vm_availabilities()
+    for vm_info in vm_info_list:
+        vm_instance_name = vm_info["vm_config_type"]["code"]
         try:
-            vm_count_in_use = vm_config_client.get_vm_count_in_use(
-                vm_id_map[vm_instance_name]
-            )
-            vm_dict[
+            vm_config_id = vm_name_to_id_map[vm_instance_name]
+            vm_count_in_use = vm_availabilities.get(vm_config_id) or 0
+            vm_info[
                 "quota"
-            ] = f"{vm_dict['quota'] - vm_count_in_use} / {vm_dict['quota']}"
+            ] = f"{vm_info['quota'] - vm_count_in_use} / {vm_info['quota']}"
         except KeyError:
             continue
-        available_vm_dict_list.append(vm_dict)
+        available_vm_dict_list.append(vm_info)
 
     available_vm_dict_list = sorted(
         available_vm_dict_list, key=lambda d: d["vm_config_type"]["code"]

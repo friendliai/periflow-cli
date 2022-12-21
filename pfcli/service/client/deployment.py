@@ -2,7 +2,7 @@
 
 """PeriFlow DeploymentClient Service"""
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 from string import Template
 
 from pfcli.service.client.base import ClientService, safe_request, ProjectRequestMixin
@@ -64,7 +64,7 @@ class PFSProjectUsageClientService(ClientService[str], ProjectRequestMixin):
 
 
 class PFSVMClientService(ClientService):
-    def list_vms(self) -> Dict[str, Any]:
+    def list_vms(self) -> List[Dict[str, Any]]:
         response = safe_request(
             self.list,
             err_prefix="Cannot get vm whitelist from PFS server.",

@@ -7,12 +7,14 @@ from copy import deepcopy
 import pytest
 import requests_mock
 import typer
+from uuid import UUID
 
 from pfcli.service import CloudType, CredType, ServiceType, StorageType
 from pfcli.service.client import build_client
 from pfcli.service.client.project import (
     ProjectCredentialClientService,
     ProjectDataClientService,
+    ProjectVMLockClientService,
     PFTProjectVMConfigClientService,
     PFTProjectVMQuotaClientService,
 )
@@ -42,6 +44,13 @@ def project_vm_config_client(
     user_project_group_context,
 ) -> PFTProjectVMConfigClientService:
     return build_client(ServiceType.PFT_PROJECT_VM_CONFIG)
+
+
+@pytest.fixture
+def project_vm_lock_client(
+    user_project_group_context,
+) -> ProjectVMLockClientService:
+    return build_client(ServiceType.PROJECT_VM_LOCK)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
@@ -103,7 +112,7 @@ def test_project_data_client_create_dataset(
         vendor=StorageType.FAI,
         region="",
         storage_name="",
-        credential_id="f5609b48-5e7e-4431-81d3-23b141847211",
+        credential_id=UUID("f5609b48-5e7e-4431-81d3-23b141847211"),
         metadata={"k": "v"},
         files=[],
         active=False,
@@ -116,7 +125,7 @@ def test_project_data_client_create_dataset(
             vendor=StorageType.FAI,
             region="us-east-1",  # not supported by FAI storage type
             storage_name="",
-            credential_id="f5609b48-5e7e-4431-81d3-23b141847211",
+            credential_id=UUID("f5609b48-5e7e-4431-81d3-23b141847211"),
             metadata={"k": "v"},
             files=[],
             active=False,
@@ -133,7 +142,7 @@ def test_project_data_client_create_dataset(
             vendor=StorageType.FAI,
             region="",
             storage_name="",
-            credential_id="f5609b48-5e7e-4431-81d3-23b141847211",
+            credential_id=UUID("f5609b48-5e7e-4431-81d3-23b141847211"),
             metadata={"k": "v"},
             files=[],
             active=False,
@@ -251,7 +260,7 @@ def test_project_vm_quota_client_list_vm_quotas(
 
     # List VMs filtered by vendor, region and device type
     assert project_vm_quota_client.list_vm_quotas(
-        vendor="azure", device_type="A100"
+        vendor=CloudType.AZURE, device_type="A100"
     ) == [
         {
             "vm_config_type": {
@@ -329,3 +338,29 @@ def test_project_vm_config_client_get_active_vm_count(
     )
     with pytest.raises(typer.Exit):
         project_vm_config_client.get_vm_count_in_use(0)
+
+
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_get_project_vm_locks(
+    requests_mock: requests_mock.Mocker,
+    project_vm_lock_client: ProjectVMLockClientService,
+):
+    requests_mock.get(
+        project_vm_lock_client.url_template.render(
+            **project_vm_lock_client.url_kwargs
+        ),
+        json=[{"vm_config_id": 0}, {"vm_config_id": 1}, {"vm_config_id": 1}]
+    )
+    assert project_vm_lock_client.get_vm_availabilities() == {
+        0: 1,
+        1: 2,
+    }
+
+    requests_mock.get(
+        project_vm_lock_client.url_template.render(
+            **project_vm_lock_client.url_kwargs
+        ),
+        status_code=404,
+    )
+    with pytest.raises(typer.Exit):
+        project_vm_lock_client.get_vm_availabilities()
