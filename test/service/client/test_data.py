@@ -132,14 +132,14 @@ def test_data_client_get_spu_urls(
         url_template.render(dataset_id=0),
         json=[{"path": "/path/to/local/file", "upload_url": "https://s3.bucket.com"}],
     )
-    assert data_client.get_spu_urls(0, ["/path/to/local/file"]) == [
+    assert data_client.get_spu_urls(0, ["/path/to/local/file"], source_path=Path("/path/to/local")) == [
         {"path": "/path/to/local/file", "upload_url": "https://s3.bucket.com"}
     ]
 
     # Failed due to HTTP error
     requests_mock.post(url_template.render(dataset_id=0), status_code=500)
     with pytest.raises(typer.Exit):
-        data_client.get_spu_urls(0, ["/path/to/local/file"])
+        data_client.get_spu_urls(0, ["/path/to/local/file"], source_path=Path("/path/to/local"))
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
@@ -170,11 +170,19 @@ def test_data_client_get_mpu_urls(
         write_file(target_file_path, S3_UPLOAD_SIZE_LIMIT * 2)
 
         requests_mock.post(url_template.render(dataset_id=0), json=resp_mock)
-        assert data_client.get_mpu_urls(0, [target_file_path]) == [resp_mock]
+        assert data_client.get_mpu_urls(
+            obj_id=0,
+            paths=[target_file_path],
+            source_path=Path(temp_dir),
+        ) == [resp_mock]
 
         requests_mock.post(url_template.render(dataset_id=0), status_code=500)
         with pytest.raises(typer.Exit):
-            data_client.get_mpu_urls(0, [target_file_path])
+            data_client.get_mpu_urls(
+                obj_id=0,
+                paths=[target_file_path],
+                source_path=Path(temp_dir),
+            )
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
@@ -257,7 +265,6 @@ def test_upload_small_files(
             ],
             mpu_url_dicts=[],
             source_path=Path(tmp_dir),
-            expand=True,
         )
 
         # Upload failed
@@ -273,7 +280,6 @@ def test_upload_small_files(
                 ],
                 mpu_url_dicts=[],
                 source_path=Path(tmp_dir),
-                expand=True,
             )
 
 
@@ -317,7 +323,6 @@ def test_upload_large_files(
                 },
             ],
             source_path=Path(tmp_dir),
-            expand=True,
         )
 
         # Upload failed
@@ -343,5 +348,4 @@ def test_upload_large_files(
                     },
                 ],
                 source_path=Path(tmp_dir),
-                expand=True,
             )
