@@ -252,9 +252,8 @@ def upload(
     """Create a dataset by uploading dataset files in my local file system.
     The created dataset will have "fai" cloud type.
     """
-    expand = source_path.endswith("/")
+    expand = source_path.endswith("/") or os.path.isfile(source_path)
     src_path: Path = Path(source_path)
-    src_path = src_path if not expand else src_path.parent
     if not src_path.exists():
         secho_error_and_exit(f"The source path({src_path}) does not exist.")
 
@@ -289,8 +288,13 @@ def upload(
         typer.echo(f"Start uploading objects to craete a dataset({name})...")
         spu_targets = expand_paths(src_path, FileSizeType.SMALL)
         mpu_targets = expand_paths(src_path, FileSizeType.LARGE)
+        src_path = src_path if not expand else src_path.parent
         spu_url_dicts = (
-            client.get_spu_urls(obj_id=dataset_id, paths=spu_targets, source_path=src_path)
+            client.get_spu_urls(
+                obj_id=dataset_id,
+                paths=spu_targets,
+                source_path=src_path,
+            )
             if len(spu_targets) > 0
             else []
         )
