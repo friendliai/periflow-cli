@@ -196,7 +196,9 @@ class ProjectRequestMixin:
 
 
 class UploadableClientService(ClientService[T], Generic[T]):
-    def get_spu_urls(self, obj_id: T, paths: List[str], source_path: Path) -> List[Dict[str, Any]]:
+    def get_spu_urls(
+        self, obj_id: T, paths: List[str], source_path: Path
+    ) -> List[Dict[str, Any]]:
         """Get single part upload URLs for multiple files.
 
         Args:
@@ -207,7 +209,9 @@ class UploadableClientService(ClientService[T], Generic[T]):
         Returns:
             List[Dict[str, Any]]: A response body that has presigned URL info to download files.
         """
-        paths = [str(Path(p).relative_to(source_path)) for p in paths if Path(p).is_file()]
+        paths = [
+            str(Path(p).relative_to(source_path)) for p in paths if Path(p).is_file()
+        ]
         response = safe_request(self.post, err_prefix="Failed to get presigned URLs.")(
             path=f"{obj_id}/upload/", json={"paths": paths}
         )
@@ -246,7 +250,7 @@ class UploadableClientService(ClientService[T], Generic[T]):
                 path=f"{obj_id}/start_mpu/",
                 json={
                     "path": str(Path(path).relative_to(source_path)),
-                    "num_parts":num_parts,
+                    "num_parts": num_parts,
                 },
             )
             start_mpu_resps.append(response.json())

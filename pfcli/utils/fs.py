@@ -63,9 +63,7 @@ def get_workspace_files(dir_path: Path) -> List[Path]:
     return list(all_files.difference(matched_files))
 
 
-def storage_path_to_local_path(
-    storage_path: str, source_path: Path
-) -> str:
+def storage_path_to_local_path(storage_path: str, source_path: Path) -> str:
     return str(source_path / Path(storage_path))
 
 

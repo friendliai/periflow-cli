@@ -434,9 +434,7 @@ def upload(
         src_path = src_path if expand else src_path.parent
         spu_url_dicts = (
             form_client.get_spu_urls(
-                obj_id=ckpt_form_id,
-                paths=spu_targets,
-                source_path=src_path
+                obj_id=ckpt_form_id, paths=spu_targets, source_path=src_path
             )
             if len(spu_targets) > 0
             else []
@@ -460,14 +458,10 @@ def upload(
         )
 
         files = [
-            get_file_info(url_info["path"], src_path)
-            for url_info in spu_url_dicts
+            get_file_info(url_info["path"], src_path) for url_info in spu_url_dicts
         ]
         files.extend(
-            [
-                get_file_info(url_info["path"], src_path)
-                for url_info in mpu_url_dicts
-            ]
+            [get_file_info(url_info["path"], src_path) for url_info in mpu_url_dicts]
         )
         form_client.update_checkpoint_files(ckpt_form_id=ckpt_form_id, files=files)
     except Exception as exc:

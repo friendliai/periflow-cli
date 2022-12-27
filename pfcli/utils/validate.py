@@ -10,7 +10,11 @@ import typer
 
 from pfcli.service import CloudType, cloud_region_map, StorageType, storage_region_map
 from pfcli.utils.format import secho_error_and_exit
-from pfcli.utils.version import get_latest_cli_version, is_latest_cli_version, PERIFLOW_CLI_NAME
+from pfcli.utils.version import (
+    get_latest_cli_version,
+    is_latest_cli_version,
+    PERIFLOW_CLI_NAME,
+)
 
 
 def validate_storage_region(vendor: StorageType, region: str):

@@ -317,14 +317,10 @@ def upload(
         )
 
         files = [
-            get_file_info(url_info["path"], src_path)
-            for url_info in spu_url_dicts
+            get_file_info(url_info["path"], src_path) for url_info in spu_url_dicts
         ]
         files.extend(
-            [
-                get_file_info(url_info["path"], src_path)
-                for url_info in mpu_url_dicts
-            ]
+            [get_file_info(url_info["path"], src_path) for url_info in mpu_url_dicts]
         )
         dataset = client.update_dataset(
             dataset_id, files=files, metadata=metadata, active=True
