@@ -93,7 +93,7 @@ serving_formatter = TableFormatter(
         "GPU",
         "GPU COUNT",
         "Region",
-    ]
+    ],
 )
 
 
@@ -135,9 +135,7 @@ def vm_list_for_train(cloud: Optional[CloudType], device_type: Optional[str]) ->
 
 
 def vm_list_for_serve(cloud: Optional[CloudType], device_type: Optional[str]) -> None:
-    pfs_vm_client: PFSVMClientService = build_client(
-        ServiceType.PFS_VM
-    )
+    pfs_vm_client: PFSVMClientService = build_client(ServiceType.PFS_VM)
     response = pfs_vm_client.list_vms()
 
     vm_dict_list = [

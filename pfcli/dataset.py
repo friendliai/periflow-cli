@@ -252,12 +252,13 @@ def upload(
     """Create a dataset by uploading dataset files in my local file system.
     The created dataset will have "fai" cloud type.
     """
-    client: DataClientService = build_client(ServiceType.DATA)
-    project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
-    expand = source_path.endswith("/")
+    expand = source_path.endswith("/") or os.path.isfile(source_path)
     src_path: Path = Path(source_path)
     if not src_path.exists():
         secho_error_and_exit(f"The source path({src_path}) does not exist.")
+
+    client: DataClientService = build_client(ServiceType.DATA)
+    project_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
 
     dataset_id = project_client.get_id_by_name(name)
     if dataset_id is not None:
@@ -285,10 +286,15 @@ def upload(
 
     try:
         typer.echo(f"Start uploading objects to craete a dataset({name})...")
-        spu_targets = expand_paths(src_path, expand, FileSizeType.SMALL)
-        mpu_targets = expand_paths(src_path, expand, FileSizeType.LARGE)
+        spu_targets = expand_paths(src_path, FileSizeType.SMALL)
+        mpu_targets = expand_paths(src_path, FileSizeType.LARGE)
+        src_path = src_path if not expand else src_path.parent
         spu_url_dicts = (
-            client.get_spu_urls(obj_id=dataset_id, paths=spu_targets)
+            client.get_spu_urls(
+                obj_id=dataset_id,
+                paths=spu_targets,
+                source_path=src_path,
+            )
             if len(spu_targets) > 0
             else []
         )
@@ -296,7 +302,7 @@ def upload(
             client.get_mpu_urls(
                 obj_id=dataset_id,
                 paths=mpu_targets,
-                src_path=src_path.name if expand else None,
+                source_path=src_path,
             )
             if len(mpu_targets) > 0
             else []
@@ -307,19 +313,14 @@ def upload(
             spu_url_dicts=spu_url_dicts,
             mpu_url_dicts=mpu_url_dicts,
             source_path=src_path,
-            expand=expand,
             max_workers=max_workers,
         )
 
         files = [
-            get_file_info(url_info["path"], src_path, expand)
-            for url_info in spu_url_dicts
+            get_file_info(url_info["path"], src_path) for url_info in spu_url_dicts
         ]
         files.extend(
-            [
-                get_file_info(url_info["path"], src_path, expand)
-                for url_info in mpu_url_dicts
-            ]
+            [get_file_info(url_info["path"], src_path) for url_info in mpu_url_dicts]
         )
         dataset = client.update_dataset(
             dataset_id, files=files, metadata=metadata, active=True

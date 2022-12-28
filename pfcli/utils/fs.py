@@ -63,20 +63,12 @@ def get_workspace_files(dir_path: Path) -> List[Path]:
     return list(all_files.difference(matched_files))
 
 
-def storage_path_to_local_path(
-    storage_path: str, source_path: Path, expand: bool
-) -> str:
-    if source_path.is_file():
-        return str(source_path)
-
-    if expand:
-        return str(source_path / Path(storage_path))
-
-    return str(source_path / Path(storage_path.split("/", 1)[1]))
+def storage_path_to_local_path(storage_path: str, source_path: Path) -> str:
+    return str(source_path / Path(storage_path))
 
 
-def get_file_info(storage_path: str, source_path: Path, expand: bool) -> Dict[str, Any]:
-    loacl_path = storage_path_to_local_path(storage_path, source_path, expand)
+def get_file_info(storage_path: str, source_path: Path) -> Dict[str, Any]:
+    loacl_path = storage_path_to_local_path(storage_path, source_path)
     return {
         "name": os.path.basename(storage_path),
         "path": storage_path,
@@ -190,15 +182,25 @@ def filter_files_by_size(paths: List[str], size_type: FileSizeType) -> List[str]
         return res
 
 
-def expand_paths(path: Path, expand: bool, size_type: FileSizeType) -> List[str]:
+def expand_paths(path: Path, size_type: FileSizeType) -> List[str]:
+    """Expand all file paths from the source path.
+
+    Args:
+        path (Path): The source path to expand files
+        size_type (FileSizeType): The file size type to filter
+
+    Returns:
+        List[str]: A list of file paths from the source path
+    """
     if path.is_file():
-        paths = [str(path.name)]
+        paths = [str(path)]
         paths = filter_files_by_size(paths, size_type)
     else:
         paths = [str(p) for p in path.rglob("*")]
         paths = filter_files_by_size(paths, size_type)
-        rel_path = path if expand else path.parent
-        paths = [str(Path(p).relative_to(rel_path)) for p in paths if Path(p).is_file()]
+
+    # Filter files only
+    paths = [path for path in paths if os.path.isfile(path)]
 
     return paths
 
