@@ -2,16 +2,17 @@
 
 """PeriFlow CLI File System Management Utilities"""
 
+import re
+import os
+import zipfile
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 from contextlib import contextmanager
 from datetime import datetime
 from dateutil.tz import tzlocal
 from enum import Enum
 from functools import wraps
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-import zipfile
 
 import pathspec
 import requests
@@ -64,7 +65,7 @@ def get_workspace_files(dir_path: Path) -> List[Path]:
 
 
 def storage_path_to_local_path(storage_path: str, source_path: Path) -> str:
-    return str(source_path / Path(storage_path))
+    return strip_storage_path_prefix(str(source_path / Path(storage_path)))
 
 
 def get_file_info(storage_path: str, source_path: Path) -> Dict[str, Any]:
@@ -325,3 +326,22 @@ def upload_part(
         "etag": etag,
         "part_number": part_number,
     }
+
+
+def strip_storage_path_prefix(path: str) -> str:
+    return re.sub(
+        pattern=r"iter_\d{7}/mp\d{3}-\d{3}pp\d{3}-\d{3}/",
+        repl="",
+        string=path,
+    )
+
+
+def attach_storage_path_prefix(
+    path: str,
+    iteration: int,
+    mp_rank: int,
+    mp_degree: int,
+    pp_rank: int,
+    pp_degree: int,
+) -> str:
+    return f"iter_{iteration:07d}/mp{mp_rank:03d}-{mp_degree:03d}pp{pp_rank:03d}-{pp_degree:03d}/{path}"

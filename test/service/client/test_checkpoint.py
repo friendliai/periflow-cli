@@ -181,12 +181,22 @@ def test_checkpoint_client_upload(
 
     requests_mock.post(url, json=resp_body)
     assert (
-        checkpoint_form_client.get_spu_urls(obj_id=ckpt_form_id, paths=paths, source_path=Path("."))
+        checkpoint_form_client.get_spu_urls(
+            obj_id=ckpt_form_id,
+            paths=paths,
+            source_path=Path("."),
+            iteration=100,
+        )
         == resp_body
     )
     requests_mock.post(url, status_code=404)
     with pytest.raises(typer.Exit):
-        checkpoint_form_client.get_spu_urls(obj_id=ckpt_form_id, paths=paths, source_path=Path("."))
+        checkpoint_form_client.get_spu_urls(
+            obj_id=ckpt_form_id,
+            paths=paths,
+            source_path=Path("."),
+            iteration=100,
+        )
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
@@ -223,6 +233,7 @@ def test_checkpoint_client_start_multipart_upload(
             obj_id=ckpt_form_id,
             paths=[os.path.join(dir, path) for path in paths],
             source_path=Path(dir),
+            iteration=100,
         ) == [resp_body]
         requests_mock.post(url, status_code=404)
         with pytest.raises(typer.Exit):
@@ -230,6 +241,7 @@ def test_checkpoint_client_start_multipart_upload(
                 obj_id=ckpt_form_id,
                 paths=[os.path.join(dir, path) for path in paths],
                 source_path=Path(dir),
+                iteration=100,
             )
 
 
