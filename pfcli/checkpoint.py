@@ -340,7 +340,7 @@ def download(
         typer.secho(f"Downloading files {i + 1}/{len(files)}...")
         download_file(
             url=file["download_url"],
-            out=os.path.join(save_directory, strip_storage_path_prefix(file["path"]))
+            out=os.path.join(save_directory, strip_storage_path_prefix(file["path"])),
         )
 
 
@@ -449,7 +449,8 @@ def upload(
                 mp_degree=1,
                 pp_rank=0,
                 pp_degree=1,
-            ) for p in spu_local_paths
+            )
+            for p in spu_local_paths
         ]
         mpu_storage_paths = [
             attach_storage_path_prefix(
@@ -459,7 +460,8 @@ def upload(
                 mp_degree=1,
                 pp_rank=0,
                 pp_degree=1,
-            ) for p in mpu_local_paths
+            )
+            for p in mpu_local_paths
         ]
         spu_url_dicts = (
             form_client.get_spu_urls(
@@ -472,7 +474,7 @@ def upload(
             form_client.get_mpu_urls(
                 obj_id=ckpt_form_id,
                 local_paths=mpu_local_paths,
-                storage_paths=mpu_storage_paths
+                storage_paths=mpu_storage_paths,
             )
             if len(mpu_storage_paths) > 0
             else []

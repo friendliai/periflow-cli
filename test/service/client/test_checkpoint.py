@@ -228,14 +228,14 @@ def test_checkpoint_client_start_multipart_upload(
         assert checkpoint_form_client.get_mpu_urls(
             obj_id=ckpt_form_id,
             local_paths=[os.path.join(dir, path) for path in paths],
-            storage_paths=paths
+            storage_paths=paths,
         ) == [resp_body]
         requests_mock.post(url, status_code=404)
         with pytest.raises(typer.Exit):
             checkpoint_form_client.get_mpu_urls(
                 obj_id=ckpt_form_id,
                 local_paths=[os.path.join(dir, path) for path in paths],
-                storage_paths=paths
+                storage_paths=paths,
             )
 
 

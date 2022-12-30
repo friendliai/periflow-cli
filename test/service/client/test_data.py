@@ -134,16 +134,12 @@ def test_data_client_get_spu_urls(
     )
     assert data_client.get_spu_urls(
         obj_id=0, storage_paths=["/path/to/local/file"]
-    ) == [
-        {"path": "/path/to/local/file", "upload_url": "https://s3.bucket.com"}
-    ]
+    ) == [{"path": "/path/to/local/file", "upload_url": "https://s3.bucket.com"}]
 
     # Failed due to HTTP error
     requests_mock.post(url_template.render(dataset_id=0), status_code=500)
     with pytest.raises(typer.Exit):
-        data_client.get_spu_urls(
-            obj_id=0, storage_paths=["/path/to/local/file"]
-        )
+        data_client.get_spu_urls(obj_id=0, storage_paths=["/path/to/local/file"])
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")

@@ -302,7 +302,9 @@ def upload(
         )
         mpu_url_dicts = (
             client.get_mpu_urls(
-                obj_id=dataset_id, local_paths=mpu_local_paths, storage_paths=mpu_storage_paths
+                obj_id=dataset_id,
+                local_paths=mpu_local_paths,
+                storage_paths=mpu_storage_paths,
             )
             if len(mpu_storage_paths) > 0
             else []

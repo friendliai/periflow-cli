@@ -346,10 +346,8 @@ def test_get_project_vm_locks(
     project_vm_lock_client: ProjectVMLockClientService,
 ):
     requests_mock.get(
-        project_vm_lock_client.url_template.render(
-            **project_vm_lock_client.url_kwargs
-        ),
-        json=[{"vm_config_id": 0}, {"vm_config_id": 1}, {"vm_config_id": 1}]
+        project_vm_lock_client.url_template.render(**project_vm_lock_client.url_kwargs),
+        json=[{"vm_config_id": 0}, {"vm_config_id": 1}, {"vm_config_id": 1}],
     )
     assert project_vm_lock_client.get_vm_availabilities() == {
         0: 1,
@@ -357,9 +355,7 @@ def test_get_project_vm_locks(
     }
 
     requests_mock.get(
-        project_vm_lock_client.url_template.render(
-            **project_vm_lock_client.url_kwargs
-        ),
+        project_vm_lock_client.url_template.render(**project_vm_lock_client.url_kwargs),
         status_code=404,
     )
     with pytest.raises(typer.Exit):
