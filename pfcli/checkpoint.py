@@ -36,6 +36,7 @@ from pfcli.service.formatter import (
 )
 from pfcli.utils.format import datetime_to_pretty_str, secho_error_and_exit
 from pfcli.utils.fs import (
+    attach_storage_path_prefix,
     strip_storage_path_prefix,
     download_file,
     expand_paths,
@@ -436,24 +437,44 @@ def upload(
 
     try:
         typer.echo(f"Start uploading objects to create a checkpoint({name})...")
-        spu_targets = expand_paths(src_path, FileSizeType.SMALL)
-        mpu_targets = expand_paths(src_path, FileSizeType.LARGE)
+        spu_local_paths = expand_paths(src_path, FileSizeType.SMALL)
+        mpu_local_paths = expand_paths(src_path, FileSizeType.LARGE)
         src_path = src_path if expand else src_path.parent
+        # TODO: Need to support distributed checkpoints for model parallelism.
+        spu_storage_paths = [
+            attach_storage_path_prefix(
+                path=str(Path(p).relative_to(src_path)),
+                iteration=iteration or 0,
+                mp_rank=0,
+                mp_degree=1,
+                pp_rank=0,
+                pp_degree=1,
+            ) for p in spu_local_paths
+        ]
+        mpu_storage_paths = [
+            attach_storage_path_prefix(
+                path=str(Path(p).relative_to(src_path)),
+                iteration=iteration or 0,
+                mp_rank=0,
+                mp_degree=1,
+                pp_rank=0,
+                pp_degree=1,
+            ) for p in mpu_local_paths
+        ]
         spu_url_dicts = (
             form_client.get_spu_urls(
-                obj_id=ckpt_form_id, paths=spu_targets, source_path=src_path, iteration=iteration or 0,
+                obj_id=ckpt_form_id, storage_paths=spu_storage_paths
             )
-            if len(spu_targets) > 0
+            if len(spu_storage_paths) > 0
             else []
         )
         mpu_url_dicts = (
             form_client.get_mpu_urls(
                 obj_id=ckpt_form_id,
-                paths=mpu_targets,
-                source_path=src_path,
-                iteration=iteration or 0,
+                local_paths=mpu_local_paths,
+                storage_paths=mpu_storage_paths
             )
-            if len(mpu_targets) > 0
+            if len(mpu_storage_paths) > 0
             else []
         )
 

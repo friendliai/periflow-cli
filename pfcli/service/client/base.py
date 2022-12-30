@@ -200,51 +200,35 @@ class UploadableClientService(ClientService[T], Generic[T]):
     def get_spu_urls(
         self,
         obj_id: T,
-        paths: List[str],
-        source_path: Path,
-        iteration: Optional[int] = None,
+        storage_paths: List[str],
     ) -> List[Dict[str, Any]]:
         """Get single part upload URLs for multiple files.
 
         Args:
             obj_id (T): Uploadable object ID
-            paths (List[str]): A list of local dataset paths
-            source_path (Path): The root path of ``paths`` arguemnts.
+            storage_paths (List[str]): A list of cloud storage paths of target files
 
         Returns:
-            List[Dict[str, Any]]: A response body that has presigned URL info to download files.
+            List[Dict[str, Any]]: A response body that has presigned URL info to upload files.
         """
-        paths = [
-            str(Path(p).relative_to(source_path)) for p in paths if Path(p).is_file()
-        ]
-        if iteration is not None:
-            paths = [
-                attach_storage_path_prefix(
-                    path=path,
-                    iteration=iteration,
-                    mp_rank=0,
-                    mp_degree=1,
-                    pp_rank=0,
-                    pp_degree=1,
-                ) for path in paths
-            ]
         response = safe_request(self.post, err_prefix="Failed to get presigned URLs.")(
-            path=f"{obj_id}/upload/", json={"paths": paths}
+            path=f"{obj_id}/upload/", json={"paths": storage_paths}
         )
         return response.json()
 
     def get_mpu_urls(
         self,
         obj_id: T,
-        paths: List[str],
-        source_path: Path, iteration: Optional[int] = None,
+        local_paths: List[str],
+        storage_paths: List[str],
     ) -> List[Dict[str, Any]]:
         """Get multipart upload URLs for multiple datasets
 
         Args:
             obj_id (T): Uploadable object ID
-            paths (List[str]): A list of upload target paths
-            source_path (Path): The root path of ``paths`` arguemnts.
+            local_paths (List[str]): A list local paths to target files. The path can be
+                                     either absolute or relative.
+            storage_paths (List[str]): A list of storage paths to target files.
 
         Returns:
             List[Dict[str, Any]]: A list of multipart upload responses for multiple target files.
@@ -260,25 +244,15 @@ class UploadableClientService(ClientService[T], Generic[T]):
             }
         """
         start_mpu_resps = []
-        for path in paths:
-            num_parts = math.ceil(get_file_size(path) / S3_MPU_PART_MAX_SIZE)
-            path=str(Path(path).relative_to(source_path))
-            if iteration is not None:
-                path = attach_storage_path_prefix(
-                    path=path,
-                    iteration=iteration,
-                    mp_rank=0,
-                    mp_degree=1,
-                    pp_rank=0,
-                    pp_degree=1,
-                )
+        for local_path, storage_path in zip(local_paths, storage_paths):
+            num_parts = math.ceil(get_file_size(local_path) / S3_MPU_PART_MAX_SIZE)
             response = safe_request(
                 self.post,
                 err_prefix="Failed to get presigned URLs for multipart upload.",
             )(
                 path=f"{obj_id}/start_mpu/",
                 json={
-                    "path": path,
+                    "path": storage_path,
                     "num_parts": num_parts,
                 },
             )
