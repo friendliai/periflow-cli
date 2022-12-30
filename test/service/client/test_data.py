@@ -132,14 +132,14 @@ def test_data_client_get_spu_urls(
         url_template.render(dataset_id=0),
         json=[{"path": "/path/to/local/file", "upload_url": "https://s3.bucket.com"}],
     )
-    assert data_client.get_spu_urls(0, ["/path/to/local/file"], source_path=Path("/path/to/local")) == [
-        {"path": "/path/to/local/file", "upload_url": "https://s3.bucket.com"}
-    ]
+    assert data_client.get_spu_urls(
+        obj_id=0, storage_paths=["/path/to/local/file"]
+    ) == [{"path": "/path/to/local/file", "upload_url": "https://s3.bucket.com"}]
 
     # Failed due to HTTP error
     requests_mock.post(url_template.render(dataset_id=0), status_code=500)
     with pytest.raises(typer.Exit):
-        data_client.get_spu_urls(0, ["/path/to/local/file"], source_path=Path("/path/to/local"))
+        data_client.get_spu_urls(obj_id=0, storage_paths=["/path/to/local/file"])
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
@@ -172,16 +172,16 @@ def test_data_client_get_mpu_urls(
         requests_mock.post(url_template.render(dataset_id=0), json=resp_mock)
         assert data_client.get_mpu_urls(
             obj_id=0,
-            paths=[target_file_path],
-            source_path=Path(temp_dir),
+            local_paths=[target_file_path],
+            storage_paths=["large_file"],
         ) == [resp_mock]
 
         requests_mock.post(url_template.render(dataset_id=0), status_code=500)
         with pytest.raises(typer.Exit):
             data_client.get_mpu_urls(
                 obj_id=0,
-                paths=[target_file_path],
-                source_path=Path(temp_dir),
+                local_paths=[target_file_path],
+                storage_paths=["large_file"],
             )
 
 

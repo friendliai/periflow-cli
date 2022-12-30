@@ -2,16 +2,17 @@
 
 """PeriFlow CLI File System Management Utilities"""
 
+import re
+import os
+import zipfile
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
 from contextlib import contextmanager
 from datetime import datetime
 from dateutil.tz import tzlocal
 from enum import Enum
 from functools import wraps
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-import zipfile
 
 import pathspec
 import requests
@@ -64,7 +65,7 @@ def get_workspace_files(dir_path: Path) -> List[Path]:
 
 
 def storage_path_to_local_path(storage_path: str, source_path: Path) -> str:
-    return str(source_path / Path(storage_path))
+    return strip_storage_path_prefix(str(source_path / storage_path))
 
 
 def get_file_info(storage_path: str, source_path: Path) -> Dict[str, Any]:
@@ -301,6 +302,19 @@ def upload_part(
     ctx: tqdm,
     is_last_part: bool,
 ) -> Dict[str, Any]:
+    """Upload a specific part of the multipart upload payload.
+
+    Args:
+        file_path (str): Path to file to upload
+        chunk_index (int): Chunk index to upload
+        part_number (int): Part number of the multipart upload
+        upload_url (str): A presigned URL for the multipart upload
+        ctx (tqdm): tqdm context to update the progress
+        is_last_part (bool): Whether this part is the last part of the payload.
+
+    Returns:
+        Dict[str, Any]: _description_
+    """
     with open(file_path, "rb") as f:
         fileno = f.fileno()
         total_file_size = os.fstat(fileno).st_size
@@ -325,3 +339,45 @@ def upload_part(
         "etag": etag,
         "part_number": part_number,
     }
+
+
+def strip_storage_path_prefix(path: str) -> str:
+    """Strip a prefix about auxiliary checkpoint info from the path.
+
+    Args:
+        path (str): Actual checkpoint storage path. The path may starts with the prefix
+                    that contain the iteration number and distributed training configuration
+
+    Returns:
+        str: Path without the prefix
+    """
+    return re.sub(
+        pattern=r"iter_\d{7}/mp\d{3}-\d{3}pp\d{3}-\d{3}/",
+        repl="",
+        string=path,
+    )
+
+
+def attach_storage_path_prefix(
+    path: str,
+    iteration: int,
+    mp_rank: int,
+    mp_degree: int,
+    pp_rank: int,
+    pp_degree: int,
+) -> str:
+    """Attach a prefix that has information about iteration and distributed training to
+    the checkpoint storage path.
+
+    Args:
+        path (str): The relative path to file
+        iteration (int): Checkpoint iteration number
+        mp_rank (int): Model parallelism(a.k.a. tensor parallelism) rank
+        mp_degree (int): Model parallelism(a.k.a. tensor parallelism) degree
+        pp_rank (int): Pipelined model parallelism rank
+        pp_degree (int): Pipelined model parallelism degree
+
+    Returns:
+        str: Storage path with the prefix
+    """
+    return f"iter_{iteration:07d}/mp{mp_rank:03d}-{mp_degree:03d}pp{pp_rank:03d}-{pp_degree:03d}/{path}"

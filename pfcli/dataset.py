@@ -286,25 +286,27 @@ def upload(
 
     try:
         typer.echo(f"Start uploading objects to craete a dataset({name})...")
-        spu_targets = expand_paths(src_path, FileSizeType.SMALL)
-        mpu_targets = expand_paths(src_path, FileSizeType.LARGE)
-        src_path = src_path if not expand else src_path.parent
+        spu_local_paths = expand_paths(src_path, FileSizeType.SMALL)
+        mpu_local_paths = expand_paths(src_path, FileSizeType.LARGE)
+        src_path = src_path if expand else src_path.parent
+        spu_storage_paths = [
+            str(Path(p).relative_to(src_path)) for p in spu_local_paths
+        ]
+        mpu_storage_paths = [
+            str(Path(p).relative_to(src_path)) for p in mpu_local_paths
+        ]
         spu_url_dicts = (
-            client.get_spu_urls(
-                obj_id=dataset_id,
-                paths=spu_targets,
-                source_path=src_path,
-            )
-            if len(spu_targets) > 0
+            client.get_spu_urls(obj_id=dataset_id, storage_paths=spu_storage_paths)
+            if len(spu_storage_paths) > 0
             else []
         )
         mpu_url_dicts = (
             client.get_mpu_urls(
                 obj_id=dataset_id,
-                paths=mpu_targets,
-                source_path=src_path,
+                local_paths=mpu_local_paths,
+                storage_paths=mpu_storage_paths,
             )
-            if len(mpu_targets) > 0
+            if len(mpu_storage_paths) > 0
             else []
         )
 
