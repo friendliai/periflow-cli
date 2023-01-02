@@ -2,17 +2,12 @@
 
 """Test DeploymentClient Service"""
 
-from copy import deepcopy
-from unittest.mock import AsyncMock, patch
-
 import pytest
 import requests_mock
 import typer
 
-from pfcli.service import DeploymentType, LogType, ServiceType
-from pfcli.service.auth import TokenType
+from pfcli.service import DeploymentType, ServiceType
 from pfcli.service.client import build_client
-from pfcli.service.client import deployment
 from pfcli.service.client.deployment import (
     DeploymentClientService,
     DeploymentMetricsClientService,
@@ -31,7 +26,7 @@ def deployment_metrics_client() -> DeploymentMetricsClientService:
 
 
 @pytest.fixture
-def project_usage_client() -> PFSProjectUsageClientService:
+def project_usage_client(user_project_group_context) -> PFSProjectUsageClientService:
     return build_client(ServiceType.PFS_PROJECT_USAGE)
 
 
