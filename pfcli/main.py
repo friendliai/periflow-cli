@@ -38,6 +38,7 @@ from pfcli.service.formatter import PanelFormatter
 from pfcli.utils.format import secho_error_and_exit
 from pfcli.utils.url import get_uri
 from pfcli.utils.validate import validate_cli_version
+from pfcli.utils.version import get_installed_cli_version
 
 app = typer.Typer(
     help="Welcome to PeriFlow 🤗",
@@ -161,6 +162,12 @@ def passwd(
     client.change_password(old_password, new_password)
 
     typer.secho("Password is changed successfully!", fg=typer.colors.BLUE)
+
+
+@app.command(help="Check the installed package version")
+def version():
+    installed_version = get_installed_cli_version()
+    typer.echo(installed_version)
 
 
 def _verify(
