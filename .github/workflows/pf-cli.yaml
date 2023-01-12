@@ -12,7 +12,6 @@ on:
   push:
     branches:
       - main
-      - cli-ci
   pull_request:
     types:
       - opened
