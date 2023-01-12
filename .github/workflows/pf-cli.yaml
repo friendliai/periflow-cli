@@ -1,0 +1,42 @@
+# Copyright (c) 2023-present, FriendliAI Inc. All rights reserved.
+#
+# This workflow will install Python dependencies, run tests with multiple versions of Python
+
+name: Periflow CLI
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+      - cli-ci
+  pull_request:
+    types:
+      - opened
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      id: setup-python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Periflow CLI
+      run: pip install periflow-cli
+
+
+    - name: Run Unit Tests
+      run: |
+        pip install pytest
+        pytest periflow-cli/test
