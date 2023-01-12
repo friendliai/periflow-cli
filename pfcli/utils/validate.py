@@ -3,7 +3,6 @@
 """PeriFlow CLI Validation Utilities"""
 
 from datetime import datetime
-from importlib.metadata import version
 from typing import List, Optional
 
 import typer
@@ -11,6 +10,7 @@ import typer
 from pfcli.service import CloudType, cloud_region_map, StorageType, storage_region_map
 from pfcli.utils.format import secho_error_and_exit
 from pfcli.utils.version import (
+    get_installed_cli_version,
     get_latest_cli_version,
     is_latest_cli_version,
     PERIFLOW_CLI_NAME,
@@ -64,7 +64,7 @@ def validate_parallelism_order(value: str) -> List[str]:
 
 
 def validate_cli_version() -> None:
-    installed_version = version(PERIFLOW_CLI_NAME)
+    installed_version = get_installed_cli_version()
     if not is_latest_cli_version(installed_version):
         latest_version = get_latest_cli_version()
         secho_error_and_exit(
