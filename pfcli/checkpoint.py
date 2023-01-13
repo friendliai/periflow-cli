@@ -190,8 +190,8 @@ def view(
     ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
 
     panel_formatter.render([ckpt])
-    # Serving model info.
-    if "attributes" in ckpt and "head_size" in ckpt["attributes"]:
+    # Only show serving model info when form category is `ORCA`.
+    if ckpt["forms"][0]["form_category"] == "ORCA":
         model_panel = gpt_model_info_panel
         if not "model_type" in ckpt["attributes"]:
             ckpt["attributes"]["model_type"] = "gpt"
