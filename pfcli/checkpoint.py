@@ -95,9 +95,10 @@ panel_formatter = PanelFormatter(
 json_formatter = JSONFormatter(name="Attributes")
 tree_formatter = TreeFormatter(name="Files")
 
-model_info_panel = PanelFormatter(
+gpt_model_info_panel = PanelFormatter(
     name="Model Info",
     fields=[
+        "model_type",
         "head_size",
         "num_heads",
         "num_layers",
@@ -107,13 +108,46 @@ model_info_panel = PanelFormatter(
         "special_token_ids",
     ],
     headers=[
+        "Model Type",
         "Head Size",
         "#Heads",
-        "#Layers",
+        "#Encoder Layers",
         "Max Length",
         "Vocab Size",
         "EOS Token",
         "Special Token IDs",
+    ],
+)
+
+blender_model_info_panel = PanelFormatter(
+    name="Model Info",
+    fields=[
+        "model_type",
+        "head_size",
+        "num_heads",
+        "num_encoder_layers",
+        "num_decoder_layers",
+        "max_input_length",
+        "max_output_length",
+        "hidden_size",
+        "ff_intermediate_size",
+        "vocab_size",
+        "decoder_start_token",
+        "eos_token",
+    ],
+    headers=[
+        "Model Type",
+        "Head Size",
+        "#Heads",
+        "#Encoder Layers",
+        "#Decoder Layers",
+        "Max Input Length",
+        "Max Output Length",
+        "Hidden Size",
+        "FF Intermediate Size",
+        "Vocab Size",
+        "Decoder Start Token",
+        "EOS Token",
     ],
 )
 
@@ -158,7 +192,12 @@ def view(
     panel_formatter.render([ckpt])
     # Serving model info.
     if "attributes" in ckpt and "head_size" in ckpt["attributes"]:
-        model_info_panel.render(ckpt["attributes"])
+        model_panel = gpt_model_info_panel
+        if not "model_type" in ckpt["attributes"]:
+            ckpt["attributes"]["model_type"] = "gpt"
+        elif ckpt["attributes"]["model_type"] == "blenderbot":
+            model_panel = blender_model_info_panel
+        model_panel.render(ckpt["attributes"])
 
     for file_info in ckpt["forms"][0]["files"]:
         file_info["path"] = strip_storage_path_prefix(file_info["path"])
@@ -510,7 +549,7 @@ def upload(
     panel_formatter.render([ckpt])
     # Serving model info.
     if "attributes" in ckpt and "head_size" in ckpt["attributes"]:
-        model_info_panel.render(ckpt["attributes"])
+        gpt_model_info_panel.render(ckpt["attributes"])
     for file_info in ckpt["forms"][0]["files"]:
         file_info["path"] = strip_storage_path_prefix(file_info["path"])
     tree_formatter.render(ckpt["forms"][0]["files"])
