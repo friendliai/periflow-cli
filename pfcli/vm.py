@@ -97,8 +97,8 @@ serving_formatter = TableFormatter(
 )
 
 
-def vm_list_for_train(cloud: Optional[CloudType], device_type: Optional[str]) -> None:
-    """List all VM information for training."""
+def vm_list_for_job(cloud: Optional[CloudType], device_type: Optional[str]) -> None:
+    """List all VM information for training job."""
     vm_quota_client: PFTProjectVMQuotaClientService = build_client(
         ServiceType.PFT_PROJECT_VM_QUOTA
     )
@@ -134,7 +134,10 @@ def vm_list_for_train(cloud: Optional[CloudType], device_type: Optional[str]) ->
     formatter.render(available_vm_dict_list)
 
 
-def vm_list_for_serve(cloud: Optional[CloudType], device_type: Optional[str]) -> None:
+def vm_list_for_deployment(
+    cloud: Optional[CloudType], device_type: Optional[str]
+) -> None:
+    """List all VM information for serving deployment."""
     pfs_vm_client: PFSVMClientService = build_client(ServiceType.PFS_VM)
     response = pfs_vm_client.list_vms()
 
@@ -158,7 +161,7 @@ def list(
         ...,
         "--service",
         "-s",
-        help="PeriFlow service type. Training and serving services are provided with different VM types.",
+        help="PeriFlow service type. Job and deployment services are provided with different VM types.",
     ),
     cloud: Optional[CloudType] = typer.Option(
         None, "--cloud", "-c", help="Filter list by cloud vendor."
@@ -168,8 +171,8 @@ def list(
     ),
 ):
     handler_map = {
-        PeriFlowService.TRAIN: vm_list_for_train,
-        PeriFlowService.SERVE: vm_list_for_serve,
+        PeriFlowService.JOB: vm_list_for_job,
+        PeriFlowService.DEPLOYMENT: vm_list_for_deployment,
     }
     handler_map[service](cloud, device_type)
 

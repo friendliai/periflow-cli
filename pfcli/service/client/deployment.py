@@ -69,6 +69,6 @@ class PFSVMClientService(ClientService):
     def list_vms(self) -> List[Dict[str, Any]]:
         response = safe_request(
             self.list,
-            err_prefix="Cannot get vm whitelist from PFS server.",
+            err_prefix="Cannot get available vm list from PFS server.",
         )()
         return response.json()

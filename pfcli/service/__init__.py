@@ -119,8 +119,8 @@ job_status_map_inv: Dict[SimpleJobStatus, Tuple[JobStatus, ...]] = {
 
 
 class PeriFlowService(str, Enum):
-    TRAIN = "train"
-    SERVE = "serve"
+    JOB = "job"
+    DEPLOYMENT = "deployment"
 
 
 class JobType(str, Enum):
