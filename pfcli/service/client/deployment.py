@@ -34,6 +34,14 @@ class DeploymentClientService(ClientService[str]):
         )
 
 
+class DeploymentScaleClientService(ClientService[str]):
+    def scale_deployment(self, deployment_id: str, scale: int) -> None:
+        response = safe_request(
+            self.partial_update,
+            err_prefix=f"Deployment ({deployment_id}) cannot be scaled.",
+        )(data=str(scale))
+
+
 class DeploymentLogClientService(ClientService[str]):
     def get_deployment_log(self, deployment_id: str) -> Dict[str, Any]:
         response = safe_request(
