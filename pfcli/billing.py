@@ -37,7 +37,7 @@ panel_formatter = PanelFormatter(
 )
 
 
-def billing_summary_for_train(
+def billing_summary_for_job(
     year: int,
     month: int,
     day: Optional[int],
@@ -97,7 +97,7 @@ def billing_summary_for_train(
     panel_formatter.render([{"price": round(total_price, 2)}])
 
 
-def billing_summary_for_serve(
+def billing_summary_for_deployment(
     year: int,
     month: int,
     day: Optional[int],
@@ -134,8 +134,8 @@ def summary(
 ):
     """Summarize the billing information for the given time range"""
     handler_map = {
-        PeriFlowService.TRAIN: billing_summary_for_train,
-        PeriFlowService.SERVE: billing_summary_for_serve,
+        PeriFlowService.JOB: billing_summary_for_job,
+        PeriFlowService.DEPLOYMENT: billing_summary_for_deployment,
     }
     handler_map[service](
         year=year,
