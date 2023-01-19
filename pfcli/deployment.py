@@ -20,14 +20,12 @@ from pfcli.service import (
 )
 from pfcli.service.client import (
     DeploymentClientService,
+    DeploymentMetricsClientService,
+    PFSProjectUsageClientService,
     DeploymentLogClientService,
     build_client,
 )
 from pfcli.context import get_current_project_id
-from pfcli.service.client.deployment import (
-    DeploymentMetricsClientService,
-    PFSProjectUsageClientService,
-)
 from pfcli.service.config import build_deployment_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import (
@@ -343,6 +341,7 @@ def create(
         "cloud": cloud,
         "region": region,
         "total_gpus": total_gpus,
+        "infrequest_perm_check": True,
         **config,
     }
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
@@ -351,6 +350,20 @@ def create(
     typer.secho(
         f"Deployment ({deployment['id']}) started successfully. Use 'pf deployment view {deployment['id']}' to see the deployment details.\n"
         f"Send inference requests to '{deployment['endpoint']}'.",
+        fg=typer.colors.BLUE,
+    )
+
+
+@app.command()
+def scale(
+    deployment_id: str = typer.Argument(..., help="Deployment id to scale."),
+    scale: int = typer.Argument(..., help="Num replicas to scale deployment."),
+):
+    """Scale deployment."""
+    client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
+    client.scale_deployment(deployment_id=deployment_id, scale=scale)
+    typer.secho(
+        f"Deployment ({deployment_id}) scale to {scale}.",
         fg=typer.colors.BLUE,
     )
 

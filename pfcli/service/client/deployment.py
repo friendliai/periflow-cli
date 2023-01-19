@@ -22,6 +22,12 @@ class DeploymentClientService(ClientService[str]):
         )
         return response.json()
 
+    def scale_deployment(self, deployment_id: str, scale: int) -> None:
+        response = safe_request(
+            self.partial_update,
+            err_prefix=f"Deployment ({deployment_id}) cannot be scaled.",
+        )(pk=deployment_id, path=f"scale", data=str(scale))
+
     def list_deployments(self, project_id: str) -> Dict[str, Any]:
         response = safe_request(self.list, err_prefix="Failed to list deployments.")(
             params={"project_id": project_id}
@@ -32,14 +38,6 @@ class DeploymentClientService(ClientService[str]):
         safe_request(self.delete, err_prefix="Failed to delete deployment.")(
             pk=deployment_id
         )
-
-
-class DeploymentScaleClientService(ClientService[str]):
-    def scale_deployment(self, deployment_id: str, scale: int) -> None:
-        response = safe_request(
-            self.partial_update,
-            err_prefix=f"Deployment ({deployment_id}) cannot be scaled.",
-        )(data=str(scale))
 
 
 class DeploymentLogClientService(ClientService[str]):
