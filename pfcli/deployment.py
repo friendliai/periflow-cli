@@ -265,12 +265,19 @@ def usage():
 
 
 @app.command()
-def log(deployment_id: str = typer.Argument(..., help="deployment id to get log.")):
+def log(
+    deployment_id: str = typer.Argument(..., help="deployment id to get log."),
+    replica_index: int = typer.Argument(
+        0, help="replica index of deployment to get log."
+    ),
+):
     """Show deployments log."""
     client: DeploymentLogClientService = build_client(
         ServiceType.DEPLOYMENT_LOG, deployment_id=deployment_id
     )
-    log = client.get_deployment_log(deployment_id=deployment_id)
+    log = client.get_deployment_log(
+        deployment_id=deployment_id, replica_index=replica_index
+    )
     for line in log:
         typer.echo(line["data"])
 
@@ -298,6 +305,9 @@ def create(
     ),
     config_file: typer.FileText = typer.Option(
         ..., "--config-file", "-f", help="Path to configuration file."
+    ),
+    num_replicas: int = typer.Option(
+        1, "--replicas", "-rp", help="Number of replicas to run deployment."
     ),
 ):
     """Create a deployment object by using model checkpoint."""
@@ -341,7 +351,7 @@ def create(
         "cloud": cloud,
         "region": region,
         "total_gpus": total_gpus,
-        "infrequest_perm_check": True,
+        "num_replicas": num_replicas,
         **config,
     }
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)

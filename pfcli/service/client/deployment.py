@@ -41,11 +41,15 @@ class DeploymentClientService(ClientService[str]):
 
 
 class DeploymentLogClientService(ClientService[str]):
-    def get_deployment_log(self, deployment_id: str) -> Dict[str, Any]:
+    def get_deployment_log(
+        self, deployment_id: str, replica_index: int
+    ) -> Dict[str, Any]:
         response = safe_request(
             self.list,
-            err_prefix=f"Log is not available for Deployment ({deployment_id}). You may entered wrong ID or the deployment is not running.",
-        )()
+            err_prefix=f"Log is not available for Deployment ({deployment_id})"
+            f"with replica {replica_index}."
+            "You may entered wrong ID or the replica is not running.",
+        )(params={"replica_index": replica_index})
         return response.json()
 
 
