@@ -33,6 +33,12 @@ class CheckpointClientService(ClientService[UUID]):
         )
         return response
 
+    def restore_checkpoint(self, checkpoint_id: UUID) -> Dict[str, Any]:
+        response = safe_request(self.post, err_prefix="Fail to restore checkpoint.")(
+            path=f"{checkpoint_id}/restore/"
+        )
+        return response.json()
+
 
 class CheckpointFormClientService(UploadableClientService[UUID]):
     def update_checkpoint_files(

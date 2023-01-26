@@ -292,14 +292,14 @@ def test_group_checkpoint_list_checkpoints(
     requests_mock.get(url, json=user_data)
     assert (
         group_project_checkpoint_client.list_checkpoints(
-            CheckpointCategory.USER_PROVIDED, 10
+            CheckpointCategory.USER_PROVIDED, 10, deleted=False
         )
         == user_data["results"]
     )
     requests_mock.get(url, json=job_data)
     assert (
         group_project_checkpoint_client.list_checkpoints(
-            CheckpointCategory.JOB_GENERATED, 10
+            CheckpointCategory.JOB_GENERATED, 10, deleted=False
         )
         == job_data["results"]
     )
@@ -308,7 +308,7 @@ def test_group_checkpoint_list_checkpoints(
     requests_mock.get(url, status_code=400)
     with pytest.raises(typer.Exit):
         group_project_checkpoint_client.list_checkpoints(
-            CheckpointCategory.USER_PROVIDED, 10
+            CheckpointCategory.USER_PROVIDED, 10, deleted=False
         )
 
 

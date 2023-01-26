@@ -93,6 +93,33 @@ def test_checkpoint_client_delete_checkpoint(
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_checkpoint_client_restore_checkpoint(
+    requests_mock: requests_mock.Mocker, checkpoint_client: CheckpointClientService
+):
+    assert isinstance(checkpoint_client, CheckpointClientService)
+    checkpoint_id = uuid4()
+
+    url_template = deepcopy(checkpoint_client.url_template)
+    url_template.attach_pattern("$checkpoint_id/restore/")
+
+    # Success
+    requests_mock.post(
+        url_template.render(checkpoint_id=checkpoint_id), status_code=204, json={}
+    )
+    try:
+        checkpoint_client.restore_checkpoint(checkpoint_id)
+    except typer.Exit:
+        raise pytest.fail("Checkpoint restore test failed.")
+
+    # Failed due to HTTP error
+    requests_mock.post(
+        url_template.render(checkpoint_id=checkpoint_id), status_code=404, json={}
+    )
+    with pytest.raises(typer.Exit):
+        assert checkpoint_client.restore_checkpoint(checkpoint_id)
+
+
+@pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_checkpoint_client_get_checkpoint_download_urls(
     requests_mock: requests_mock.Mocker,
     checkpoint_form_client: CheckpointFormClientService,
