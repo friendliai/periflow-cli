@@ -130,6 +130,49 @@ def test_deployment_client_create_deployment(
     with pytest.raises(typer.Exit):
         deployment_client.create_deployment(config)
 
+    # Set num_replicas to 2
+    config = {
+        "project_id": "22222222-2222-2222-2222-222222222222",
+        "model_id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        "deployment_type": DeploymentType.DEVELOPMENT,
+        "name": "test_deployment",
+        "gpu_type": "t4",
+        "cloud": "aws",
+        "region": "test_region",
+        "num_replicas": 2,
+    }
+    requests_mock.post(
+        deployment_client.url_template.render(
+            **deployment_client.url_kwargs,
+            config=config,
+        ),
+        json=result,
+    )
+    assert deployment_client.create_deployment(config) == result
+
+
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_deployment_client_scale_deployment(
+    requests_mock: requests_mock.Mocker, deployment_client: DeploymentClientService
+):
+    assert isinstance(deployment_client, DeploymentClientService)
+    requests_mock.patch(
+        deployment_client.url_template.render(
+            **deployment_client.url_kwargs, pk=1, path="scale"
+        ),
+    )
+    deployment_client.scale_deployment(1, 3)
+
+    # Failed due to HTTP error
+    requests_mock.patch(
+        deployment_client.url_template.render(
+            **deployment_client.url_kwargs, pk=1, path="scale"
+        ),
+        status_code=404,
+    )
+    with pytest.raises(typer.Exit):
+        deployment_client.scale_deployment(1, 3)
+
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
 def test_deployment_client_delete_deployment(
