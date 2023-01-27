@@ -167,11 +167,8 @@ def list(
         help="The number of recent checkpoints to see.",
     ),
     deleted: bool = typer.Option(
-        False,
-        "--deleted",
-        "-d",
-        help="Show deleted checkpoint."
-    )
+        False, "--deleted", "-d", help="Show deleted checkpoint."
+    ),
 ):
     """List all checkpoints that belong to the user's organization."""
     client: GroupProjectCheckpointClientService = build_client(
@@ -567,17 +564,13 @@ def upload(
 
 @app.command()
 def restore(
-    checkpoint_id: UUID = typer.Argument(
-        ..., help="UUID of checkpoint to restore."
-    )
+    checkpoint_id: UUID = typer.Argument(..., help="UUID of checkpoint to restore.")
 ):
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
 
     ckpt = client.get_checkpoint(checkpoint_id)
     if not ckpt["deleted"]:
-        secho_error_and_exit(
-            f"Checkpoint({checkpoint_id}) is not deleted."
-        )
+        secho_error_and_exit(f"Checkpoint({checkpoint_id}) is not deleted.")
 
     ckpt = client.restore_checkpoint(checkpoint_id)
     typer.secho(f"Checkpoint({checkpoint_id}) is successfully restored.")
