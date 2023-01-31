@@ -57,11 +57,19 @@ class PFSProjectUsageClientService(ClientService[str], ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def get_deployment_usage(self) -> Dict[str, Any]:
+    def get_deployment_usage(
+        self,
+        start_date: str,
+        end_date: str,
+    ) -> Dict[str, Any]:
+        params = {
+            "start_date": start_date,
+            "end_date": end_date,
+        }
         response = safe_request(
             self.list,
             err_prefix=f"Deployment usages are not found in the project.",
-        )()
+        )(params=params)
         return response.json()
 
 

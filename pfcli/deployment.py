@@ -9,7 +9,8 @@ import ruamel.yaml
 import typer
 import yaml
 from uuid import UUID
-import datetime
+from datetime import datetime, timedelta
+
 
 from pfcli.service import (
     DeploymentType,
@@ -248,10 +249,21 @@ def metrics(
 
 
 @app.command()
-def usage():
-    """Show total usage of deployments in project."""
+def usage(
+    year: int = typer.Argument(...),
+    month: int = typer.Argument(...),
+    day: Optional[int] = typer.Argument(None),
+):
+    """Show total usage of deployments in project in a month or a day."""
     client: PFSProjectUsageClientService = build_client(ServiceType.PFS_PROJECT_USAGE)
-    usages = client.get_deployment_usage()
+    start_date = datetime(year, month, day if day else 1).astimezone()
+    if day:
+        end_date = start_date + timedelta(days=1)
+    else:
+        end_date = (
+            datetime(year + int(month == 12), (month + 1) if month < 12 else 1, 1)
+        ).astimezone()
+    usages = client.get_deployment_usage(start_date, end_date)
     deployments = [
         {
             "id": id,
@@ -259,7 +271,7 @@ def usage():
             "cloud": info["cloud"].upper() if "cloud" in info else None,
             "vm": info["vm"]["name"] if info.get("vm") else None,
             "gpu_type": info["vm"]["gpu_type"].upper() if info.get("vm") else None,
-            "duration": datetime.timedelta(seconds=int(info["duration"])),
+            "duration": timedelta(seconds=int(info["duration"])),
         }
         for id, info in usages.items()
     ]
