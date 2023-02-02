@@ -57,7 +57,7 @@ class PFSProjectUsageClientService(ClientService[str], ProjectRequestMixin):
         self.initialize_project()
         super().__init__(template, project_id=self.project_id, **kwargs)
 
-    def get_deployment_usage(
+    def get_usage(
         self,
         start_date: str,
         end_date: str,

@@ -118,10 +118,21 @@ deployment_usage_table = TableFormatter(
         "type",
         "cloud",
         "vm",
+        "created_at",
+        "last_synced_at",
         "gpu_type",
         "duration",
     ],
-    headers=["ID", "Type", "Cloud", "VM", "GPU", "Total Usage (days, HH:MM:SS)"],
+    headers=[
+        "ID",
+        "Type",
+        "Cloud",
+        "VM",
+        "Created At",
+        "Finished At",
+        "GPU",
+        "Total Usage (days, HH:MM:SS)",
+    ],
 )
 
 deployment_panel.add_substitution_rule("waiting", "[bold]waiting")
@@ -263,7 +274,7 @@ def usage(
         end_date = (
             datetime(year + int(month == 12), (month + 1) if month < 12 else 1, 1)
         ).astimezone()
-    usages = client.get_deployment_usage(start_date, end_date)
+    usages = client.get_usage(start_date, end_date)
     deployments = [
         {
             "id": id,
@@ -271,9 +282,12 @@ def usage(
             "cloud": info["cloud"].upper() if "cloud" in info else None,
             "vm": info["vm"]["name"] if info.get("vm") else None,
             "gpu_type": info["vm"]["gpu_type"].upper() if info.get("vm") else None,
+            "created_at": info["created_at"],
+            "finished_at": info["finished_at"] if info["finished_at"] else "-",
             "duration": timedelta(seconds=int(info["duration"])),
         }
         for id, info in usages.items()
+        if int(info["duration"]) != 0
     ]
     deployment_usage_table.render(deployments)
 
