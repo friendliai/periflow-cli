@@ -4,14 +4,14 @@
 
 from urllib.parse import urljoin
 
-periflow_api_server = "https://api-dev.friendli.ai/api/"
-periflow_ws_server = "wss://api-ws-dev.friendli.ai/ws/"
+periflow_api_server = "https://api-staging.friendli.ai/api/"
+periflow_ws_server = "wss://api-ws-staging.friendli.ai/ws/"
 periflow_discuss_url = "https://discuss.friendli.ai/"
-periflow_mr_server = "https://pfmodelregistry-dev.friendli.ai/"
-periflow_serve_server = "https://pfs-dev.friendli.ai/"
-periflow_auth_server = "https://pfauth-dev.friendli.ai/"
-periflow_meter_server = "https://pfmeter-dev.friendli.ai/"
-periflow_observatory_server = "https://pfo-dev.friendli.ai/"
+periflow_mr_server = "https://pfmodelregistry-staging.friendli.ai/"
+periflow_serve_server = "https://pfs-staging.friendli.ai/"
+periflow_auth_server = "https://pfauth-staging.friendli.ai/"
+periflow_meter_server = "https://pfmeter-staging.friendli.ai/"
+periflow_observatory_server = "https://pfo-staging.friendli.ai/"
 
 
 def get_auth_uri(path: str) -> str:
