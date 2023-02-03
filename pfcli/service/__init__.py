@@ -163,6 +163,7 @@ class ModelFormCategory(str, Enum):
 
 class GpuType(str, Enum):
     A10G = "a10g"
+    T4 = "t4"
 
 
 class EngineType(str, Enum):

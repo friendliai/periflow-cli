@@ -6,7 +6,7 @@ from typing import Optional
 
 import typer
 
-from pfcli.service import CloudType, PeriFlowService, ServiceType
+from pfcli.service import CloudType, GpuType, PeriFlowService, ServiceType
 from pfcli.service.client import (
     GroupProjectClientService,
     GroupProjectVMQuotaClientService,
@@ -150,7 +150,7 @@ def vm_list_for_deployment(
         }
         for nodegroup_list_dict in response
         for nodegroup in nodegroup_list_dict["nodegroup_list"]
-        if nodegroup["vm"]["gpu_type"] != "cpu"
+        if nodegroup["vm"]["gpu_type"] in [gpu_type.value for gpu_type in GpuType]
     ]
     serving_formatter.render(vm_dict_list)
 
