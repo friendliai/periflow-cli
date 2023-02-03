@@ -365,15 +365,20 @@ def create(
 
 
 @app.command()
-def scale(
-    deployment_id: str = typer.Argument(..., help="Deployment id to scale."),
-    scale: int = typer.Argument(..., help="Num replicas to scale deployment."),
+def update(
+    deployment_id: str = typer.Argument(..., help="Deployment id to update."),
+    replicas: int = typer.Option(
+        ..., "--replicas", "-r", help="Number of replicas to scale deployment."
+    ),
 ):
-    """Scale deployment."""
+    """Update deployment.
+    # TODO: Add more update options.
+    """
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
-    client.scale_deployment(deployment_id=deployment_id, scale=scale)
+
+    client.scale_deployment(deployment_id=deployment_id, replicas=replicas)
     typer.secho(
-        f"Deployment ({deployment_id}) scale to {scale}.",
+        f"Deployment ({deployment_id}) scale to {replicas}.",
         fg=typer.colors.BLUE,
     )
 
