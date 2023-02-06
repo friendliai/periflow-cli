@@ -176,6 +176,11 @@ class DeploymentType(str, Enum):
     PRODUCTION = "prod"
 
 
+class DeploymentSecurityLevel(str, Enum):
+    PUBLIC = "public"
+    PROTECTED = "protected"
+
+
 storage_type_map: Dict[StorageType, str] = {
     StorageType.S3: "aws",
     StorageType.BLOB: "azure.blob",

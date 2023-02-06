@@ -17,6 +17,7 @@ from pfcli.service import (
     GpuType,
     CloudType,
     EngineType,
+    DeploymentSecurityLevel,
 )
 from pfcli.service.client import (
     DeploymentClientService,
@@ -309,6 +310,11 @@ def create(
     num_replicas: int = typer.Option(
         1, "--replicas", "-rp", help="Number of replicas to run deployment."
     ),
+    security_level: DeploymentSecurityLevel = typer.Option(
+        DeploymentSecurityLevel.PUBLIC,
+        "--security-level",
+        help="Security level of deployment endpoints",
+    ),
 ):
     """Create a deployment object by using model checkpoint."""
     project_id = get_current_project_id()
@@ -352,6 +358,9 @@ def create(
         "region": region,
         "total_gpus": total_gpus,
         "num_replicas": num_replicas,
+        "infrequest_perm_check": True
+        if security_level == DeploymentSecurityLevel.PROTECTED
+        else False,
         **config,
     }
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
