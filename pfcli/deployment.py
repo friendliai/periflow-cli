@@ -184,7 +184,8 @@ def list(
         secho_error_and_exit("Failed to identify project... Please set project again.")
 
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
-    deployments = client.list_deployments(str(project_id))["deployments"]
+    archived = None if show_all else False
+    deployments = client.list_deployments(project_id=str(project_id), archived=None)["deployments"]
 
     deployments.sort(key=lambda x: x["start"], reverse=not from_oldest)
     for deployment in deployments:

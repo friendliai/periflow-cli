@@ -3,10 +3,10 @@
 """PeriFlow DeploymentClient Service"""
 
 from __future__ import annotations
+from typing import Any, Dict, List, Optional
 
 from datetime import datetime
 from string import Template
-from typing import Any, Dict, List
 
 from pfcli.service.client.base import ClientService, ProjectRequestMixin, safe_request
 
@@ -31,9 +31,9 @@ class DeploymentClientService(ClientService[str]):
             err_prefix=f"Deployment ({deployment_id}) cannot be scaled.",
         )(pk=deployment_id, path=f"scale", data=str(replicas))
 
-    def list_deployments(self, project_id: str) -> Dict[str, Any]:
+    def list_deployments(self, project_id: str, archived: Optional[bool]) -> Dict[str, Any]:
         response = safe_request(self.list, err_prefix="Failed to list deployments.")(
-            params={"project_id": project_id}
+                params={"project_id": project_id, "archived": archived}
         )
         return response.json()
 
