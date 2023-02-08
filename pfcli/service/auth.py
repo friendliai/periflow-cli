@@ -2,6 +2,8 @@
 
 """PeriFlow Auth Tools"""
 
+from __future__ import annotations
+
 import functools
 from enum import Enum
 from typing import Any, Callable, Dict, Union

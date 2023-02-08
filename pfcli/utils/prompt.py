@@ -2,6 +2,8 @@
 
 """PeriFlow CLI Interactive Prompt Utilities"""
 
+from __future__ import annotations
+
 import os
 from subprocess import CalledProcessError, check_call
 from typing import Optional

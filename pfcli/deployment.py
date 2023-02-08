@@ -2,7 +2,9 @@
 
 """CLI for Deployment"""
 
-import datetime
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from uuid import UUID
 
@@ -11,6 +13,7 @@ import typer
 import yaml
 from dateutil.parser import parse
 
+from pfcli.context import get_current_project_id
 from pfcli.service import (
     CloudType,
     DeploymentSecurityLevel,
@@ -28,7 +31,11 @@ from pfcli.service.client import (
 )
 from pfcli.service.config import build_deployment_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils.format import datetime_to_pretty_str, secho_error_and_exit
+from pfcli.utils.format import (
+    datetime_to_pretty_str,
+    datetime_to_simple_string,
+    secho_error_and_exit,
+)
 from pfcli.utils.prompt import get_default_editor, open_editor
 
 app = typer.Typer(
@@ -111,10 +118,21 @@ deployment_usage_table = TableFormatter(
         "type",
         "cloud",
         "vm",
+        "created_at",
+        "finished_at",
         "gpu_type",
         "duration",
     ],
-    headers=["ID", "Type", "Cloud", "VM", "GPU", "Total Usage (days, HH:MM:SS)"],
+    headers=[
+        "ID",
+        "Type",
+        "Cloud",
+        "VM",
+        "Created At",
+        "Finished At",
+        "GPU",
+        "Total Usage (days, HH:MM:SS)",
+    ],
 )
 
 deployment_panel.add_substitution_rule("waiting", "[bold]waiting")
@@ -242,10 +260,24 @@ def metrics(
 
 
 @app.command()
-def usage():
-    """Show total usage of deployments in project."""
+def usage(
+    year: int = typer.Argument(...),
+    month: int = typer.Argument(...),
+    day: Optional[int] = typer.Argument(None),
+):
+    """Show total usage of deployments in project in a month or a day."""
     client: PFSProjectUsageClientService = build_client(ServiceType.PFS_PROJECT_USAGE)
-    usages = client.get_deployment_usage()
+    start_date = datetime(year, month, day if day else 1, tzinfo=timezone.utc)
+    if day:
+        end_date = start_date + timedelta(days=1)
+    else:
+        end_date = datetime(
+            year + int(month == 12),
+            (month + 1) if month < 12 else 1,
+            1,
+            tzinfo=timezone.utc,
+        )
+    usages = client.get_usage(start_date, end_date)
     deployments = [
         {
             "id": id,
@@ -253,9 +285,14 @@ def usage():
             "cloud": info["cloud"].upper() if "cloud" in info else None,
             "vm": info["vm"]["name"] if info.get("vm") else None,
             "gpu_type": info["vm"]["gpu_type"].upper() if info.get("vm") else None,
-            "duration": datetime.timedelta(seconds=int(info["duration"])),
+            "created_at": datetime_to_simple_string(parse(info["created_at"])),
+            "finished_at": datetime_to_simple_string(parse(info["finished_at"]))
+            if info["finished_at"]
+            else "-",
+            "duration": timedelta(seconds=int(info["duration"])),
         }
         for id, info in usages.items()
+        if int(info["duration"]) != 0
     ]
     deployment_usage_table.render(deployments)
 

@@ -1,0 +1,8 @@
+[tool.isort]
+profile = "black"
+append_only = true
+add_imports = ["from __future__ import annotations"]
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]

@@ -2,6 +2,8 @@
 
 """PeriFlow CLI File System Management Utilities"""
 
+from __future__ import annotations
+
 import os
 import re
 import zipfile

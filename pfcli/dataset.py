@@ -2,6 +2,8 @@
 
 """PeriFlow Dataset CLI"""
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import Optional

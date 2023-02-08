@@ -3,6 +3,8 @@
 """PeriFlow CredentialClient Service"""
 
 
+from __future__ import annotations
+
 from typing import Any, Dict, Optional
 from uuid import UUID
 
@@ -23,7 +25,7 @@ class CredentialClientService(ClientService[UUID]):
         *,
         name: Optional[str] = None,
         type_version: Optional[str] = None,
-        value: Optional[Dict[str, Any]] = None
+        value: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         request_data = {}
         if name is not None:
