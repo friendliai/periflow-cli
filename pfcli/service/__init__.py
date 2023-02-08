@@ -163,6 +163,7 @@ class ModelFormCategory(str, Enum):
 
 class GpuType(str, Enum):
     A10G = "a10g"
+    T4 = "t4"
 
 
 class EngineType(str, Enum):
@@ -173,6 +174,11 @@ class EngineType(str, Enum):
 class DeploymentType(str, Enum):
     DEVELOPMENT = "dev"
     PRODUCTION = "prod"
+
+
+class DeploymentSecurityLevel(str, Enum):
+    PUBLIC = "public"
+    PROTECTED = "protected"
 
 
 storage_type_map: Dict[StorageType, str] = {

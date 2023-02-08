@@ -11,8 +11,14 @@ import typer
 import yaml
 from dateutil.parser import parse
 
-from pfcli.context import get_current_project_id
-from pfcli.service import CloudType, DeploymentType, EngineType, GpuType, ServiceType
+from pfcli.service import (
+    CloudType,
+    DeploymentSecurityLevel,
+    DeploymentType,
+    EngineType,
+    GpuType,
+    ServiceType,
+)
 from pfcli.service.client import (
     DeploymentClientService,
     DeploymentLogClientService,
@@ -299,6 +305,11 @@ def create(
     num_replicas: int = typer.Option(
         1, "--replicas", "-rp", help="Number of replicas to run deployment."
     ),
+    security_level: DeploymentSecurityLevel = typer.Option(
+        DeploymentSecurityLevel.PUBLIC,
+        "--security-level",
+        help="Security level of deployment endpoints",
+    ),
 ):
     """Create a deployment object by using model checkpoint."""
     project_id = get_current_project_id()
@@ -342,6 +353,9 @@ def create(
         "region": region,
         "total_gpus": total_gpus,
         "num_replicas": num_replicas,
+        "infrequest_perm_check": True
+        if security_level == DeploymentSecurityLevel.PROTECTED
+        else False,
         **config,
     }
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
@@ -355,15 +369,20 @@ def create(
 
 
 @app.command()
-def scale(
-    deployment_id: str = typer.Argument(..., help="Deployment id to scale."),
-    scale: int = typer.Argument(..., help="Num replicas to scale deployment."),
+def update(
+    deployment_id: str = typer.Argument(..., help="Deployment id to update."),
+    replicas: int = typer.Option(
+        ..., "--replicas", "-r", help="Number of replicas to scale deployment."
+    ),
 ):
-    """Scale deployment."""
+    """Update deployment.
+    # TODO: Add more update options.
+    """
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
-    client.scale_deployment(deployment_id=deployment_id, scale=scale)
+
+    client.scale_deployment(deployment_id=deployment_id, replicas=replicas)
     typer.secho(
-        f"Deployment ({deployment_id}) scale to {scale}.",
+        f"Deployment ({deployment_id}) scale to {replicas}.",
         fg=typer.colors.BLUE,
     )
 
