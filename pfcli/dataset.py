@@ -7,15 +7,15 @@ from pathlib import Path
 from typing import Optional
 from uuid import UUID
 
-from click import Choice
-from rich.text import Text
 import typer
 import yaml
+from click import Choice
+from rich.text import Text
 
 from pfcli.service import (
-    StorageType,
     JobType,
     ServiceType,
+    StorageType,
     cred_type_map,
     cred_type_map_inv,
     storage_type_map_inv,
@@ -35,7 +35,7 @@ from pfcli.service.formatter import (
     TreeFormatter,
 )
 from pfcli.utils.format import secho_error_and_exit
-from pfcli.utils.fs import expand_paths, FileSizeType, get_file_info
+from pfcli.utils.fs import FileSizeType, expand_paths, get_file_info
 from pfcli.utils.validate import validate_cloud_storage_type
 
 app = typer.Typer(

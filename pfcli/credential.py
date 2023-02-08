@@ -7,7 +7,7 @@ from uuid import UUID
 
 import typer
 
-from pfcli.service import ServiceType, CredType, cred_type_map_inv
+from pfcli.service import CredType, ServiceType, cred_type_map_inv
 from pfcli.service.client import (
     CredentialClientService,
     ProjectCredentialClientService,
@@ -16,7 +16,6 @@ from pfcli.service.client import (
 from pfcli.service.config import CredentialConfigService
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import secho_error_and_exit
-
 
 app = typer.Typer(
     no_args_is_help=True,

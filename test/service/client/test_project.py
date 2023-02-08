@@ -12,11 +12,11 @@ import typer
 from pfcli.service import CloudType, CredType, ServiceType, StorageType
 from pfcli.service.client import build_client
 from pfcli.service.client.project import (
+    PFTProjectVMConfigClientService,
+    PFTProjectVMQuotaClientService,
     ProjectCredentialClientService,
     ProjectDataClientService,
     ProjectVMLockClientService,
-    PFTProjectVMConfigClientService,
-    PFTProjectVMQuotaClientService,
 )
 
 

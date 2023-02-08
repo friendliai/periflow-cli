@@ -2,13 +2,12 @@
 
 """PeriFlow CLI File System Management Utilities"""
 
-import re
 import os
+import re
 import zipfile
-from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
+from concurrent.futures import FIRST_EXCEPTION, ThreadPoolExecutor, wait
 from contextlib import contextmanager
 from datetime import datetime
-from dateutil.tz import tzlocal
 from enum import Enum
 from functools import wraps
 from pathlib import Path
@@ -16,10 +15,11 @@ from typing import Any, Dict, List, Optional
 
 import pathspec
 import requests
+import typer
+from dateutil.tz import tzlocal
 from requests import Request, Session
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
-import typer
 
 from pfcli.utils.format import secho_error_and_exit
 

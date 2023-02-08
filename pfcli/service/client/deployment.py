@@ -2,10 +2,10 @@
 
 """PeriFlow DeploymentClient Service"""
 
-from typing import Any, Dict, List
 from string import Template
+from typing import Any, Dict, List
 
-from pfcli.service.client.base import ClientService, safe_request, ProjectRequestMixin
+from pfcli.service.client.base import ClientService, ProjectRequestMixin, safe_request
 
 
 class DeploymentClientService(ClientService[str]):

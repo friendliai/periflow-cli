@@ -7,12 +7,11 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from string import Template
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 from uuid import UUID
 
 import requests
 import typer
-
 import websockets
 from requests.models import Response
 from rich.filesize import decimal
@@ -30,11 +29,11 @@ from pfcli.utils.request import paginated_get
 
 class JobWebSocketClientService(ClientService):
     @asynccontextmanager
-    async def _connect(self, job_id: UUID) -> Iterator[WebSocketClientProtocol]:
+    async def _connect(self, job_id: UUID) -> AsyncIterator[WebSocketClientProtocol]:
         access_token = get_token(TokenType.ACCESS)
         base_url = self.url_template.render(**self.url_kwargs, pk=job_id)
         url = f"{base_url}?token={access_token}"
-        async with websockets.connect(url) as websocket:
+        async with websockets.connect(url) as websocket:  # type: ignore
             yield websocket
 
     async def _subscribe(

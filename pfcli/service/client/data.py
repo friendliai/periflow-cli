@@ -5,10 +5,7 @@
 from typing import Any, Dict, List, Optional
 
 from pfcli.service import StorageType, storage_type_map_inv
-from pfcli.service.client.base import (
-    safe_request,
-    UploadableClientService,
-)
+from pfcli.service.client.base import UploadableClientService, safe_request
 from pfcli.utils.validate import validate_storage_region
 
 # The actual hard limit of a part size is 5 GiB, and we use 200 MiB part size.

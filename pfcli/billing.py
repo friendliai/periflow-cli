@@ -17,7 +17,6 @@ from pfcli.utils.format import (
     utc_to_local,
 )
 
-
 tabulate.PRESERVE_WHITESPACE = True
 
 app = typer.Typer(

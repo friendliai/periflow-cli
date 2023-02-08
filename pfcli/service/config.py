@@ -9,44 +9,35 @@ import os
 import tempfile
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import (
-    Any,
-    Dict,
-    List,
-    Tuple,
-    TypeVar,
-    Optional,
-    Union,
-)
+from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 from uuid import UUID
 
-import yaml
 import typer
+import yaml
 from click import Choice
 from jsonschema import Draft7Validator, ValidationError
 
 from pfcli.service import (
-    StorageType,
-    JobType,
-    ServiceType,
     CredType,
     EngineType,
+    JobType,
+    ServiceType,
+    StorageType,
     cred_type_map_inv,
     storage_region_map,
 )
 from pfcli.service.client import (
     CredentialClientService,
     CredentialTypeClientService,
+    JobTemplateClientService,
+    PFTGroupVMConfigClientService,
     ProjectCredentialClientService,
     ProjectDataClientService,
-    PFTGroupVMConfigClientService,
-    JobTemplateClientService,
     build_client,
 )
 from pfcli.service.cloud import build_storage_helper
-from pfcli.utils.prompt import get_default_editor, open_editor
 from pfcli.utils.format import secho_error_and_exit
-
+from pfcli.utils.prompt import get_default_editor, open_editor
 
 DEFAULT_TEMPLATE_CONFIG = """\
 # The name of job
@@ -672,12 +663,8 @@ class JobConfigManager:
             "name": {
                 "type": "string",
             },
-            "vm": {
-                "type": "string"
-            },
-            "num_devices": {
-                "type": "integer"
-            },
+            "vm": {"type": "string"},
+            "num_devices": {"type": "integer"},
             "job_setting": {
                 "type": "object",
                 "properties": {
@@ -688,25 +675,16 @@ class JobConfigManager:
                     "docker": {
                         "type": "object",
                         "properties": {
-                            "image": {
-                                "type": "string"
-                            },
+                            "image": {"type": "string"},
                             "command": {
                                 "anyOf": [
                                     {
                                         "type": "object",
                                         "properties": {
-                                            "setup": {
-                                                "type": "string"
-                                            },
-                                            "run": {
-                                                "type": "string"
-                                            }
+                                            "setup": {"type": "string"},
+                                            "run": {"type": "string"},
                                         },
-                                        "required": [
-                                            "setup",
-                                            "run"
-                                        ]
+                                        "required": ["setup", "run"],
                                     },
                                     {
                                         "type": "string",
@@ -715,24 +693,14 @@ class JobConfigManager:
                             },
                             "env_var": {
                                 "type": "object",
-                            }
+                            },
                         },
-                        "required": [
-                            "image",
-                            "command",
-                            "env_var"
-                        ]
+                        "required": ["image", "command", "env_var"],
                     },
                     "workspace": {
                         "type": "object",
-                        "properties": {
-                            "mount_path": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "mount_path"
-                        ]
+                        "properties": {"mount_path": {"type": "string"}},
+                        "required": ["mount_path"],
                     },
                     "template_id": {
                         "type": "string",
@@ -743,7 +711,7 @@ class JobConfigManager:
                 },
                 "required": [
                     "type",
-                ]
+                ],
             },
             "checkpoint": {
                 "type": "object",
@@ -751,35 +719,25 @@ class JobConfigManager:
                     "input": {
                         "type": "object",
                         "properties": {
-                            "id": {
-                            "type": "string"
-                            },
-                            "mount_path": {
-                            "type": "string"
-                            }
+                            "id": {"type": "string"},
+                            "mount_path": {"type": "string"},
                         },
                         "required": [
                             "id",
-                        ]
+                        ],
                     },
-                    "output_checkpoint_dir": {
-                        "type": "string"
-                    },
+                    "output_checkpoint_dir": {"type": "string"},
                 },
             },
             "data": {
                 "type": "object",
                 "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "mount_path": {
-                        "type": "string"
-                    }
+                    "name": {"type": "string"},
+                    "mount_path": {"type": "string"},
                 },
                 "required": [
                     "name",
-                ]
+                ],
             },
             "dist": {
                 "type": "object",
@@ -805,23 +763,17 @@ class JobConfigManager:
                 "properties": {
                     "wandb": {
                         "type": "object",
-                        "properties": {
-                            "credential_id": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "credential_id"
-                        ]
+                        "properties": {"credential_id": {"type": "string"}},
+                        "required": ["credential_id"],
                     }
                 },
-            }
+            },
         },
         "required": [
             "vm",
             "num_devices",
             "job_setting",
-        ]
+        ],
     }
 
     def __init__(self, config: Dict[str, Any]) -> None:
@@ -859,9 +811,7 @@ class JobConfigManager:
         try:
             Draft7Validator(self._default_json_schema).validate(self._config)
         except ValidationError as exc:
-            secho_error_and_exit(
-                f"Invalid job configuration: {exc.message!r}"
-            )
+            secho_error_and_exit(f"Invalid job configuration: {exc.message!r}")
 
     def get_job_request_body(self) -> Dict[str, Any]:
         body = deepcopy(self._config)
@@ -872,7 +822,9 @@ class JobConfigManager:
             body["job_setting"]["workspace"] = {"mount_path": "/workspace"}
 
         data_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
-        vm_client: PFTGroupVMConfigClientService = build_client(ServiceType.PFT_GROUP_VM_CONFIG)
+        vm_client: PFTGroupVMConfigClientService = build_client(
+            ServiceType.PFT_GROUP_VM_CONFIG
+        )
 
         vm_name = body["vm"]
         vm_config_id = vm_client.get_id_by_name(vm_name)
