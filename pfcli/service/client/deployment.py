@@ -3,10 +3,10 @@
 """PeriFlow DeploymentClient Service"""
 
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
 
 from datetime import datetime
 from string import Template
+from typing import Any, Dict, List
 
 from pfcli.service.client.base import ClientService, ProjectRequestMixin, safe_request
 
