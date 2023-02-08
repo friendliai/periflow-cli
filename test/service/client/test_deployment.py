@@ -2,6 +2,10 @@
 
 """Test DeploymentClient Service"""
 
+from __future__ import annotations
+
+from datetime import datetime
+
 import pytest
 import requests_mock
 import typer
@@ -13,7 +17,6 @@ from pfcli.service.client.deployment import (
     DeploymentMetricsClientService,
     PFSProjectUsageClientService,
 )
-from datetime import datetime
 
 
 @pytest.fixture

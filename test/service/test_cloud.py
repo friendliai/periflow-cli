@@ -2,6 +2,8 @@
 
 """Test Client Service"""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any, Dict
 from unittest.mock import Mock

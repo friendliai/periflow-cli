@@ -2,6 +2,8 @@
 
 """Test ProjectClient Service"""
 
+from __future__ import annotations
+
 from copy import deepcopy
 from uuid import UUID
 

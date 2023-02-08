@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from importlib.metadata import version
 from urllib.request import urlopen

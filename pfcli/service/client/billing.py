@@ -1,5 +1,7 @@
 # Copyright (C) 2022 FriendliAI
 
+from __future__ import annotations
+
 from enum import Enum
 from string import Template
 from typing import Any, Dict, List, Optional

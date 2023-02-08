@@ -2,6 +2,8 @@
 
 """Test UserClient Service"""
 
+from __future__ import annotations
+
 import uuid
 from copy import deepcopy
 

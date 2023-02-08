@@ -2,6 +2,8 @@
 
 """PeriFlow CLI URL Utilities"""
 
+from __future__ import annotations
+
 from urllib.parse import urljoin
 
 periflow_api_server = "https://api-dev.friendli.ai/api/"

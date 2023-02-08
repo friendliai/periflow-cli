@@ -2,6 +2,8 @@
 
 """PeriFlow GroupClient Service"""
 
+from __future__ import annotations
+
 import json
 import uuid
 from string import Template

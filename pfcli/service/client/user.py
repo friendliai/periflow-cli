@@ -2,6 +2,8 @@
 
 """PeriFlow UserClient Service"""
 
+from __future__ import annotations
+
 from string import Template
 from typing import Any, Dict, List
 from uuid import UUID

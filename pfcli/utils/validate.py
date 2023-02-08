@@ -2,6 +2,8 @@
 
 """PeriFlow CLI Validation Utilities"""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import List, Optional
 

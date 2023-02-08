@@ -2,6 +2,8 @@
 
 """PeriFlow DeploymentClient Service"""
 
+from __future__ import annotations
+
 from string import Template
 from typing import Any, Dict, List
 

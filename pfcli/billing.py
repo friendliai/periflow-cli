@@ -1,5 +1,7 @@
 # Copyright (C) 2021 FriendliAI
 
+from __future__ import annotations
+
 from datetime import datetime, timedelta
 from functools import reduce
 from typing import Optional

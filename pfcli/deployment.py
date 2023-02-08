@@ -2,6 +2,9 @@
 
 """CLI for Deployment"""
 
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from uuid import UUID
 
@@ -9,9 +12,6 @@ import ruamel.yaml
 import typer
 import yaml
 from dateutil.parser import parse
-from uuid import UUID
-from datetime import datetime, timedelta, timezone
-
 
 from pfcli.context import get_current_project_id
 from pfcli.service import (

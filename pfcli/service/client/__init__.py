@@ -1,5 +1,7 @@
 # Copyright (C) 2022 FriendliAI
 
+from __future__ import annotations
+
 from string import Template
 from typing import Dict, Tuple, Type, TypeVar
 
