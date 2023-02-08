@@ -14,9 +14,15 @@ from pfcli.service import DeploymentType, ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.deployment import (
     DeploymentClientService,
+    DeploymentEventClientService,
     DeploymentMetricsClientService,
     PFSProjectUsageClientService,
 )
+
+
+@pytest.fixture
+def deployment_id() -> str:
+    return "periflow-deployment-05246a6e"
 
 
 @pytest.fixture
@@ -32,6 +38,11 @@ def deployment_metrics_client() -> DeploymentMetricsClientService:
 @pytest.fixture
 def project_usage_client(user_project_group_context) -> PFSProjectUsageClientService:
     return build_client(ServiceType.PFS_PROJECT_USAGE)
+
+
+@pytest.fixture
+def deployment_event_client(deployment_id: str) -> DeploymentEventClientService:
+    return build_client(ServiceType.DEPLOYMENT_EVENT, deployment_id=deployment_id)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
@@ -244,3 +255,41 @@ def test_deployment_usage_client(
     )
     with pytest.raises(typer.Exit):
         project_usage_client.get_usage(start_date, end_date)
+
+
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_deployment_event_client(
+    requests_mock: requests_mock.Mocker,
+    deployment_event_client: DeploymentEventClientService,
+    deployment_id: str,
+):
+    assert isinstance(deployment_event_client, DeploymentEventClientService)
+
+    result = [
+        {
+            "namespace": deployment_id.split("-")[-1],
+            "type": "Not Ready",
+            "description": "",
+            "timestamp": str(datetime.now()),
+        },
+    ]
+
+    # Success
+    requests_mock.get(
+        deployment_event_client.url_template.render(
+            **deployment_event_client.url_kwargs,
+        ),
+        json=result,
+    )
+
+    assert deployment_event_client.get_event(deployment_id=deployment_id) == result
+
+    # Failed due to HTTP error
+    requests_mock.get(
+        deployment_event_client.url_template.render(
+            **deployment_event_client.url_kwargs,
+        ),
+        status_code=404,
+    )
+    with pytest.raises(typer.Exit):
+        deployment_event_client.get_event(deployment_id=deployment_id)

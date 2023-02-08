@@ -65,6 +65,15 @@ class DeploymentMetricsClientService(ClientService):
         return response.json()
 
 
+class DeploymentEventClientService(ClientService):
+    def get_event(self, deployment_id: str) -> Dict[str, Any]:
+        response = safe_request(
+            self.list,
+            err_prefix=f"Events for deployment ({deployment_id}) is not found.",
+        )()
+        return response.json()
+
+
 class PFSProjectUsageClientService(ClientService[str], ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_project()

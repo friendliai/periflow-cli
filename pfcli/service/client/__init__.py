@@ -19,6 +19,7 @@ from pfcli.service.client.credential import (
 from pfcli.service.client.data import DataClientService
 from pfcli.service.client.deployment import (
     DeploymentClientService,
+    DeploymentEventClientService,
     DeploymentLogClientService,
     DeploymentMetricsClientService,
     PFSProjectUsageClientService,
@@ -162,6 +163,10 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.DEPLOYMENT_METRICS: (
         DeploymentMetricsClientService,
         Template(get_pfs_uri("deployment/$deployment_id/metrics/")),
+    ),
+    ServiceType.DEPLOYMENT_EVENT: (
+        DeploymentEventClientService,
+        Template(get_pfs_uri("deployment/$deployment_id/event/")),
     ),
     ServiceType.PFS_PROJECT_USAGE: (
         PFSProjectUsageClientService,
