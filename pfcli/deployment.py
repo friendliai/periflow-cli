@@ -279,7 +279,6 @@ def usage(
             tzinfo=timezone.utc,
         )
     usages = client.get_usage(start_date, end_date)
-    # secho_error_and_exit(usages)
     deployments = [
         {
             "id": id,
