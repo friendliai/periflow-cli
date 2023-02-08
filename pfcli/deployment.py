@@ -9,7 +9,7 @@ import ruamel.yaml
 import typer
 import yaml
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 from pfcli.service import (
@@ -268,13 +268,16 @@ def usage(
 ):
     """Show total usage of deployments in project in a month or a day."""
     client: PFSProjectUsageClientService = build_client(ServiceType.PFS_PROJECT_USAGE)
-    start_date = datetime(year, month, day if day else 1).astimezone()
+    start_date = datetime(year, month, day if day else 1, tzinfo=timezone.utc)
     if day:
         end_date = start_date + timedelta(days=1)
     else:
-        end_date = (
-            datetime(year + int(month == 12), (month + 1) if month < 12 else 1, 1)
-        ).astimezone()
+        end_date = datetime(
+            year + int(month == 12),
+            (month + 1) if month < 12 else 1,
+            1,
+            tzinfo=timezone.utc,
+        )
     usages = client.get_usage(start_date, end_date)
     # secho_error_and_exit(usages)
     deployments = [
