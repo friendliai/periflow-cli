@@ -33,6 +33,7 @@ from pfcli.service.config import build_deployment_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import (
     datetime_to_pretty_str,
+    datetime_to_simple_string,
     secho_error_and_exit,
 )
 from pfcli.utils.prompt import get_default_editor, open_editor
@@ -119,7 +120,7 @@ deployment_usage_table = TableFormatter(
         "cloud",
         "vm",
         "created_at",
-        "last_synced_at",
+        "finished_at",
         "gpu_type",
         "duration",
     ],
@@ -275,6 +276,7 @@ def usage(
             datetime(year + int(month == 12), (month + 1) if month < 12 else 1, 1)
         ).astimezone()
     usages = client.get_usage(start_date, end_date)
+    # secho_error_and_exit(usages)
     deployments = [
         {
             "id": id,
@@ -282,8 +284,10 @@ def usage(
             "cloud": info["cloud"].upper() if "cloud" in info else None,
             "vm": info["vm"]["name"] if info.get("vm") else None,
             "gpu_type": info["vm"]["gpu_type"].upper() if info.get("vm") else None,
-            "created_at": info["created_at"],
-            "finished_at": info["finished_at"] if info["finished_at"] else "-",
+            "created_at": datetime_to_simple_string(parse(info["created_at"])),
+            "finished_at": datetime_to_simple_string(parse(info["finished_at"]))
+            if info["finished_at"]
+            else "-",
             "duration": timedelta(seconds=int(info["duration"])),
         }
         for id, info in usages.items()
