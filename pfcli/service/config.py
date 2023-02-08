@@ -9,7 +9,7 @@ import os
 import tempfile
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar, Union
 from uuid import UUID
 
 import typer
@@ -184,12 +184,10 @@ scaler_config:
 """
 
 
-J = TypeVar("J", bound="JobConfigService")
-D = TypeVar("D", bound="DataConfigService")
 T = TypeVar("T", bound=Union[str, Tuple[Any, ...]])
 
 
-class InteractiveConfigMixin:
+class InteractiveConfigMixin(Generic[T]):
     def start_interaction(self) -> None:
         raise NotImplementedError  # prama: no cover
 
@@ -198,7 +196,7 @@ class InteractiveConfigMixin:
 
 
 @dataclass
-class JobConfigService(InteractiveConfigMixin):
+class JobConfigService(Generic[T], InteractiveConfigMixin[T]):
     """Interface of job template configuration service"""
 
     ready: bool = False
@@ -220,7 +218,7 @@ class JobConfigService(InteractiveConfigMixin):
 
 
 @dataclass
-class CustomJobConfigService(JobConfigService):
+class CustomJobConfigService(JobConfigService[str]):
     """Custom job template configuration service"""
 
     # TODO: Support artifact
@@ -285,7 +283,7 @@ class CustomJobConfigService(JobConfigService):
 
 
 @dataclass
-class PredefinedJobConfigService(JobConfigService):
+class PredefinedJobConfigService(JobConfigService[str]):
     """Predefined job template configuration service"""
 
     template_id: Optional[UUID] = None
@@ -341,7 +339,7 @@ class PredefinedJobConfigService(JobConfigService):
 
 
 @dataclass
-class CredentialConfigService(InteractiveConfigMixin):
+class CredentialConfigService(InteractiveConfigMixin[Tuple[Any, ...]]):
     """Credential configuration service"""
 
     ready: bool = False
@@ -430,7 +428,7 @@ class CredentialConfigService(InteractiveConfigMixin):
 
 
 @dataclass
-class DataConfigService(InteractiveConfigMixin):
+class DataConfigService(InteractiveConfigMixin[Tuple[Any, ...]]):
     ready: bool = False
     name: Optional[str] = None
     vendor: Optional[StorageType] = None
@@ -584,7 +582,7 @@ class CustomDataConfigService(DataConfigService):
 
 
 @dataclass
-class DeploymentConfigService(InteractiveConfigMixin):
+class DeploymentConfigService(InteractiveConfigMixin[str]):
     """Deployment template configuration service."""
 
     ready: bool = False
@@ -621,7 +619,7 @@ class OrcaDeploymentConfigService(DeploymentConfigService):
         return yaml_str
 
 
-def build_job_configurator(job_type: str) -> J:
+def build_job_configurator(job_type: str) -> JobConfigService:
     if job_type == "custom":
         configurator = CustomJobConfigService()
     elif job_type == "predefined":
@@ -633,7 +631,7 @@ def build_job_configurator(job_type: str) -> J:
     return configurator
 
 
-def build_data_configurator(job_type: JobType) -> D:
+def build_data_configurator(job_type: JobType) -> DataConfigService:
     if job_type == JobType.CUSTOM:
         configurator = CustomDataConfigService()
     elif job_type == JobType.PREDEFINED:
