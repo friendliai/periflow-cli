@@ -26,6 +26,7 @@ from pfcli.service.client import (
     DeploymentClientService,
     DeploymentLogClientService,
     DeploymentMetricsClientService,
+    DeploymentEventClientService,
     PFSProjectUsageClientService,
     build_client,
 )
@@ -133,6 +134,17 @@ deployment_usage_table = TableFormatter(
         "GPU",
         "Total Usage (days, HH:MM:SS)",
     ],
+)
+
+deployment_event_table = TableFormatter(
+    name="Deployment Event",
+    fields=[
+        "id",
+        "type",
+        "description",
+        "created_at",
+    ],
+    headers=["ID", "Type", "Description", "Timestamp"],
 )
 
 deployment_panel.add_substitution_rule("waiting", "[bold]waiting")
@@ -422,6 +434,21 @@ def update(
         f"Deployment ({deployment_id}) scale to {replicas}.",
         fg=typer.colors.BLUE,
     )
+
+
+@app.command()
+def event(
+    deployment_id: str = typer.Argument(..., help="Deployment id to update."),
+):
+    """Get deployment events."""
+    client: DeploymentEventClientService = build_client(
+        ServiceType.DEPLOYMENT_EVENT, deployment_id=deployment_id
+    )
+
+    events = client.get_event(deployment_id=deployment_id)
+    for event in events:
+        event["id"] = f"periflow-deployment-{event['namespace']}"
+    deployment_event_table.render(events)
 
 
 @template_app.command("create")
