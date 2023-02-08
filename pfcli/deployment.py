@@ -438,7 +438,7 @@ def update(
 
 @app.command()
 def event(
-    deployment_id: str = typer.Argument(..., help="Deployment id to update."),
+    deployment_id: str = typer.Argument(..., help="Deployment id to get events."),
 ):
     """Get deployment events."""
     client: DeploymentEventClientService = build_client(
@@ -448,6 +448,7 @@ def event(
     events = client.get_event(deployment_id=deployment_id)
     for event in events:
         event["id"] = f"periflow-deployment-{event['namespace']}"
+        event["created_at"] = datetime_to_simple_string(parse(event["created_at"]))
     deployment_event_table.render(events)
 
 
