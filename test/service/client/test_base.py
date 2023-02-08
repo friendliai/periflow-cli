@@ -4,6 +4,7 @@
 
 
 from string import Template
+
 import pytest
 import requests_mock
 

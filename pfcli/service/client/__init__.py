@@ -15,6 +15,13 @@ from pfcli.service.client.credential import (
     CredentialTypeClientService,
 )
 from pfcli.service.client.data import DataClientService
+from pfcli.service.client.deployment import (
+    DeploymentClientService,
+    DeploymentLogClientService,
+    DeploymentMetricsClientService,
+    PFSProjectUsageClientService,
+    PFSVMClientService,
+)
 from pfcli.service.client.group import (
     GroupClientService,
     GroupProjectCheckpointClientService,
@@ -31,19 +38,12 @@ from pfcli.service.client.job import (
 )
 from pfcli.service.client.metrics import MetricsClientService
 from pfcli.service.client.project import (
+    PFTProjectVMConfigClientService,
+    PFTProjectVMQuotaClientService,
     ProjectClientService,
     ProjectCredentialClientService,
     ProjectDataClientService,
     ProjectVMLockClientService,
-    PFTProjectVMConfigClientService,
-    PFTProjectVMQuotaClientService,
-)
-from pfcli.service.client.deployment import (
-    DeploymentClientService,
-    DeploymentLogClientService,
-    DeploymentMetricsClientService,
-    PFSProjectUsageClientService,
-    PFSVMClientService,
 )
 from pfcli.service.client.user import (
     UserClientService,

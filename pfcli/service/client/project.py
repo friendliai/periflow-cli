@@ -3,10 +3,11 @@
 """PeriFlow ProjectClient Service"""
 
 
-from requests import HTTPError
 from string import Template
 from typing import Any, Dict, List, Optional
 from uuid import UUID
+
+from requests import HTTPError
 
 from pfcli.service import (
     CloudType,

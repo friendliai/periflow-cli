@@ -6,24 +6,16 @@ import json
 import os
 import re
 from dataclasses import dataclass, field
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    TypeVar,
-    Union,
-)
+from typing import Any, Dict, List, Optional, TypeVar, Union
 
 from rich import box
-from rich.table import Table
-from rich.panel import Panel
-from rich.tree import Tree
-from rich.text import Text
-from rich.json import JSON
-from rich.filesize import decimal
 from rich.console import Console, RenderableType
-
+from rich.filesize import decimal
+from rich.json import JSON
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+from rich.tree import Tree
 
 T = TypeVar("T", bound=Union[int, str])
 

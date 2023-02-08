@@ -19,17 +19,17 @@ from dateutil.parser import parse
 
 from pfcli.service import (
     JobStatus,
-    job_status_map,
-    job_status_map_inv,
     JobType,
     ServiceType,
     SimpleJobStatus,
+    job_status_map,
+    job_status_map_inv,
     storage_type_map_inv,
 )
 from pfcli.service.client import (
-    PFTGroupVMConfigClientService,
     JobTemplateClientService,
     JobWebSocketClientService,
+    PFTGroupVMConfigClientService,
     ProjectDataClientService,
     ProjectJobClientService,
     UserClientService,

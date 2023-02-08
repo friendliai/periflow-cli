@@ -9,8 +9,8 @@ from requests.models import Response
 
 from pfcli.service.client.base import (
     ClientService,
-    safe_request,
     UploadableClientService,
+    safe_request,
 )
 
 

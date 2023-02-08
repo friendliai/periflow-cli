@@ -2,9 +2,9 @@
 
 """Test GroupClient Service"""
 
+import uuid
 from copy import deepcopy
 from typing import Any, Dict
-import uuid
 
 import pytest
 import requests_mock

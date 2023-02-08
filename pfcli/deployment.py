@@ -2,38 +2,28 @@
 
 """CLI for Deployment"""
 
-from dateutil.parser import parse
+import datetime
 from typing import Any, Dict, Optional
+from uuid import UUID
 
 import ruamel.yaml
 import typer
 import yaml
-from uuid import UUID
-import datetime
+from dateutil.parser import parse
 
-from pfcli.service import (
-    DeploymentType,
-    ServiceType,
-    GpuType,
-    CloudType,
-    EngineType,
-)
+from pfcli.context import get_current_project_id
+from pfcli.service import CloudType, DeploymentType, EngineType, GpuType, ServiceType
 from pfcli.service.client import (
     DeploymentClientService,
+    DeploymentLogClientService,
     DeploymentMetricsClientService,
     PFSProjectUsageClientService,
-    DeploymentLogClientService,
     build_client,
 )
-from pfcli.context import get_current_project_id
 from pfcli.service.config import build_deployment_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
-from pfcli.utils.format import (
-    datetime_to_pretty_str,
-    secho_error_and_exit,
-)
+from pfcli.utils.format import datetime_to_pretty_str, secho_error_and_exit
 from pfcli.utils.prompt import get_default_editor, open_editor
-
 
 app = typer.Typer(
     no_args_is_help=True,

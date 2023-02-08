@@ -5,35 +5,33 @@
 import copy
 import math
 import os
-import requests
 import uuid
-from concurrent.futures import ThreadPoolExecutor, wait, FIRST_EXCEPTION
+from concurrent.futures import FIRST_EXCEPTION, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from requests.models import Response
 from string import Template
 from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
 from urllib.parse import urljoin, urlparse
 
+import requests
 from requests.models import Response
 from tqdm import tqdm
 
 from pfcli.context import get_current_group_id, get_current_project_id
 from pfcli.service.auth import auto_token_refresh, get_auth_header
 from pfcli.utils.format import secho_error_and_exit
-from pfcli.utils.request import decode_http_err
-from pfcli.utils.url import get_auth_uri
 from pfcli.utils.fs import (
+    S3_MPU_PART_MAX_SIZE,
     attach_storage_path_prefix,
     get_file_size,
     get_total_file_size,
     storage_path_to_local_path,
-    S3_MPU_PART_MAX_SIZE,
     upload_file,
     upload_part,
 )
-
+from pfcli.utils.request import decode_http_err
+from pfcli.utils.url import get_auth_uri
 
 T = TypeVar("T", bound=Union[int, str, uuid.UUID])
 

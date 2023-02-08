@@ -2,8 +2,8 @@
 
 """PeriFlow Group (Organization) CLI"""
 
-from uuid import UUID
 from typing import Any, Dict
+from uuid import UUID
 
 import typer
 
@@ -17,7 +17,6 @@ from pfcli.service.client import (
 )
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import secho_error_and_exit
-
 
 app = typer.Typer(
     no_args_is_help=True,

@@ -24,7 +24,6 @@ from pfcli.service.client.project import (
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import secho_error_and_exit
 
-
 app = typer.Typer(
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},

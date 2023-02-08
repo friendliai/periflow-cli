@@ -8,9 +8,9 @@ from unittest.mock import Mock
 
 import pytest
 import typer
+from azure.storage.blob import BlobServiceClient, ContainerClient
 from botocore.client import BaseClient
 from botocore.exceptions import ClientError
-from azure.storage.blob import BlobServiceClient, ContainerClient
 
 from pfcli.service import StorageType
 from pfcli.service.cloud import (
