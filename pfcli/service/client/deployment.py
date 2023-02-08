@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from string import Template
 from typing import Any, Dict, List
 
@@ -45,7 +46,7 @@ class DeploymentClientService(ClientService[str]):
 class DeploymentLogClientService(ClientService[str]):
     def get_deployment_log(
         self, deployment_id: str, replica_index: int
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         response = safe_request(
             self.list,
             err_prefix=f"Log is not available for Deployment ({deployment_id})"
@@ -71,12 +72,12 @@ class PFSProjectUsageClientService(ClientService[str], ProjectRequestMixin):
 
     def get_usage(
         self,
-        start_date: str,
-        end_date: str,
+        start_date: datetime,
+        end_date: datetime,
     ) -> Dict[str, Any]:
         params = {
-            "start_date": start_date,
-            "end_date": end_date,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
         }
         response = safe_request(
             self.list,
