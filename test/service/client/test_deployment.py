@@ -82,7 +82,7 @@ def test_deployment_client_list_deployment(
         ),
         json=results,
     )
-    assert deployment_client.list_deployments(project_id=1) == results
+    assert deployment_client.list_deployments(project_id=1, archived=False) == results
 
     # Failed due to HTTP error
     requests_mock.get(
@@ -93,7 +93,7 @@ def test_deployment_client_list_deployment(
         status_code=404,
     )
     with pytest.raises(typer.Exit):
-        deployment_client.list_deployments(project_id=1)
+        deployment_client.list_deployments(project_id=1, archived=False)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
