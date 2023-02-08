@@ -781,6 +781,15 @@ class JobConfigManager:
 
     @classmethod
     def from_file(cls, f: io.TextIOWrapper) -> JobConfigManager:
+        """Create a new `JobConfigManager` object from a job configuration YAML file.
+
+        Args:
+            f (io.TextIOWrapper): File descriptor of the job configuration YAML file.
+
+        Returns:
+            JobConfigManager: Object created from the YAML file.
+
+        """
         try:
             config: Dict[str, Any] = yaml.safe_load(f)
         except yaml.YAMLError as e:
@@ -794,6 +803,14 @@ class JobConfigManager:
         num_devices: Optional[int] = None,
         name: Optional[str] = None,
     ) -> None:
+        """In-place update the job configuration.
+
+        Args:
+            vm (Optional[str], optional): VM name. Defaults to None.
+            num_devices (Optional[int], optional): The number of devices. Defaults to None.
+            name (Optional[str], optional): Job name. Defaults to None.
+
+        """
         if num_devices is not None:
             self._config["num_devices"] = num_devices
         if name is not None:
@@ -814,6 +831,12 @@ class JobConfigManager:
             secho_error_and_exit(f"Invalid job configuration: {exc.message!r}")
 
     def get_job_request_body(self) -> Dict[str, Any]:
+        """Get a request body for the REST API call.
+
+        Returns:
+            Dict[str, Any]: Post-processed job request body.
+
+        """
         body = deepcopy(self._config)
         if (
             body["job_setting"]["type"] == "custom"
