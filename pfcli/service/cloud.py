@@ -2,27 +2,18 @@
 
 """PeriFlow Cloud Service"""
 
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    TypeVar,
-    Type,
-    Optional,
-    Union,
-    Tuple,
-)
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar, Union
 
 import boto3
-from botocore.exceptions import ClientError
-from botocore.client import BaseClient
 from azure.storage.blob import BlobServiceClient
+from botocore.client import BaseClient
+from botocore.exceptions import ClientError
 
 from pfcli.service import StorageType
 from pfcli.utils.format import secho_error_and_exit
-
 
 C = TypeVar("C", bound="CloudStorageHelper")
 T = TypeVar("T", bound=Union[BaseClient, BlobServiceClient])

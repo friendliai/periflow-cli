@@ -2,18 +2,20 @@
 
 """PeriFlow CLI Validation Utilities"""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import List, Optional
 
 import typer
 
-from pfcli.service import CloudType, cloud_region_map, StorageType, storage_region_map
+from pfcli.service import CloudType, StorageType, cloud_region_map, storage_region_map
 from pfcli.utils.format import secho_error_and_exit
 from pfcli.utils.version import (
+    PERIFLOW_CLI_NAME,
     get_installed_cli_version,
     get_latest_cli_version,
     is_latest_cli_version,
-    PERIFLOW_CLI_NAME,
 )
 
 

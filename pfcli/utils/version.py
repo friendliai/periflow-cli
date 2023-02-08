@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import json
 from importlib.metadata import version
 from urllib.request import urlopen
 
-from packaging.version import _BaseVersion, parse as parse_version
-
+from packaging.version import _BaseVersion
+from packaging.version import parse as parse_version
 
 PERIFLOW_CLI_NAME = "periflow-cli"
 PYPI_BASE_URL = "https://pypi.org/pypi"

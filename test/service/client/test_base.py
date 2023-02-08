@@ -3,7 +3,10 @@
 """Test BaseClient Service"""
 
 
+from __future__ import annotations
+
 from string import Template
+
 import pytest
 import requests_mock
 

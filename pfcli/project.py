@@ -2,6 +2,8 @@
 
 """PeriFlow Project CLI"""
 
+from __future__ import annotations
+
 from typing import Optional, Tuple, Union
 from uuid import UUID
 
@@ -9,10 +11,10 @@ import typer
 
 from pfcli.context import (
     get_current_project_id,
-    set_current_project_id,
     project_context_path,
+    set_current_project_id,
 )
-from pfcli.group import get_current_org, _get_org_user_id_by_name
+from pfcli.group import _get_org_user_id_by_name, get_current_org
 from pfcli.service import GroupRole, ProjectRole, ServiceType
 from pfcli.service.client import (
     GroupProjectClientService,
@@ -24,7 +26,6 @@ from pfcli.service.client import (
 from pfcli.service.client.project import find_project_id
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import secho_error_and_exit
-
 
 app = typer.Typer(
     no_args_is_help=True,

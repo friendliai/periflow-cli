@@ -2,6 +2,8 @@
 
 """PeriFlow Auth Tools"""
 
+from __future__ import annotations
+
 import functools
 from enum import Enum
 from typing import Any, Callable, Dict, Union
@@ -11,7 +13,6 @@ import requests
 from pfcli.utils.format import secho_error_and_exit
 from pfcli.utils.fs import get_periflow_directory
 from pfcli.utils.url import get_uri
-
 
 access_token_path = get_periflow_directory() / "access_token"
 refresh_token_path = get_periflow_directory() / "refresh_token"

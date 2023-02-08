@@ -2,8 +2,10 @@
 
 """PeriFlow CLI Formatting Utilities"""
 
-from datetime import datetime, timedelta, timezone
+from __future__ import annotations
+
 import os
+from datetime import datetime, timedelta, timezone
 
 import typer
 

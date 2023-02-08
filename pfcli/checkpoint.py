@@ -2,14 +2,16 @@
 
 """CLI for Checkpoint"""
 
+from __future__ import annotations
+
 import os
-from dateutil.parser import parse
 from pathlib import Path
 from typing import Optional
 from uuid import UUID
 
 import typer
 import yaml
+from dateutil.parser import parse
 
 from pfcli.service import (
     CheckpointCategory,
@@ -36,15 +38,14 @@ from pfcli.service.formatter import (
 )
 from pfcli.utils.format import datetime_to_pretty_str, secho_error_and_exit
 from pfcli.utils.fs import (
+    FileSizeType,
     attach_storage_path_prefix,
-    strip_storage_path_prefix,
     download_file,
     expand_paths,
-    FileSizeType,
     get_file_info,
+    strip_storage_path_prefix,
 )
 from pfcli.utils.validate import validate_cloud_storage_type, validate_parallelism_order
-
 
 app = typer.Typer(
     no_args_is_help=True,

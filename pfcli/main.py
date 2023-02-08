@@ -2,10 +2,11 @@
 
 """PeriFlow CLI"""
 
-import requests
-from requests import HTTPError, Response
+from __future__ import annotations
 
+import requests
 import typer
+from requests import HTTPError, Response
 
 from pfcli import (
     artifact,
@@ -13,10 +14,10 @@ from pfcli import (
     checkpoint,
     credential,
     dataset,
+    deployment,
     group,
     job,
     project,
-    deployment,
     vm,
 )
 from pfcli.context import (
@@ -25,14 +26,14 @@ from pfcli.context import (
     set_current_group_id,
 )
 from pfcli.service import ServiceType
-from pfcli.service.auth import clear_tokens, get_token, TokenType, update_token
+from pfcli.service.auth import TokenType, clear_tokens, get_token, update_token
 from pfcli.service.client import (
-    build_client,
     ProjectClientService,
     UserClientService,
     UserGroupClientService,
     UserMFAService,
     UserSignUpService,
+    build_client,
 )
 from pfcli.service.formatter import PanelFormatter
 from pfcli.utils.format import secho_error_and_exit

@@ -1,5 +1,7 @@
 # Copyright (C) 2021 FriendliAI
 
+from __future__ import annotations
+
 from enum import Enum
 from typing import Dict, Tuple
 

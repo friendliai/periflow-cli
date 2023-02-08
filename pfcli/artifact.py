@@ -2,6 +2,8 @@
 
 """CLI for artifact"""
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import Optional
@@ -11,9 +13,8 @@ import typer
 from pfcli.service import ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.job import ProjectJobArtifactClientService
-from pfcli.utils.fs import download_file
 from pfcli.utils.format import secho_error_and_exit
-
+from pfcli.utils.fs import download_file
 
 app = typer.Typer(
     no_args_is_help=True,

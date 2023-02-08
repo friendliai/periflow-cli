@@ -2,6 +2,8 @@
 
 """PeriFlow CheckpointClient Service"""
 
+from __future__ import annotations
+
 from typing import Any, Dict, List
 from uuid import UUID
 
@@ -9,8 +11,8 @@ from requests.models import Response
 
 from pfcli.service.client.base import (
     ClientService,
-    safe_request,
     UploadableClientService,
+    safe_request,
 )
 
 

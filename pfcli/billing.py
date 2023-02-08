@@ -1,5 +1,7 @@
 # Copyright (C) 2021 FriendliAI
 
+from __future__ import annotations
+
 from datetime import datetime, timedelta
 from functools import reduce
 from typing import Optional
@@ -16,7 +18,6 @@ from pfcli.utils.format import (
     secho_error_and_exit,
     utc_to_local,
 )
-
 
 tabulate.PRESERVE_WHITESPACE = True
 

@@ -2,7 +2,9 @@
 
 """PeriFlow CLI API Request Utilities"""
 
-from typing import Any, Dict, Callable, List, Optional
+from __future__ import annotations
+
+from typing import Any, Callable, Dict, List, Optional
 
 from requests.exceptions import HTTPError
 from requests.models import Response

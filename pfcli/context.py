@@ -2,11 +2,12 @@
 
 """Context (Organization / Project) managing"""
 
+from __future__ import annotations
+
 import uuid
 from typing import Optional
 
 from pfcli.utils.fs import get_periflow_directory
-
 
 org_context_path = get_periflow_directory() / "organization"
 project_context_path = get_periflow_directory() / "project"

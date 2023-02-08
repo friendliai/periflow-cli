@@ -2,9 +2,11 @@
 
 """Test Client Service"""
 
+from __future__ import annotations
+
 import pytest
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
 from rich.tree import Tree
 
 from pfcli.service.formatter import (

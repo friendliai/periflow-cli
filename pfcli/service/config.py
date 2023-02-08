@@ -2,45 +2,38 @@
 
 """PeriFlow YAML File Configuration Service"""
 
+from __future__ import annotations
+
 import os
 import tempfile
 from dataclasses import dataclass, field
-from typing import (
-    Any,
-    Dict,
-    List,
-    Tuple,
-    TypeVar,
-    Optional,
-    Union,
-)
+from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 from uuid import UUID
 
-import yaml
 import typer
+import yaml
 from click import Choice
 from jsonschema import Draft7Validator, ValidationError
 
 from pfcli.service import (
-    StorageType,
-    JobType,
-    ServiceType,
     CredType,
     EngineType,
+    JobType,
+    ServiceType,
+    StorageType,
     cred_type_map_inv,
     storage_region_map,
 )
 from pfcli.service.client import (
     CredentialClientService,
     CredentialTypeClientService,
-    ProjectCredentialClientService,
     JobTemplateClientService,
+    ProjectCredentialClientService,
     build_client,
 )
 from pfcli.service.cloud import build_storage_helper
-from pfcli.utils.prompt import get_default_editor, open_editor
 from pfcli.utils.format import secho_error_and_exit
-
+from pfcli.utils.prompt import get_default_editor, open_editor
 
 DEFAULT_TEMPLATE_CONFIG = """\
 # The name of job

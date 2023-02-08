@@ -2,6 +2,8 @@
 
 """PeriFlow VM CLI"""
 
+from __future__ import annotations
+
 from typing import Optional
 
 import typer
@@ -23,7 +25,6 @@ from pfcli.service.client.project import (
 )
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import secho_error_and_exit
-
 
 app = typer.Typer(
     no_args_is_help=True,

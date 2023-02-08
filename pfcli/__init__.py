@@ -2,7 +2,8 @@
 
 """PeriFlow Cloud Service"""
 
-from .main import app
+from __future__ import annotations
 
+from .main import app
 
 __all__ = ["app"]
