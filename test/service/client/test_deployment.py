@@ -13,6 +13,7 @@ from pfcli.service.client.deployment import (
     DeploymentMetricsClientService,
     PFSProjectUsageClientService,
 )
+from datetime import datetime
 
 
 @pytest.fixture
@@ -227,7 +228,9 @@ def test_deployment_usage_client(
         json=result,
     )
 
-    assert project_usage_client.get_deployment_usage() == result
+    start_date = datetime(2023, 1, 1)
+    end_date = datetime(2023, 2, 1)
+    assert project_usage_client.get_usage(start_date, end_date) == result
 
     # Failed due to HTTP error
     requests_mock.get(
@@ -237,4 +240,4 @@ def test_deployment_usage_client(
         status_code=404,
     )
     with pytest.raises(typer.Exit):
-        project_usage_client.get_deployment_usage()
+        project_usage_client.get_usage(start_date, end_date)
