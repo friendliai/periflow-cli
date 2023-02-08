@@ -16,6 +16,7 @@ import typer
 import yaml
 from click import Choice
 from jsonschema import Draft7Validator, ValidationError
+from typing_extensions import TypeAlias
 
 from pfcli.service import (
     CredType,
@@ -38,6 +39,7 @@ from pfcli.service.client import (
 from pfcli.service.cloud import build_storage_helper
 from pfcli.utils.format import secho_error_and_exit
 from pfcli.utils.prompt import get_default_editor, open_editor
+
 
 DEFAULT_TEMPLATE_CONFIG = """\
 # The name of job
@@ -652,6 +654,9 @@ def build_deployment_configurator(engine_type: EngineType) -> DeploymentConfigSe
     return configurator
 
 
+_IO: TypeAlias = Union[io.TextIOWrapper, io.FileIO, io.BytesIO]
+
+
 class JobConfigManager:
     """Job configuration manager"""
 
@@ -778,7 +783,7 @@ class JobConfigManager:
         self._config = config
 
     @classmethod
-    def from_file(cls, f: io.TextIOWrapper) -> JobConfigManager:
+    def from_file(cls, f: _IO) -> JobConfigManager:
         """Create a new `JobConfigManager` object from a job configuration YAML file.
 
         Args:
