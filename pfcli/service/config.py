@@ -40,7 +40,6 @@ from pfcli.service.cloud import build_storage_helper
 from pfcli.utils.format import secho_error_and_exit
 from pfcli.utils.prompt import get_default_editor, open_editor
 
-
 DEFAULT_TEMPLATE_CONFIG = """\
 # The name of job
 name:
