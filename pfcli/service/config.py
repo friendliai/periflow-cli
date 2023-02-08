@@ -2,8 +2,12 @@
 
 """PeriFlow YAML File Configuration Service"""
 
+from __future__ import annotations
+
+import io
 import os
 import tempfile
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import (
     Any,
@@ -34,6 +38,8 @@ from pfcli.service.client import (
     CredentialClientService,
     CredentialTypeClientService,
     ProjectCredentialClientService,
+    ProjectDataClientService,
+    PFTGroupVMConfigClientService,
     JobTemplateClientService,
     build_client,
 )
@@ -655,3 +661,244 @@ def build_deployment_configurator(engine_type: EngineType) -> DeploymentConfigSe
         secho_error_and_exit("Only orca engine type is supported!")
     configurator.start_interaction()
     return configurator
+
+
+class JobConfigManager:
+    """Job configuration manager"""
+
+    _default_json_schema = {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+            },
+            "vm": {
+                "type": "string"
+            },
+            "num_devices": {
+                "type": "integer"
+            },
+            "job_setting": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["custom", "predefined"],
+                    },
+                    "docker": {
+                        "type": "object",
+                        "properties": {
+                            "image": {
+                                "type": "string"
+                            },
+                            "command": {
+                                "anyOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "setup": {
+                                                "type": "string"
+                                            },
+                                            "run": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "setup",
+                                            "run"
+                                        ]
+                                    },
+                                    {
+                                        "type": "string",
+                                    },
+                                ],
+                            },
+                            "env_var": {
+                                "type": "object",
+                            }
+                        },
+                        "required": [
+                            "image",
+                            "command",
+                            "env_var"
+                        ]
+                    },
+                    "workspace": {
+                        "type": "object",
+                        "properties": {
+                            "mount_path": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "mount_path"
+                        ]
+                    },
+                    "template_id": {
+                        "type": "string",
+                    },
+                    "model_config": {
+                        "type": "string",
+                    },
+                },
+                "required": [
+                    "type",
+                ]
+            },
+            "checkpoint": {
+                "type": "object",
+                "properties": {
+                    "input": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                            "type": "string"
+                            },
+                            "mount_path": {
+                            "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                        ]
+                    },
+                    "output_checkpoint_dir": {
+                        "type": "string"
+                    },
+                },
+            },
+            "data": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "mount_path": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name",
+                ]
+            },
+            "dist": {
+                "type": "object",
+                "properties": {
+                    "dp_degree": {
+                        "type": "integer",
+                    },
+                    "pp_degree": {
+                        "type": "integer",
+                    },
+                    "mp_degree": {
+                        "type": "integer",
+                    },
+                },
+                "required": [
+                    "dp_degree",
+                    "pp_degree",
+                    "mp_degree",
+                ],
+            },
+            "plugin": {
+                "type": "object",
+                "properties": {
+                    "wandb": {
+                        "type": "object",
+                        "properties": {
+                            "credential_id": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "credential_id"
+                        ]
+                    }
+                },
+            }
+        },
+        "required": [
+            "vm",
+            "num_devices",
+            "job_setting",
+        ]
+    }
+
+    def __init__(self, config: Dict[str, Any]) -> None:
+        self._config = config
+
+    @classmethod
+    def from_file(cls, f: io.TextIOWrapper) -> JobConfigManager:
+        try:
+            config: Dict[str, Any] = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            secho_error_and_exit(f"Error occurred while parsing config file: {e!r}")
+
+        return cls(config)
+
+    def update_config(
+        self,
+        vm: Optional[str] = None,
+        num_devices: Optional[int] = None,
+        name: Optional[str] = None,
+    ) -> None:
+        if num_devices is not None:
+            self._config["num_devices"] = num_devices
+        if name is not None:
+            self._config["name"] = name
+        if vm is not None:
+            self._config["vm"] = vm
+
+    def validate(self) -> None:
+        """Run format validation.
+
+        Returns:
+            bool: True if the format is valid, otherwise False.
+
+        """
+        try:
+            Draft7Validator(self._default_json_schema).validate(self._config)
+        except ValidationError as exc:
+            secho_error_and_exit(
+                f"Invalid job configuration: {exc.message!r}"
+            )
+
+    def get_job_request_body(self) -> Dict[str, Any]:
+        body = deepcopy(self._config)
+        if (
+            body["job_setting"]["type"] == "custom"
+            and "workspace" not in body["job_setting"]
+        ):
+            body["job_setting"]["workspace"] = {"mount_path": "/workspace"}
+
+        data_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
+        vm_client: PFTGroupVMConfigClientService = build_client(ServiceType.PFT_GROUP_VM_CONFIG)
+
+        vm_name = body["vm"]
+        vm_config_id = vm_client.get_id_by_name(vm_name)
+        if vm_config_id is None:
+            secho_error_and_exit(f"VM({vm_name}) is not found.")
+        del body["vm"]
+        body["vm_config_id"] = vm_config_id
+
+        if "data" in body:
+            data_name = body["data"]["name"]
+            data_id = data_client.get_id_by_name(data_name)
+            if data_id is None:
+                secho_error_and_exit(f"Dataset ({data_name}) is not found.")
+            del body["data"]["name"]
+            body["data"]["id"] = data_id
+
+        if body["job_setting"]["type"] == "custom":
+            if "launch_mode" not in body["job_setting"]:
+                body["job_setting"]["launch_mode"] = "node"
+
+            if "docker" in body["job_setting"]:
+                docker_command = body["job_setting"]["docker"]["command"]
+                if isinstance(docker_command, str):
+                    body["job_setting"]["docker"]["command"] = {
+                        "setup": "",
+                        "run": docker_command,
+                    }
+
+        return body
