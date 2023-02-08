@@ -167,10 +167,9 @@ deployment_metrics_table.add_substitution_rule("cancelling", "[bold magenta]canc
 
 @app.command()
 def list(
-    show_all: bool = typer.Option(
+    include_terminated: bool = typer.Option(
         False,
-        "--all",
-        "-a",
+        "--include-terminated",
         help="Show all deployments in my project including terminated deployments",
     ),
     limit: int = typer.Option(20, "--limit", help="The number of deployments to view"),
@@ -184,8 +183,9 @@ def list(
         secho_error_and_exit("Failed to identify project... Please set project again.")
 
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
-    archived = None if show_all else False
-    deployments = client.list_deployments(project_id=str(project_id), archived=None)["deployments"]
+    deployments = client.list_deployments(str(project_id), False)["deployments"]
+    if include_terminated:
+        deployments += client.list_deployments(str(project_id), True)["deployments"]
 
     deployments.sort(key=lambda x: x["start"], reverse=not from_oldest)
     for deployment in deployments:
@@ -198,9 +198,6 @@ def list(
         deployment["vms"] = (
             deployment["vms"][0]["name"] if deployment["vms"] else "None"
         )
-
-    if not show_all:
-        deployments = [d for d in deployments if "Terminated" not in d["status"]]
 
     target_deployment_list = deployments[:limit]
     deployment_table.render(target_deployment_list)
