@@ -24,6 +24,7 @@ from pfcli.service import (
 )
 from pfcli.service.client import (
     DeploymentClientService,
+    DeploymentEventClientService,
     DeploymentLogClientService,
     DeploymentMetricsClientService,
     PFSProjectUsageClientService,
@@ -135,6 +136,17 @@ deployment_usage_table = TableFormatter(
     ],
 )
 
+deployment_event_table = TableFormatter(
+    name="Deployment Event",
+    fields=[
+        "id",
+        "type",
+        "description",
+        "created_at",
+    ],
+    headers=["ID", "Type", "Description", "Timestamp"],
+)
+
 deployment_panel.add_substitution_rule("waiting", "[bold]waiting")
 deployment_panel.add_substitution_rule("enqueued", "[bold cyan]enqueued")
 deployment_panel.add_substitution_rule("running", "[bold blue]running")
@@ -167,10 +179,9 @@ deployment_metrics_table.add_substitution_rule("cancelling", "[bold magenta]canc
 
 @app.command()
 def list(
-    show_all: bool = typer.Option(
+    include_terminated: bool = typer.Option(
         False,
-        "--all",
-        "-a",
+        "--include-terminated",
         help="Show all deployments in my project including terminated deployments",
     ),
     limit: int = typer.Option(20, "--limit", help="The number of deployments to view"),
@@ -184,7 +195,9 @@ def list(
         secho_error_and_exit("Failed to identify project... Please set project again.")
 
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
-    deployments = client.list_deployments(str(project_id))["deployments"]
+    deployments = client.list_deployments(str(project_id), False)["deployments"]
+    if include_terminated:
+        deployments += client.list_deployments(str(project_id), True)["deployments"]
 
     deployments.sort(key=lambda x: x["start"], reverse=not from_oldest)
     for deployment in deployments:
@@ -197,9 +210,6 @@ def list(
         deployment["vms"] = (
             deployment["vms"][0]["name"] if deployment["vms"] else "None"
         )
-
-    if not show_all:
-        deployments = [d for d in deployments if "Terminated" not in d["status"]]
 
     target_deployment_list = deployments[:limit]
     deployment_table.render(target_deployment_list)
@@ -422,6 +432,22 @@ def update(
         f"Deployment ({deployment_id}) scale to {replicas}.",
         fg=typer.colors.BLUE,
     )
+
+
+@app.command()
+def event(
+    deployment_id: str = typer.Argument(..., help="Deployment id to get events."),
+):
+    """Get deployment events."""
+    client: DeploymentEventClientService = build_client(
+        ServiceType.DEPLOYMENT_EVENT, deployment_id=deployment_id
+    )
+
+    events = client.get_event(deployment_id=deployment_id)
+    for event in events:
+        event["id"] = f"periflow-deployment-{event['namespace']}"
+        event["created_at"] = datetime_to_simple_string(parse(event["created_at"]))
+    deployment_event_table.render(events)
 
 
 @template_app.command("create")

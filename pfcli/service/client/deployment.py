@@ -31,9 +31,9 @@ class DeploymentClientService(ClientService[str]):
             err_prefix=f"Deployment ({deployment_id}) cannot be scaled.",
         )(pk=deployment_id, path=f"scale", data=str(replicas))
 
-    def list_deployments(self, project_id: str) -> Dict[str, Any]:
+    def list_deployments(self, project_id: str, archived: bool) -> Dict[str, Any]:
         response = safe_request(self.list, err_prefix="Failed to list deployments.")(
-            params={"project_id": project_id}
+            params={"project_id": project_id, "archived": archived}
         )
         return response.json()
 
@@ -62,6 +62,15 @@ class DeploymentMetricsClientService(ClientService):
             self.list,
             err_prefix=f"Deployment ({deployment_id}) is not found. You may entered wrong ID.",
         )(data=str(time_window))
+        return response.json()
+
+
+class DeploymentEventClientService(ClientService):
+    def get_event(self, deployment_id: str) -> Dict[str, Any]:
+        response = safe_request(
+            self.list,
+            err_prefix=f"Events for deployment ({deployment_id}) is not found.",
+        )()
         return response.json()
 
 
