@@ -9,14 +9,13 @@ from datetime import datetime
 import pytest
 import requests_mock
 import typer
-from datetime import datetime
 
 from pfcli.service import DeploymentType, ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.deployment import (
     DeploymentClientService,
-    DeploymentMetricsClientService,
     DeploymentEventClientService,
+    DeploymentMetricsClientService,
     PFSProjectUsageClientService,
 )
 

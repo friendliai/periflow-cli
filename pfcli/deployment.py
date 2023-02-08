@@ -24,9 +24,9 @@ from pfcli.service import (
 )
 from pfcli.service.client import (
     DeploymentClientService,
+    DeploymentEventClientService,
     DeploymentLogClientService,
     DeploymentMetricsClientService,
-    DeploymentEventClientService,
     PFSProjectUsageClientService,
     build_client,
 )
