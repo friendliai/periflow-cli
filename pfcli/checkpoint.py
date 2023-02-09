@@ -159,7 +159,7 @@ def list(
         None,
         "--category",
         "-c",
-        help="Category of checkpoints. One of 'user_provided' and 'job_generated'.",
+        help="Category of checkpoints.",
     ),
     limit: int = typer.Option(
         20,
@@ -167,12 +167,15 @@ def list(
         "-l",
         help="The number of recent checkpoints to see.",
     ),
+    deleted: bool = typer.Option(
+        False, "--deleted", "-d", help="Show deleted checkpoint."
+    ),
 ):
     """List all checkpoints that belong to the user's organization."""
     client: GroupProjectCheckpointClientService = build_client(
         ServiceType.GROUP_PROJECT_CHECKPOINT
     )
-    checkpoints = client.list_checkpoints(category, limit=limit)
+    checkpoints = client.list_checkpoints(category, limit=limit, deleted=deleted)
     for ckpt in checkpoints:
         ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
 
@@ -188,6 +191,10 @@ def view(
     """Show details of a checkpoint."""
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
     ckpt = client.get_checkpoint(checkpoint_id)
+    if ckpt["deleted"]:
+        secho_error_and_exit(
+            f"Checkpoint({checkpoint_id}) is deleted. Please restore it if you want to see the detail."
+        )
     ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
 
     panel_formatter.render([ckpt])
@@ -554,3 +561,17 @@ def upload(
     for file_info in ckpt["forms"][0]["files"]:
         file_info["path"] = strip_storage_path_prefix(file_info["path"])
     tree_formatter.render(ckpt["forms"][0]["files"])
+
+
+@app.command()
+def restore(
+    checkpoint_id: UUID = typer.Argument(..., help="UUID of checkpoint to restore.")
+):
+    client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
+
+    ckpt = client.get_checkpoint(checkpoint_id)
+    if not ckpt["deleted"]:
+        secho_error_and_exit(f"Checkpoint({checkpoint_id}) is not deleted.")
+
+    ckpt = client.restore_checkpoint(checkpoint_id)
+    typer.secho(f"Checkpoint({checkpoint_id}) is successfully restored.")

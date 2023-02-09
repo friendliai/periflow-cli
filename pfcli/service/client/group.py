@@ -118,11 +118,13 @@ class GroupProjectCheckpointClientService(
         )
 
     def list_checkpoints(
-        self, category: Optional[CheckpointCategory], limit: int
+        self, category: Optional[CheckpointCategory], limit: int, deleted: bool
     ) -> List[Dict[str, Any]]:
         request_data = {}
         if category is not None:
             request_data["category"] = category.value
+        if deleted:
+            request_data["status"] = "deleted"
 
         get_response_dict = safe_request(
             self.list, err_prefix="Failed to list checkpoints."
