@@ -259,13 +259,15 @@ def metrics(
         deployment_id=deployment_id, time_window=time_window
     )
     metrics["id"] = metrics["deployment_id"]
-    # ns => ms
-    metrics["latency"] = (
-        "{:.3f}".format(metrics["latency"] / 1000000) if "latency" in metrics else None
-    )
-    metrics["throughput"] = (
-        "{:.3f}".format(metrics["throughput"]) if "throughput" in metrics else None
-    )
+    if metrics["latency"]:
+        # ns => ms
+        metrics["latency"] = (
+            "{:.3f}".format(metrics["latency"] / 1000000) if "latency" in metrics else None
+        )
+    if metrics["throughput"]:
+        metrics["throughput"] = (
+            "{:.3f}".format(metrics["throughput"]) if "throughput" in metrics else None
+        )
     deployment_metrics_table.render([metrics])
 
 
@@ -429,6 +431,8 @@ def update(
     # TODO: Add more update options.
     """
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
+    if replicas < 0:
+        secho_error_and_exit("The replicas argument should be equal to or greater than 0.")
 
     client.scale_deployment(deployment_id=deployment_id, replicas=replicas)
     typer.secho(
