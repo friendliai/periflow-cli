@@ -277,7 +277,10 @@ def usage(
 ):
     """Show total usage of deployments in project in a month or a day."""
     client: PFSProjectUsageClientService = build_client(ServiceType.PFS_PROJECT_USAGE)
-    start_date = datetime(year, month, day if day else 1, tzinfo=timezone.utc)
+    try:
+        start_date = datetime(year, month, day if day else 1, tzinfo=timezone.utc)
+    except ValueError:
+        secho_error_and_exit(f"Invalid date({year}-{month}{f'-{day}' if day else ''})")
     if day:
         end_date = start_date + timedelta(days=1)
     else:
