@@ -59,6 +59,7 @@ TEST_DEPS = [
 
 DEV_DEPS = [
     "black>=22.8.0",
+    "isort==5.10.1",
 ]
 
 setup(

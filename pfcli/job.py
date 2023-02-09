@@ -29,10 +29,7 @@ from pfcli.service import (
     storage_type_map_inv,
 )
 from pfcli.service.client import (
-    JobTemplateClientService,
     JobWebSocketClientService,
-    PFTGroupVMConfigClientService,
-    ProjectDataClientService,
     ProjectJobClientService,
     UserClientService,
     build_client,
@@ -42,7 +39,7 @@ from pfcli.service.client.job import (
     ProjectJobCheckpointClientService,
 )
 from pfcli.service.client.metrics import MetricsClientService
-from pfcli.service.config import build_job_configurator
+from pfcli.service.config import JobConfigManager, build_job_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import (
     datetime_to_pretty_str,
@@ -177,65 +174,6 @@ metrics_table = TableFormatter(
 )
 
 
-def refine_config(
-    config: Dict[str, Any],
-    vm_name: Optional[str],
-    num_devices: Optional[int],
-    job_name: Optional[str],
-) -> None:
-    assert "job_setting" in config
-
-    if num_devices is not None:
-        config["num_devices"] = num_devices
-    else:
-        assert "num_devices" in config
-
-    if job_name is not None:
-        config["name"] = job_name
-
-    if (
-        config["job_setting"]["type"] == "custom"
-        and "workspace" not in config["job_setting"]
-    ):
-        config["job_setting"]["workspace"] = {"mount_path": "/workspace"}
-
-    data_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
-    vm_client: PFTGroupVMConfigClientService = build_client(
-        ServiceType.PFT_GROUP_VM_CONFIG
-    )
-    job_template_client: JobTemplateClientService = build_client(
-        ServiceType.JOB_TEMPLATE
-    )
-
-    vm_name = vm_name or config.get("vm")
-    assert vm_name is not None
-    vm_config_id = vm_client.get_id_by_name(vm_name)
-    if vm_config_id is None:
-        secho_error_and_exit(f"VM ({vm_name}) is not found.")
-    del config["vm"]
-    config["vm_config_id"] = vm_config_id
-
-    if "data" in config:
-        data_name = config["data"]["name"]
-        data_id = data_client.get_id_by_name(data_name)
-        if data_id is None:
-            secho_error_and_exit(f"Dataset ({data_name}) is not found.")
-        del config["data"]["name"]
-        config["data"]["id"] = data_id
-
-    if config["job_setting"]["type"] == "custom":
-        if "launch_mode" not in config["job_setting"]:
-            config["job_setting"]["launch_mode"] = "node"
-
-        if "docker" in config["job_setting"]:
-            docker_command = config["job_setting"]["docker"]["command"]
-            if isinstance(docker_command, str):
-                config["job_setting"]["docker"]["command"] = {
-                    "setup": "",
-                    "run": docker_command,
-                }
-
-
 @app.command()
 def run(
     config_file: typer.FileText = typer.Option(
@@ -266,12 +204,14 @@ def run(
     ),
 ):
     """Run a job."""
-    try:
-        config: Dict[str, Any] = yaml.safe_load(config_file)
-    except yaml.YAMLError as e:
-        secho_error_and_exit(f"Error occurred while parsing config file... {e}")
-
-    refine_config(config, vm_name, num_devices, job_name)
+    cfg_manager = JobConfigManager.from_file(config_file)
+    cfg_manager.update_config(
+        vm=vm_name,
+        num_devices=num_devices,
+        name=job_name,
+    )
+    cfg_manager.validate()
+    config = cfg_manager.get_job_request_body()
 
     if workspace_dir is not None:
         workspace_dir = workspace_dir.resolve()  # ensure absolute path
