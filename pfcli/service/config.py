@@ -859,12 +859,22 @@ class JobConfigManager:
         body["vm_config_id"] = vm_config_id
 
         if "data" in body:
-            data_name = body["data"]["name"]
-            data_id = data_client.get_id_by_name(data_name)
-            if data_id is None:
-                secho_error_and_exit(f"Dataset ({data_name}) is not found.")
-            del body["data"]["name"]
-            body["data"]["id"] = data_id
+            data_name: str = body["data"]["name"]
+            if data_name.startswith("huggingface:"):
+                body["public_source"] = {
+                    "data": {
+                        "provider": "huggingface",
+                        "name": data_name.lstrip("huggingface:"),
+                        "mount_path": body["data"]["mount_path"],
+                    }
+                }
+                del body["data"]
+            else:
+                data_id = data_client.get_id_by_name(data_name)
+                if data_id is None:
+                    secho_error_and_exit(f"Dataset ({data_name}) is not found.")
+                body["data"]["id"] = data_id
+                del body["data"]["name"]
 
         if body["job_setting"]["type"] == "custom":
             if "launch_mode" not in body["job_setting"]:
