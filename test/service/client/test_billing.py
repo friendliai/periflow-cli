@@ -11,7 +11,7 @@ import typer
 
 from pfcli.service import ServiceType
 from pfcli.service.client import build_client
-from pfcli.service.client.billing import PFTBillingClientService
+from pfcli.service.client.billing import PFTBillingClientService, Scope
 
 
 @pytest.fixture
@@ -45,12 +45,14 @@ def test_billing_summary_client_get_summary(
         },
     )
     assert billing_summary_client.list_prices(
-        start_date=now.isoformat(), end_date=ten_days_after.isoformat()
+        scope=Scope.USR, start_date=now.isoformat(), end_date=ten_days_after.isoformat()
     )
 
     # Failed due to HTTP error
     requests_mock.get(url_template.render(), status_code=404)
     with pytest.raises(typer.Exit):
         assert billing_summary_client.list_prices(
-            start_date=now.isoformat(), end_date=ten_days_after.isoformat()
+            scope=Scope.USR,
+            start_date=now.isoformat(),
+            end_date=ten_days_after.isoformat(),
         )

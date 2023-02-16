@@ -21,6 +21,12 @@ class TimeGranularity(str, Enum):
     week = "week"
 
 
+class Scope(str, Enum):
+    ORG = "organization"
+    PRJ = "project"
+    USR = "user"
+
+
 class PFTBillingClientService(
     ClientService, GroupRequestMixin, ProjectRequestMixin, UserRequestMixin
 ):
@@ -34,7 +40,7 @@ class PFTBillingClientService(
         self,
         start_date: str,
         end_date: str,
-        agg_by: str = "user_id",
+        scope: Scope,
         time_granularity: Optional[TimeGranularity] = None,
     ) -> List[Dict[str, Any]]:
         params = {
@@ -44,7 +50,7 @@ class PFTBillingClientService(
             "start_date": start_date,
             "end_date": end_date,
             "time_unit": time_granularity,
-            "agg_by": agg_by,
+            "scope": scope.value,
         }
         return safe_request(self.list, err_prefix=f"Failed to get billing summary.")(
             params=params
