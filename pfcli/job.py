@@ -328,9 +328,12 @@ def list(
 
         job["started_at"] = start
         job["duration"] = duration
-        job["data_name"] = (
-            job["data_store"]["name"] if job["data_store"] is not None else None
-        )
+        if job["data_store"] is not None:
+            job["data_name"] = job["data_store"]["name"]
+        elif job["public_data"] is not None:
+            job["data_name"] = job["public_data"]
+        else:
+            job["data_name"] = None
         if job["progress"] is not None:
             job["progress"] = "{:.2f}%".format(job["progress"])
         job["status"] = job_status_map[job["status"]].value
@@ -407,9 +410,12 @@ def view(
 
     job["started_at"] = start
     job["duration"] = duration
-    job["data_name"] = (
-        job["data_store"]["name"] if job["data_store"] is not None else None
-    )
+    if job["data_store"] is not None:
+        job["data_name"] = job["data_store"]["name"]
+    elif job["public_data"] is not None:
+        job["data_name"] = job["public_data"]
+    else:
+        job["data_name"] = None
     if job["progress"] is not None:
         job["progress"] = "{:.2f}%".format(job["progress"])
     job["status"] = job_status_map[job["status"]].value
