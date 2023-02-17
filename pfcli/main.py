@@ -17,6 +17,7 @@ from pfcli import (
     deployment,
     group,
     job,
+    key,
     project,
     vm,
 )
@@ -59,6 +60,7 @@ app.add_typer(billing.app, name="billing", help="Manage billing")
 app.add_typer(artifact.app, name="artifact", help="Manager artifacts")
 app.add_typer(job.app, name="job", help="Manage jobs")
 app.add_typer(dataset.app, name="dataset", help="Manage datasets")
+app.add_typer(key.app, name="key", help="Manage api keys")
 
 
 user_panel_formatter = PanelFormatter(

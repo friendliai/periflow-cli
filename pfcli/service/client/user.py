@@ -128,3 +128,27 @@ class UserGroupProjectClientService(ClientService, UserRequestMixin, GroupReques
             self.list, err_prefix="Failed to list projects."
         )
         return paginated_get(get_response_dict)
+
+
+class UserAccessKeyClientService(ClientService, UserRequestMixin):
+    def __init__(self, template: Template, **kwargs):
+        self.initialize_user()
+        super().__init__(template, pf_user_id=self.user_id, **kwargs)
+
+    def create_access_key(self, name: str) -> Dict[str, Any]:
+        response = safe_request(
+            self.post, err_prefix="Failed to create new access key."
+        )(path=f"{self.user_id}/api_key", json={"name": name})
+
+        return response.json()
+
+    def delete_access_key(self, access_key_id: str) -> None:
+        safe_request(self.delete, err_prefix="Failed to delete access key")(
+            pk=None, path=f"api_key/{access_key_id}"
+        )
+
+    def list_access_keys(self) -> List[Dict[str, Any]]:
+        response = safe_request(self.list, err_prefix="Failed to list projects.")(
+            path=f"{self.user_id}/api_key"
+        )
+        return response.json()

@@ -49,6 +49,7 @@ from pfcli.service.client.project import (
     ProjectVMLockClientService,
 )
 from pfcli.service.client.user import (
+    UserAccessKeyClientService,
     UserClientService,
     UserGroupClientService,
     UserGroupProjectClientService,
@@ -78,6 +79,10 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.USER_GROUP: (
         UserGroupClientService,
         Template(get_auth_uri("pf_user/$pf_user_id/pf_group")),
+    ),
+    ServiceType.USER_ACCESS_KEY: (
+        UserAccessKeyClientService,
+        Template(get_auth_uri("pf_user")),
     ),
     ServiceType.USER_GROUP_PROJECT: (
         UserGroupProjectClientService,
