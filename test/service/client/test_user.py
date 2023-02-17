@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import uuid
 from copy import deepcopy
+from datetime import datetime
 
 import pytest
 import requests_mock
@@ -14,6 +15,7 @@ import typer
 from pfcli.service import GroupRole, ProjectRole, ServiceType
 from pfcli.service.client import build_client
 from pfcli.service.client.user import (
+    UserAccessKeyClientService,
     UserClientService,
     UserGroupClientService,
     UserMFAService,
@@ -39,6 +41,11 @@ def user_sign_up_client(user_project_group_context) -> UserSignUpService:
 @pytest.fixture
 def user_mfa() -> UserMFAService:
     return build_client(ServiceType.MFA)
+
+
+@pytest.fixture
+def user_access_key_client(user_project_group_context) -> UserAccessKeyClientService:
+    return build_client(ServiceType.USER_ACCESS_KEY)
 
 
 def test_user_initiate_mfa(
@@ -302,3 +309,109 @@ def test_user_sign_up_client_verify(
     user_sign_up_client.verify(
         token="00000000-0000-0000-0000-000000000000", key="123456"
     )
+
+
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_user_access_key_client_create_key(
+    requests_mock: requests_mock.Mocker,
+    user_access_key_client: UserAccessKeyClientService,
+):
+    assert isinstance(user_access_key_client, UserAccessKeyClientService)
+
+    result = {
+        "id": "1",
+        "name": "test",
+        "created_at": str(datetime.now().astimezone()),
+        "token": "test-token",
+    }
+
+    # Success
+    url_template = deepcopy(user_access_key_client.url_template)
+    requests_mock.post(
+        url_template.render(
+            **user_access_key_client.url_kwargs,
+            path=f"22222222-2222-2222-2222-222222222222/api_key",
+            name="test",
+        ),
+        json=result,
+    )
+    assert user_access_key_client.create_access_key("test") == result
+
+    # Failed due to HTTP error
+    requests_mock.post(
+        url_template.render(
+            **user_access_key_client.url_kwargs,
+            path=f"22222222-2222-2222-2222-222222222222/api_key",
+            name="test",
+        ),
+        json=result,
+        status_code=400,
+    )
+    with pytest.raises(typer.Exit):
+        user_access_key_client.create_access_key("test")
+
+
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_user_access_key_client_list_key(
+    requests_mock: requests_mock.Mocker,
+    user_access_key_client: UserAccessKeyClientService,
+):
+    assert isinstance(user_access_key_client, UserAccessKeyClientService)
+    user_id = "22222222-2222-2222-2222-222222222222"
+    result = [
+        {"id": "1", "name": "test", "created_at": str(datetime.now().astimezone())}
+    ]
+
+    # Success
+    url_template = deepcopy(user_access_key_client.url_template)
+    requests_mock.get(
+        url_template.render(
+            **user_access_key_client.url_kwargs, path=f"{user_id}/api_key"
+        ),
+        json=result,
+    )
+    assert user_access_key_client.list_access_keys() == result
+
+    # Failed due to HTTP error
+    url_template = deepcopy(user_access_key_client.url_template)
+    requests_mock.get(
+        url_template.render(
+            **user_access_key_client.url_kwargs, path=f"{user_id}/api_key"
+        ),
+        json=result,
+        status_code=400,
+    )
+    with pytest.raises(typer.Exit):
+        user_access_key_client.list_access_keys()
+
+
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_user_access_key_client_delete_key(
+    requests_mock: requests_mock.Mocker,
+    user_access_key_client: UserAccessKeyClientService,
+):
+    assert isinstance(user_access_key_client, UserAccessKeyClientService)
+    access_key_id = "33333333-3333-3333-3333-333333333333"
+
+    # Success
+    url_template = deepcopy(user_access_key_client.url_template)
+    requests_mock.delete(
+        url_template.render(
+            **user_access_key_client.url_kwargs,
+            pk=None,
+            path=f"api_key/{access_key_id}",
+        )
+    )
+    user_access_key_client.delete_access_key(access_key_id)
+
+    # Failed due to HTTP error
+    requests_mock.delete(
+        url_template.render(
+            **user_access_key_client.url_kwargs,
+            pk=None,
+            path=f"api_key/{access_key_id}",
+        ),
+        status_code=400,
+    )
+    with pytest.raises(typer.Exit):
+        user_access_key_client.delete_access_key(access_key_id)

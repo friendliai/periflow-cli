@@ -25,13 +25,11 @@ access_key_table = TableFormatter(
         "id",
         "name",
         "created_at",
-        # "expiry_time",
     ],
     headers=[
         "ID",
         "Name",
         "Created At",
-        # "Expire Time",
     ],
 )
 
@@ -41,14 +39,12 @@ access_key_panel = PanelFormatter(
         "id",
         "name",
         "created_at",
-        # "expiry_time",
         "token",
     ],
     headers=[
         "ID",
         "Name",
         "Created At",
-        # "Expire Time",
         "Access Key",
     ],
 )
