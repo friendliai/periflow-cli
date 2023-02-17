@@ -11,7 +11,7 @@ import typer
 
 from pfcli.service import PeriFlowService, ServiceType
 from pfcli.service.client import build_client
-from pfcli.service.client.billing import PFTBillingClientService, TimeGranularity
+from pfcli.service.client.billing import PFTBillingClientService, Scope, TimeGranularity
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import (
     datetime_to_simple_string,
@@ -42,19 +42,10 @@ def billing_summary_for_job(
     year: int,
     month: int,
     day: Optional[int],
-    view_project: bool,
-    view_organization: bool,
+    scope: Scope,
     time_granularity: Optional[TimeGranularity],
 ):
     client: PFTBillingClientService = build_client(ServiceType.PFT_BILLING_SUMMARY)
-
-    agg_by = "user_id"
-
-    if view_project:
-        agg_by = "project_id"
-
-    if view_organization:
-        agg_by = "organization_id"
 
     try:
         if day is None:
@@ -72,7 +63,7 @@ def billing_summary_for_job(
     prices = client.list_prices(
         start_date=start_date.isoformat(),
         end_date=end_date.isoformat(),
-        agg_by=agg_by,
+        scope=scope,
         time_granularity=time_granularity,
     )
 
@@ -102,8 +93,7 @@ def billing_summary_for_deployment(
     year: int,
     month: int,
     day: Optional[int],
-    view_project: bool,
-    view_organization: bool,
+    scope: Scope,
     time_granularity: Optional[TimeGranularity],
 ):
     # TODO: FILL ME
@@ -123,12 +113,7 @@ def summary(
     year: int = typer.Argument(...),
     month: int = typer.Argument(...),
     day: Optional[int] = typer.Argument(None),
-    view_project: bool = typer.Option(
-        False, "--project", "-p", help="View project-level cost summary."
-    ),
-    view_organization: bool = typer.Option(
-        False, "--organization", "-o", help="View organization-level cost summary."
-    ),
+    scope: Scope = typer.Option(Scope.USR, "--scope", help="Scope of the summary."),
     time_granularity: Optional[TimeGranularity] = typer.Option(
         None, "--time-granularity", "-t", help="View within the given time granularity."
     ),
@@ -142,7 +127,6 @@ def summary(
         year=year,
         month=month,
         day=day,
-        view_project=view_project,
-        view_organization=view_organization,
+        scope=scope,
         time_granularity=time_granularity,
     )
