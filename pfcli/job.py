@@ -6,18 +6,22 @@ from __future__ import annotations
 
 import asyncio
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 from uuid import UUID
 
 import ruamel.yaml
 import tabulate
 import typer
-import yaml
 from click import Choice
 from dateutil import parser
 from dateutil.parser import parse
+from rich.columns import Columns
+from rich.live import Live
+from rich.spinner import Spinner
+from rich.text import Text
 
 from pfcli.service import (
     JobStatus,
@@ -172,6 +176,20 @@ metrics_table = TableFormatter(
     fields=["name", "iteration", "created", "value"],
     headers=["Name", "Iteration", "Created", "Value"],
 )
+
+PROGRESS_STRING_PATTERNS = [
+    r"VM allocation is in progress.*",
+    r"Preparing disks for training datasets.*",
+    r"Checking VM health.*",
+    r"Pulling docker images.*",
+]
+
+
+def is_progress_string(s: str) -> bool:
+    for pattern in PROGRESS_STRING_PATTERNS:
+        if re.fullmatch(pattern, s):
+            return True
+    return False
 
 
 @app.command()
@@ -450,7 +468,8 @@ def _format_log_string(
     show_time: bool,
     show_machine_id: bool,
     use_style: bool = True,
-) -> Generator[Tuple[str, bool], None, None]:
+    show_loading: bool = True,
+) -> Generator[Tuple[Union[str, Columns], bool], None, None]:
     timestamp_str = f"⏰ {datetime_to_simple_string(utc_to_local(parser.parse(log_record['timestamp'])))} "
     node_rank = log_record["node_rank"]
     node_rank_str = "📈 PF " if node_rank == -1 else f"💻 #{node_rank} "
@@ -466,16 +485,27 @@ def _format_log_string(
         if line in ("\n", "\r"):
             yield line, job_finished
         else:
+            use_spinner = show_loading and is_progress_string(line)
             job_finished = (
                 line in ("Job completed successfully.", "Job failed.")
                 and node_rank == -1
             )
+            additional_info = ""
             if node_rank == -1:
                 line = typer.style(line, fg=typer.colors.MAGENTA)
             if show_machine_id:
-                line = node_rank_str + line
+                additional_info += node_rank_str
             if show_time:
-                line = timestamp_str + line
+                additional_info += timestamp_str
+            if use_spinner:
+                line = Columns(
+                    [
+                        Text(additional_info),
+                        Spinner(name="dots", text=line, style="green"),
+                    ]
+                )
+            else:
+                line = additional_info + line
             yield line, job_finished
 
 
@@ -490,13 +520,24 @@ async def monitor_logs(
 
     job_finished = False
     async with ws_client.open_connection(job_id, log_types, machines):
-        async for response in ws_client:
-            for line, job_finished in _format_log_string(
-                response, show_time, show_machine_id
-            ):
-                typer.echo(line, nl=False)
-            if job_finished:
-                return
+        with Live(transient=True) as live:
+            async for response in ws_client:
+                if live.is_started:
+                    live.stop()
+                for line, job_finished in _format_log_string(
+                    log_record=response,
+                    show_time=show_time,
+                    show_machine_id=show_machine_id,
+                    show_loading=True,
+                ):
+                    if isinstance(line, str):
+                        typer.echo(line, nl=False)
+                    else:
+                        sys.stdout.write("\033[F")  # Cursor up one line
+                        live.update(line)
+                        live.start()
+                    if job_finished:
+                        return
 
 
 # TODO: Implement since/until if necessary
@@ -550,21 +591,35 @@ def log(
         machines=machines,  # type: ignore
         content=content,
     )
+    status = client.get_job(job_number=job_number)["status"]
 
-    job_finished = False
     if export_path is not None:
         with export_path.open("w", encoding="utf-8") as export_file:
             for record in logs:
                 for line, _ in _format_log_string(
-                    record, show_time, show_machine_id, use_style=False
+                    record,
+                    show_time,
+                    show_machine_id,
+                    use_style=False,
+                    show_loading=False,
                 ):
+                    assert isinstance(line, str)
                     export_file.write(line)
     else:
         for record in logs:
-            for line, job_finished in _format_log_string(
-                record, show_time, show_machine_id
+            for line, _ in _format_log_string(
+                record,
+                show_time,
+                show_machine_id,
+                show_loading=False,
             ):
                 typer.echo(line, nl=False)
+    job_finished = status in (
+        JobStatus.TERMINATED,
+        JobStatus.FAILED,
+        JobStatus.SUCCESS,
+        JobStatus.CANCELLED,
+    )
 
     if not job_finished and follow:
         job_client: ProjectJobClientService = build_client(ServiceType.PROJECT_JOB)
