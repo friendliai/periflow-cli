@@ -887,5 +887,7 @@ class JobConfigManager:
                         "setup": "",
                         "run": docker_command,
                     }
+                elif isinstance(docker_command, dict) and "setup" not in docker_command:
+                    body["job_setting"]["docker"]["command"]["setup"] = ""
 
         return body
