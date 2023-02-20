@@ -81,7 +81,7 @@ def create(name: str = typer.Option(..., "--name", "-n", help="Name of api key."
     typer.secho(
         "If you misplace or cannot recall your confidential access key, there is no way to recover it.\n"
         "Your only option is to generate a fresh access key and delete the old one.",
-        fg=typer.colors.RED,
+        fg=typer.colors.BLUE,
     )
 
 
@@ -90,4 +90,4 @@ def delete(access_key_id: str = typer.Argument(..., help="ID of key to delete"))
     """Delete api key."""
     client: UserAccessKeyClientService = build_client(ServiceType.USER_ACCESS_KEY)
     client.delete_access_key(access_key_id)
-    typer.secho(f"Success to delete access key {access_key_id}")
+    typer.secho(f"Success to delete access key {access_key_id}", fg=typer.colors.BLUE)
