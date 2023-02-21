@@ -686,7 +686,7 @@ class JobConfigManager:
                                             "setup": {"type": "string"},
                                             "run": {"type": "string"},
                                         },
-                                        "required": ["setup", "run"],
+                                        "required": ["run"],
                                     },
                                     {
                                         "type": "string",
