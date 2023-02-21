@@ -262,7 +262,9 @@ def metrics(
     if metrics["latency"]:
         # ns => ms
         metrics["latency"] = (
-            "{:.3f}".format(metrics["latency"] / 1000000) if "latency" in metrics else None
+            "{:.3f}".format(metrics["latency"] / 1000000)
+            if "latency" in metrics
+            else None
         )
     if metrics["throughput"]:
         metrics["throughput"] = (
@@ -432,7 +434,9 @@ def update(
     """
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
     if replicas < 0:
-        secho_error_and_exit("The replicas argument should be equal to or greater than 0.")
+        secho_error_and_exit(
+            "The replicas argument should be equal to or greater than 0."
+        )
 
     client.scale_deployment(deployment_id=deployment_id, replicas=replicas)
     typer.secho(
