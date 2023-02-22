@@ -364,6 +364,12 @@ def create(
         "--security-level",
         help="Security level of deployment endpoints",
     ),
+    logging: bool = typer.Option(
+        False,
+        "--logging",
+        "-l",
+        help="Logging inference requests or not.",
+    ),
 ):
     """Create a deployment object by using model checkpoint."""
     project_id = get_current_project_id()
@@ -410,6 +416,7 @@ def create(
         "infrequest_perm_check": True
         if security_level == DeploymentSecurityLevel.PROTECTED
         else False,
+        "infrequest_log": True if logging else False,
         **config,
     }
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
