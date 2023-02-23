@@ -697,7 +697,7 @@ class JobConfigManager:
                                 "type": "object",
                             },
                         },
-                        "required": ["image", "command", "env_var"],
+                        "required": ["image", "command"],
                     },
                     "workspace": {
                         "type": "object",
@@ -726,6 +726,7 @@ class JobConfigManager:
                         },
                         "required": [
                             "id",
+                            "mount_path",
                         ],
                     },
                     "output_checkpoint_dir": {"type": "string"},
@@ -739,6 +740,7 @@ class JobConfigManager:
                 },
                 "required": [
                     "name",
+                    "mount_path",
                 ],
             },
             "dist": {
