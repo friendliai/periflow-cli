@@ -64,6 +64,8 @@ deployment_panel = PanelFormatter(
         "config.vm.gpu_type",
         "config.total_gpus",
         "start",
+        "security_level",
+        "config.infrequest_log",
         "endpoint",
     ],
     headers=[
@@ -76,6 +78,8 @@ deployment_panel = PanelFormatter(
         "GPU Type",
         "#GPUs",
         "Start",
+        "Security Level",
+        "Logging",
         "Endpoint",
     ],
     extra_fields=["error"],
@@ -241,6 +245,11 @@ def view(
         start = None
     deployment["start"] = start
     deployment["vms"] = deployment["vms"][0]["name"] if deployment["vms"] else "None"
+    deployment["security_level"] = (
+        DeploymentSecurityLevel.PROTECTED.value
+        if deployment["config"]["infrequest_perm_check"]
+        else DeploymentSecurityLevel.PUBLIC.value
+    )
     deployment_panel.render([deployment])
 
 
@@ -364,6 +373,12 @@ def create(
         "--security-level",
         help="Security level of deployment endpoints",
     ),
+    logging: bool = typer.Option(
+        False,
+        "--logging",
+        "-l",
+        help="Logging inference requests or not.",
+    ),
 ):
     """Create a deployment object by using model checkpoint."""
     project_id = get_current_project_id()
@@ -410,6 +425,7 @@ def create(
         "infrequest_perm_check": True
         if security_level == DeploymentSecurityLevel.PROTECTED
         else False,
+        "infrequest_log": True if logging else False,
         **config,
     }
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
