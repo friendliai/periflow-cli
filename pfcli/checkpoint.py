@@ -120,6 +120,32 @@ gpt_model_info_panel = PanelFormatter(
     ],
 )
 
+gpt_neox_and_j_model_info_panel = PanelFormatter(
+    name="",
+    fields=[
+        "model_type",
+        "head_size",
+        "num_heads",
+        "num_layers",
+        "max_length",
+        "vocab_size",
+        "eos_token",
+        "rotary_dim",
+        "special_token_ids",
+    ],
+    headers=[
+        "Model Type",
+        "Head Size",
+        "#Heads",
+        "#Encoder Layers",
+        "Max Length",
+        "Vocab Size",
+        "EOS Token",
+        "Rotary Dim",
+        "Special Token IDs",
+    ],
+)
+
 blender_model_info_panel = PanelFormatter(
     name="Model Info",
     fields=[
@@ -205,6 +231,11 @@ def view(
             ckpt["attributes"]["model_type"] = "gpt"
         elif ckpt["attributes"]["model_type"] == "blenderbot":
             model_panel = blender_model_info_panel
+        elif (
+            ckpt["attributes"]["model_type"] == "gpt-neox"
+            or ckpt["attributes"]["model_type"] == "gpt-j"
+        ):
+            model_panel = gpt_neox_and_j_model_info_panel
         model_panel.render(ckpt["attributes"])
 
     for file_info in ckpt["forms"][0]["files"]:
