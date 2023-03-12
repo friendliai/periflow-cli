@@ -73,3 +73,17 @@ def utc_to_local(dt: datetime) -> datetime:
 
 def datetime_to_simple_string(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def get_hour_timestamps_between(start: datetime, end: datetime) -> list[str]:
+    """Returns a list of time range strings in "%Y-%m-%dT%H-%Y-%m-%dT%H"
+    format between start and end datetimes.
+    """
+    time_range_strs = []
+    current = start
+    while current <= end:
+        time_range_strs.append(
+            f"{current.strftime('%Y-%m-%dT%H')}-{(current + timedelta(hours=1)).strftime('%Y-%m-%dT%H')}"
+        )
+        current += timedelta(hours=1)
+    return time_range_strs

@@ -22,6 +22,7 @@ from pfcli.service.client.deployment import (
     DeploymentEventClientService,
     DeploymentLogClientService,
     DeploymentMetricsClientService,
+    DeploymentReqRespClientService,
     PFSProjectUsageClientService,
     PFSVMClientService,
 )
@@ -172,6 +173,10 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.DEPLOYMENT_EVENT: (
         DeploymentEventClientService,
         Template(get_pfs_uri("deployment/$deployment_id/event/")),
+    ),
+    ServiceType.DEPLOYMENT_REQ_RESP: (
+        DeploymentReqRespClientService,
+        Template(get_pfs_uri("deployment/$deployment_id/req_resp/download/"))
     ),
     ServiceType.PFS_PROJECT_USAGE: (
         PFSProjectUsageClientService,

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from uuid import UUID
@@ -30,13 +31,16 @@ from pfcli.service.client import (
     PFSProjectUsageClientService,
     build_client,
 )
+from pfcli.service.client.deployment import DeploymentReqRespClientService
 from pfcli.service.config import build_deployment_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import (
     datetime_to_pretty_str,
     datetime_to_simple_string,
+    get_hour_timestamps_between,
     secho_error_and_exit,
 )
+from pfcli.utils.fs import download_file
 from pfcli.utils.prompt import get_default_editor, open_editor
 
 app = typer.Typer(
@@ -475,6 +479,57 @@ def event(
         event["id"] = f"periflow-deployment-{event['namespace']}"
         event["created_at"] = datetime_to_simple_string(parse(event["created_at"]))
     deployment_event_table.render(events)
+
+
+@app.command()
+def req_resp(
+    deployment_id: str = typer.Argument(
+        ..., help="Deployment ID to download request-response logs."
+    ),
+    since: str = typer.Option(
+        ...,
+        "--since",
+        help="Start time of request-response logs. The format should be {YYYY}-{MM}-{DD}T{HH}. "
+        "The UTC timezone will be used by default.",
+    ),
+    until: str = typer.Option(
+        ...,
+        "--until",
+        help="End time of request-response logs. The format should be {YYYY}-{MM}-{DD}T{HH}. "
+        "The UTC timezone will be used by default.",
+    ),
+    save_directory: str = typer.Option(
+        None, "-s", "--save-dir", help="Directory path to save request-response logs",
+    )
+):
+    """Download request-response logs for a deployment."""
+    if save_directory is not None and not os.path.isdir(save_directory):
+        secho_error_and_exit(f"Directory({save_directory}) is not found.")
+    save_directory = save_directory or os.getcwd()
+
+    client: DeploymentReqRespClientService = build_client(
+        ServiceType.DEPLOYMENT_REQ_RESP, deployment_id=deployment_id
+    )
+    try:
+        start = datetime.strptime(since, "%Y-%m-%dT%H")
+        end = datetime.strptime(until, "%Y-%m-%dT%H")
+    except ValueError:
+        secho_error_and_exit(
+            "Invalid datetime format. The format should be {YYYY}-{MM}-{DD}T{HH} (e.g., 1999-01-01T01)."
+        )
+    download_urls = client.get_download_urls(
+        deployment_id=deployment_id, start=start, end=end
+    )
+    filenames = get_hour_timestamps_between(start, end)
+    if len(download_urls) != len(filenames):
+        secho_error_and_exit("Failed to get all download URLs.")
+
+    for i, (url, filename) in enumerate(zip(download_urls, filenames)):
+        typer.echo(f"Downloading files {i + 1}/{len(download_urls)}...")
+        download_file(
+            url=url,
+            out=os.path.join(save_directory, filename)
+        )
 
 
 @template_app.command("create")

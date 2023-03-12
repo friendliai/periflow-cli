@@ -74,6 +74,21 @@ class DeploymentEventClientService(ClientService):
         return response.json()
 
 
+class DeploymentReqRespClientService(ClientService):
+    def get_download_urls(
+        self, deployment_id: str, start: datetime, end: datetime
+    ) -> list[str]:
+        params = {
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+        }
+        response = safe_request(
+            self.list,
+            err_prefix=f"Request-response logs for deployment({deployment_id}) is not found.",
+        )(params=params)
+        return response.json()
+
+
 class PFSProjectUsageClientService(ClientService[str], ProjectRequestMixin):
     def __init__(self, template: Template, **kwargs):
         self.initialize_project()
