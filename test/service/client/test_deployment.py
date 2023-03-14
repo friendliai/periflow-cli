@@ -16,6 +16,7 @@ from pfcli.service.client.deployment import (
     DeploymentClientService,
     DeploymentEventClientService,
     DeploymentMetricsClientService,
+    DeploymentReqRespClientService,
     PFSProjectUsageClientService,
 )
 
@@ -43,6 +44,11 @@ def project_usage_client(user_project_group_context) -> PFSProjectUsageClientSer
 @pytest.fixture
 def deployment_event_client(deployment_id: str) -> DeploymentEventClientService:
     return build_client(ServiceType.DEPLOYMENT_EVENT, deployment_id=deployment_id)
+
+
+@pytest.fixture
+def deployment_req_resp_client(deployment_id: str) -> DeploymentReqRespClientService:
+    return build_client(ServiceType.DEPLOYMENT_REQ_RESP, deployment_id=deployment_id)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
@@ -293,3 +299,58 @@ def test_deployment_event_client(
     )
     with pytest.raises(typer.Exit):
         deployment_event_client.get_event(deployment_id=deployment_id)
+
+
+@pytest.mark.usefixtures("patch_auto_token_refresh")
+def test_deployment_req_resp_client(
+    requests_mock: requests_mock.Mocker,
+    deployment_req_resp_client: DeploymentReqRespClientService,
+    deployment_id: str,
+):
+    assert isinstance(deployment_req_resp_client, DeploymentReqRespClientService)
+
+    result = [
+        {
+            "path": f"path/to/logs/{deployment_id}",
+            "url": f"logs.s3.amazonaws.com/path/to/logs/{deployment_id}/2023-01-01--00/0.log?blahblah",
+        },
+        {
+            "path": f"path/to/logs/{deployment_id}",
+            "url": f"logs.s3.amazonaws.com/path/to/logs/{deployment_id}/2023-01-01--00/1.log?blahblah",
+        },
+        {
+            "path": f"path/to/logs/{deployment_id}",
+            "url": f"logs.s3.amazonaws.com/path/to/logs/{deployment_id}/2023-01-01--01/0.log?blahblah",
+        },
+        {
+            "path": f"path/to/logs/{deployment_id}",
+            "url": f"logs.s3.amazonaws.com/path/to/logs/{deployment_id}/2023-01-01--03/0.log?blahblah",
+        },
+    ]
+    requests_mock.get(
+        deployment_req_resp_client.url_template.render(
+            **deployment_req_resp_client.url_kwargs
+        ),
+        json=result,
+    )
+    assert (
+        deployment_req_resp_client.get_download_urls(
+            deployment_id=deployment_id,
+            start=datetime(year=2023, month=1, day=1, hour=0),
+            end=datetime(year=2023, month=1, day=1, hour=3),
+        )
+        == result
+    )
+
+    requests_mock.get(
+        deployment_req_resp_client.url_template.render(
+            **deployment_req_resp_client.url_kwargs
+        ),
+        status_code=404,
+    )
+    with pytest.raises(typer.Exit):
+        assert deployment_req_resp_client.get_download_urls(
+            deployment_id=deployment_id,
+            start=datetime(year=2099, month=1, day=1, hour=0),
+            end=datetime(year=2099, month=1, day=1, hour=3),
+        )
