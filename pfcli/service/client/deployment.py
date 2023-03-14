@@ -25,11 +25,11 @@ class DeploymentClientService(ClientService[str]):
         )
         return response.json()
 
-    def scale_deployment(self, deployment_id: str, replicas: int) -> None:
+    def update_deployment_scaler(self, deployment_id: str, scaler: dict) -> None:
         safe_request(
             self.partial_update,
-            err_prefix=f"Deployment ({deployment_id}) cannot be scaled.",
-        )(pk=deployment_id, path=f"scale", data=str(replicas))
+            err_prefix=f"Failed to update scaler of deployment ({deployment_id}).",
+        )(pk=deployment_id, path=f"scaler", json=scaler)
 
     def list_deployments(self, project_id: str, archived: bool) -> Dict[str, Any]:
         response = safe_request(self.list, err_prefix="Failed to list deployments.")(
