@@ -60,6 +60,8 @@ TEST_DEPS = [
 DEV_DEPS = [
     "black>=22.8.0",
     "isort==5.10.1",
+    "boto3-stubs==1.26.90",
+    "mypy-boto3-s3==1.26.62",
 ]
 
 setup(
