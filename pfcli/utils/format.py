@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import datetime, timedelta, timezone
 
 import typer
@@ -75,15 +76,36 @@ def datetime_to_simple_string(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def get_hour_timestamps_between(start: datetime, end: datetime) -> list[str]:
-    """Returns a list of time range strings in "%Y-%m-%dT%H-%Y-%m-%dT%H"
-    format between start and end datetimes.
+def _regex_parse(pattern: str, s: str) -> str | None:
+    match = re.search(pattern, s)
+    if match:
+        return match.group()
+    return None
+
+
+def extract_datetime_part(s: str) -> str | None:
+    """Extracts the datetime portion in the format "YYYY-MM-DD--HH" from the input string `s`.
+
+    Args:
+        s: A string containing a datetime in the format "YYYY-MM-DD--HH".
+
+    Returns:
+        str: A string representing the datetime in the format "YYYY-MM-DD--HH", if found in the input string `s`. If the datetime is not found, None is returned.
+
     """
-    time_range_strs = []
-    current = start
-    while current <= end:
-        time_range_strs.append(
-            f"{current.strftime('%Y-%m-%dT%H')}-{(current + timedelta(hours=1)).strftime('%Y-%m-%dT%H')}"
-        )
-        current += timedelta(hours=1)
-    return time_range_strs
+    pattern = r"\d{4}-\d{2}-\d{2}--\d{2}"
+    return _regex_parse(pattern, s)
+
+
+def extract_deployment_id_part(s: str) -> str | None:
+    """Extracts the deployment ID from the input string `s`.
+
+    Args:
+        s: A string containing a deployment ID.
+
+    Returns:
+        str: A parsed string. If the deployment ID is not found, None is returned.
+
+    """
+    pattern = r"periflow-deployment-\w{8}"
+    return _regex_parse(pattern, s)

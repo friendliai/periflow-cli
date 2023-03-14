@@ -77,7 +77,7 @@ class DeploymentEventClientService(ClientService):
 class DeploymentReqRespClientService(ClientService):
     def get_download_urls(
         self, deployment_id: str, start: datetime, end: datetime
-    ) -> list[str]:
+    ) -> list[dict[str, str]]:
         params = {
             "start": start.isoformat(),
             "end": end.isoformat(),

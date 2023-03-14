@@ -176,7 +176,7 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ),
     ServiceType.DEPLOYMENT_REQ_RESP: (
         DeploymentReqRespClientService,
-        Template(get_pfs_uri("deployment/$deployment_id/req_resp/download/"))
+        Template(get_pfs_uri("deployment/$deployment_id/req_resp/download/")),
     ),
     ServiceType.PFS_PROJECT_USAGE: (
         PFSProjectUsageClientService,

@@ -37,8 +37,9 @@ from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import (
     datetime_to_pretty_str,
     datetime_to_simple_string,
-    get_hour_timestamps_between,
     secho_error_and_exit,
+    extract_datetime_part,
+    extract_deployment_id_part,
 )
 from pfcli.utils.fs import download_file
 from pfcli.utils.prompt import get_default_editor, open_editor
@@ -499,8 +500,11 @@ def req_resp(
         "The UTC timezone will be used by default.",
     ),
     save_directory: str = typer.Option(
-        None, "-s", "--save-dir", help="Directory path to save request-response logs",
-    )
+        None,
+        "-s",
+        "--save-dir",
+        help="Directory path to save request-response logs",
+    ),
 ):
     """Download request-response logs for a deployment."""
     if save_directory is not None and not os.path.isdir(save_directory):
@@ -517,18 +521,18 @@ def req_resp(
         secho_error_and_exit(
             "Invalid datetime format. The format should be {YYYY}-{MM}-{DD}T{HH} (e.g., 1999-01-01T01)."
         )
-    download_urls = client.get_download_urls(
+    download_infos = client.get_download_urls(
         deployment_id=deployment_id, start=start, end=end
     )
-    filenames = get_hour_timestamps_between(start, end)
-    if len(download_urls) != len(filenames):
-        secho_error_and_exit("Failed to get all download URLs.")
 
-    for i, (url, filename) in enumerate(zip(download_urls, filenames)):
-        typer.echo(f"Downloading files {i + 1}/{len(download_urls)}...")
+    for i, download_info in enumerate(download_infos):
+        typer.echo(f"Downloading files {i + 1}/{len(download_infos)}...")
+        full_storage_path = download_info["path"]
+        deployment_id_part = extract_deployment_id_part(full_storage_path)
+        timestamp_part = extract_datetime_part(full_storage_path)
+        filename = f"{deployment_id_part}_{timestamp_part}"
         download_file(
-            url=url,
-            out=os.path.join(save_directory, filename)
+            url=download_info["url"], out=os.path.join(save_directory, filename)
         )
 
 
