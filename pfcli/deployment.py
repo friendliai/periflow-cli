@@ -446,9 +446,7 @@ def update(
         ..., callback=ast.literal_eval, help="Scaler for deployment."
     ),
 ):
-    """Update deployment.
-    # TODO: Add more update options.
-    """
+    """[Experimental] Update deployment."""
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
     client.update_deployment_scaler(deployment_id=deployment_id, scaler=scaler)
     typer.secho(
