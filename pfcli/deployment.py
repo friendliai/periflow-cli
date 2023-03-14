@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import os
+import ast
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from uuid import UUID
@@ -446,22 +447,15 @@ def create(
 @app.command()
 def update(
     deployment_id: str = typer.Argument(..., help="Deployment id to update."),
-    replicas: int = typer.Option(
-        ..., "--replicas", "-r", help="Number of replicas to scale deployment."
+    scaler: str = typer.Argument(
+        ..., callback=ast.literal_eval, help="Scaler for deployment."
     ),
 ):
-    """Update deployment.
-    # TODO: Add more update options.
-    """
+    """[Experimental] Update deployment."""
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
-    if replicas < 0:
-        secho_error_and_exit(
-            "The replicas argument should be equal to or greater than 0."
-        )
-
-    client.scale_deployment(deployment_id=deployment_id, replicas=replicas)
+    client.update_deployment_scaler(deployment_id=deployment_id, scaler=scaler)
     typer.secho(
-        f"Deployment ({deployment_id}) scale to {replicas}.",
+        f"Scaler of deployment ({deployment_id}) is updated.\n" f"Scaler: {scaler}.",
         fg=typer.colors.BLUE,
     )
 
