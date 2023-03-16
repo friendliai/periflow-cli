@@ -84,7 +84,7 @@ class DeploymentReqRespClientService(ClientService):
         }
         response = safe_request(
             self.list,
-            err_prefix=f"Request-response logs for deployment({deployment_id}) is not found.",
+            err_prefix=f"Request-response logs for deployment({deployment_id}) are not found.",
         )(params=params)
         return response.json()
 

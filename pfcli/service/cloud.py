@@ -28,7 +28,6 @@ from typing_extensions import TypeAlias
 from pfcli.service import StorageType
 from pfcli.utils.format import secho_error_and_exit
 
-
 _CloudClient: TypeAlias = Union[S3Client, BlobServiceClient]
 T = TypeVar("T", bound=_CloudClient)
 

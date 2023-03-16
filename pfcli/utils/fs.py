@@ -154,7 +154,12 @@ def download_file(url: str, out: str) -> None:
 
     # Create directory if not exists
     dirpath = os.path.dirname(out)
-    os.makedirs(dirpath, exist_ok=True)
+    try:
+        os.makedirs(dirpath, exist_ok=True)
+    except OSError as exc:
+        secho_error_and_exit(
+            f"Cannot create directory({dirpath}) to download file: {exc!r}"
+        )
 
     if file_size >= 16 * 1024 * 1024:
         download_file_parallel(url, out, file_size)

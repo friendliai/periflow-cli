@@ -4,8 +4,8 @@
 
 from __future__ import annotations
 
-import os
 import ast
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from uuid import UUID
@@ -38,9 +38,9 @@ from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import (
     datetime_to_pretty_str,
     datetime_to_simple_string,
-    secho_error_and_exit,
     extract_datetime_part,
     extract_deployment_id_part,
+    secho_error_and_exit,
 )
 from pfcli.utils.fs import download_file
 from pfcli.utils.prompt import get_default_editor, open_editor
@@ -505,9 +505,9 @@ def req_resp(
         secho_error_and_exit(f"Directory({save_directory}) is not found.")
     save_directory = save_directory or os.getcwd()
 
-    client: DeploymentReqRespClientService = build_client(
-        ServiceType.DEPLOYMENT_REQ_RESP, deployment_id=deployment_id
-    )
+    if not os.access(save_directory, os.W_OK):
+        secho_error_and_exit(f"Cannot save logs to {save_directory} which is readonly.")
+
     try:
         start = datetime.strptime(since, "%Y-%m-%dT%H")
         end = datetime.strptime(until, "%Y-%m-%dT%H")
@@ -515,6 +515,14 @@ def req_resp(
         secho_error_and_exit(
             "Invalid datetime format. The format should be {YYYY}-{MM}-{DD}T{HH} (e.g., 1999-01-01T01)."
         )
+    if start > end:
+        secho_error_and_exit(
+            "Time value of `--since` option should be earlier than the value of `--until`."
+        )
+
+    client: DeploymentReqRespClientService = build_client(
+        ServiceType.DEPLOYMENT_REQ_RESP, deployment_id=deployment_id
+    )
     download_infos = client.get_download_urls(
         deployment_id=deployment_id, start=start, end=end
     )
