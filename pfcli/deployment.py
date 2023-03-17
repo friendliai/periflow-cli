@@ -526,13 +526,15 @@ def req_resp(
     download_infos = client.get_download_urls(
         deployment_id=deployment_id, start=start, end=end
     )
+    if len(download_infos) == 0:
+        secho_error_and_exit("No logs are found.")
 
     for i, download_info in enumerate(download_infos):
         typer.echo(f"Downloading files {i + 1}/{len(download_infos)}...")
         full_storage_path = download_info["path"]
         deployment_id_part = extract_deployment_id_part(full_storage_path)
         timestamp_part = extract_datetime_part(full_storage_path)
-        filename = f"{deployment_id_part}_{timestamp_part}"
+        filename = f"{deployment_id_part}_{timestamp_part}.log"
         download_file(
             url=download_info["url"], out=os.path.join(save_directory, filename)
         )
