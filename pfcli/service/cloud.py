@@ -4,33 +4,56 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import boto3
 from azure.storage.blob import BlobServiceClient
-from botocore.client import BaseClient
 from botocore.exceptions import ClientError
+from mypy_boto3_s3.client import S3Client
+from typing_extensions import TypeAlias
 
 from pfcli.service import StorageType
 from pfcli.utils.format import secho_error_and_exit
 
-C = TypeVar("C", bound="CloudStorageHelper")
-T = TypeVar("T", bound=Union[BaseClient, BlobServiceClient])
+_CloudClient: TypeAlias = Union[S3Client, BlobServiceClient]
+T = TypeVar("T", bound=_CloudClient)
 
 
 @dataclass
-class CloudStorageHelper:
+class CloudStorageHelper(ABC, Generic[T]):
     client: T
 
+    @abstractmethod
     def list_storage_files(
         self, storage_name: str, path_prefix: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        raise NotImplementedError  # pragma: no cover
+        """List all file objects in the storage.
+
+        Args:
+            storage_name (str): Storage name
+            path_prefix (Optional[str], optional): Direcotry path under the storage. Defaults to None.
+
+        Returns:
+            List[Dict[str, Any]]: A list of object info.
+
+        """
 
 
 @dataclass
-class AWSCloudStorageHelper(CloudStorageHelper):
+class AWSCloudStorageHelper(CloudStorageHelper[S3Client]):
     def _check_aws_bucket_exists(self, storage_name: str) -> bool:
         try:
             self.client.head_bucket(Bucket=storage_name)
@@ -47,22 +70,28 @@ class AWSCloudStorageHelper(CloudStorageHelper):
 
         file_list = []
         prefix_option = {"Prefix": path_prefix} if path_prefix is not None else {}
-        object_contents = self.client.list_objects(
-            Bucket=storage_name, **prefix_option
-        )["Contents"]
-        for object_content in object_contents:
-            object_key = object_content["Key"]
-            name = object_key.split("/")[-1]
-            if not name:
-                continue  # skip directory
-            file_list.append(
-                {
-                    "name": name,
-                    "path": object_key,
-                    "mtime": object_content["LastModified"].isoformat(),
-                    "size": object_content["Size"],
-                }
+        resp = self.client.list_objects(Bucket=storage_name, **prefix_option)
+        if "Contents" not in resp:
+            secho_error_and_exit(
+                f"No file exists at {path_prefix} in the bucket({storage_name})"
             )
+        object_contents = resp["Contents"]
+        for object_content in object_contents:
+            try:
+                object_key = object_content["Key"]
+                name = object_key.split("/")[-1]
+                if not name:
+                    continue  # skip directory
+                file_list.append(
+                    {
+                        "name": name,
+                        "path": object_key,
+                        "mtime": object_content["LastModified"].isoformat(),
+                        "size": object_content["Size"],
+                    }
+                )
+            except KeyError:
+                secho_error_and_exit("Unexpected S3 error")
 
         if not file_list:
             secho_error_and_exit(f"No file exists in Bucket {storage_name}")
@@ -71,7 +100,7 @@ class AWSCloudStorageHelper(CloudStorageHelper):
 
 
 @dataclass
-class AzureCloudStorageHelper(CloudStorageHelper):
+class AzureCloudStorageHelper(CloudStorageHelper[BlobServiceClient]):
     def list_storage_files(self, storage_name: str, path_prefix: Optional[str] = None):
         container_client = self.client.get_container_client(storage_name)
         if not container_client.exists():
@@ -102,7 +131,7 @@ class AzureCloudStorageHelper(CloudStorageHelper):
         return file_list
 
 
-def build_s3_client(credential_json: Dict[str, str]) -> BaseClient:
+def build_s3_client(credential_json: Dict[str, str]) -> S3Client:
     return boto3.client(
         "s3",
         aws_access_key_id=credential_json["aws_access_key_id"],
@@ -119,13 +148,18 @@ def build_blob_client(credential_json: Dict[str, str]) -> BlobServiceClient:
 
 
 # TODO: Add GCP support
-vendor_helper_map: Dict[StorageType, Tuple[Type[C], Callable[[Dict[str, str]], T]]] = {
+vendor_helper_map: Dict[
+    StorageType,
+    Tuple[Type[CloudStorageHelper], Callable[[Dict[str, str]], _CloudClient]],
+] = {
     StorageType.S3: (AWSCloudStorageHelper, build_s3_client),
     StorageType.BLOB: (AzureCloudStorageHelper, build_blob_client),
 }
 
 
-def build_storage_helper(vendor: StorageType, credential_json: Dict[str, Any]) -> C:
+def build_storage_helper(
+    vendor: StorageType, credential_json: Dict[str, Any]
+) -> CloudStorageHelper:
     cls, client_build_fn = vendor_helper_map[vendor]
     client = client_build_fn(credential_json)
     return cls(client)

@@ -45,6 +45,8 @@ COMMON_DEPS = [
     "azure-storage-blob==12.12.0",
     "packaging>=22.0",
     "pathspec>=0.9.0",
+    "boto3-stubs==1.26.90",
+    "mypy-boto3-s3==1.26.62",
 ]
 
 TEST_DEPS = [

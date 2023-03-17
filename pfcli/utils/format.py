@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import datetime, timedelta, timezone
 
 import typer
@@ -73,3 +74,38 @@ def utc_to_local(dt: datetime) -> datetime:
 
 def datetime_to_simple_string(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _regex_parse(pattern: str, s: str) -> str | None:
+    match = re.search(pattern, s)
+    if match:
+        return match.group()
+    return None
+
+
+def extract_datetime_part(s: str) -> str | None:
+    """Extracts the datetime portion in the format "YYYY-MM-DD--HH" from the input string `s`.
+
+    Args:
+        s: A string containing a datetime in the format "YYYY-MM-DD--HH".
+
+    Returns:
+        str: A string representing the datetime in the format "YYYY-MM-DD--HH", if found in the input string `s`. If the datetime is not found, None is returned.
+
+    """
+    pattern = r"\d{4}-\d{2}-\d{2}--\d{2}"
+    return _regex_parse(pattern, s)
+
+
+def extract_deployment_id_part(s: str) -> str | None:
+    """Extracts the deployment ID from the input string `s`.
+
+    Args:
+        s: A string containing a deployment ID.
+
+    Returns:
+        str: A parsed string. If the deployment ID is not found, None is returned.
+
+    """
+    pattern = r"periflow-deployment-\w{8}"
+    return _regex_parse(pattern, s)
