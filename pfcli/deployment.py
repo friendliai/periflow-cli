@@ -56,7 +56,7 @@ app.add_typer(template_app, name="template", help="Manage deployment templates."
 deployment_panel = PanelFormatter(
     name="Deployment Overview",
     fields=[
-        "id",
+        "deployment_id",
         "config.name",
         "config.deployment_type",
         "status",
@@ -90,7 +90,7 @@ deployment_panel = PanelFormatter(
 deployment_table = TableFormatter(
     name="Deployments",
     fields=[
-        "id",
+        "deployment_id",
         "config.name",
         "status",
         "ready_replicas",
@@ -433,7 +433,7 @@ def create(
     deployment = client.create_deployment(request_data)
 
     typer.secho(
-        f"Deployment ({deployment['id']}) started successfully. Use 'pf deployment view {deployment['id']}' to see the deployment details.\n"
+        f"Deployment ({deployment['deployment_id']}) started successfully. Use 'pf deployment view {deployment['deployment_id']}' to see the deployment details.\n"
         f"Send inference requests to '{deployment['endpoint']}'.",
         fg=typer.colors.BLUE,
     )
