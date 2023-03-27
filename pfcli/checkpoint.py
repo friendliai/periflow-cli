@@ -106,17 +106,15 @@ gpt_model_info_panel = PanelFormatter(
         "max_length",
         "vocab_size",
         "eos_token",
-        "special_token_ids",
     ],
     headers=[
         "Model Type",
         "Head Size",
         "#Heads",
-        "#Encoder Layers",
+        "#Layers",
         "Max Length",
         "Vocab Size",
         "EOS Token",
-        "Special Token IDs",
     ],
 )
 
@@ -131,18 +129,16 @@ gpt_neox_and_j_model_info_panel = PanelFormatter(
         "vocab_size",
         "eos_token",
         "rotary_dim",
-        "special_token_ids",
     ],
     headers=[
         "Model Type",
         "Head Size",
         "#Heads",
-        "#Encoder Layers",
+        "#Layers",
         "Max Length",
         "Vocab Size",
         "EOS Token",
         "Rotary Dim",
-        "Special Token IDs",
     ],
 )
 
