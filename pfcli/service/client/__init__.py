@@ -198,7 +198,7 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.FILE: (FileClientService, Template(get_mr_uri("files/"))),
     ServiceType.GROUP_FILE: (
         GroupProjectFileClientService,
-        Template(get_mr_uri("orgs/$group_id/$project_id/files/")),
+        Template(get_mr_uri("orgs/$group_id/prjs/$project_id/files/")),
     ),
 }
 
