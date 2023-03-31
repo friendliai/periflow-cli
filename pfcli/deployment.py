@@ -16,7 +16,6 @@ import typer
 import yaml
 from dateutil.parser import parse
 from dateutil.tz import tzlocal
-from rich.text import Text
 from tqdm import tqdm
 
 from pfcli.context import get_current_project_id
@@ -47,7 +46,7 @@ from pfcli.utils.format import (
     extract_deployment_id_part,
     secho_error_and_exit,
 )
-from pfcli.utils.fs import download_file, get_file_info, upload_file
+from pfcli.utils.fs import download_file, upload_file
 from pfcli.utils.prompt import get_default_editor, open_editor
 
 app = typer.Typer(
@@ -95,7 +94,7 @@ deployment_panel = PanelFormatter(
     ],
     extra_fields=["error"],
     extra_headers=["error"],
-    substitute_only_exact_match=False,
+    substitute_exact_match_only=False,
 )
 
 deployment_table = TableFormatter(
@@ -113,7 +112,7 @@ deployment_table = TableFormatter(
     headers=["ID", "Name", "Status", "#Ready", "VM Type", "GPU Type", "#GPUs", "Start"],
     extra_fields=["error"],
     extra_headers=["error"],
-    substitute_only_exact_match=False,
+    substitute_exact_match_only=False,
 )
 
 deployment_metrics_table = TableFormatter(
@@ -445,9 +444,7 @@ def create(
         }
         file_id = group_file_client.create_misc_file(file_info=file_info)["id"]
 
-        upload_url = file_client.get_misc_file_upload_url(misc_file_id=file_id)[
-            "upload_url"
-        ]
+        upload_url = file_client.get_misc_file_upload_url(misc_file_id=file_id)
         with tqdm(
             total=file_size,
             unit="B",

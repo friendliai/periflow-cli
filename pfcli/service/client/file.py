@@ -20,35 +20,35 @@ from pfcli.service.client.base import (
 class FileClientService(ClientService[UUID]):
     """File client service."""
 
-    def get_misc_file_upload_url(self, misc_file_id: UUID) -> Dict[str, Any]:
+    def get_misc_file_upload_url(self, misc_file_id: UUID) -> str:
         """Get an URL to upload file.
 
         Args:
             misc_file_id (UUID): Misc file ID to upload.
 
         Returns:
-            Dict[str, Any]: File info with the uploadable URL.
+            str: An uploadable URL.
 
         """
         response = safe_request(self.post, err_prefix="Failed to get file upload URL.")(
             path=f"{misc_file_id}/upload/"
         )
-        return response.json()
+        return response.json()["upload_url"]
 
-    def get_misc_file_download_url(self, misc_file_id: UUID) -> Dict[str, Any]:
+    def get_misc_file_download_url(self, misc_file_id: UUID) -> str:
         """Get an URL to download file.
 
         Args:
             misc_file_id (UUID): Misc file ID to download.
 
         Returns:
-            Dict[str, Any]: File info with the downloadable URL.
+            Dict[str, Any]: A downloadable URL.
 
         """
         response = safe_request(
             self.post, err_prefix="Failed to get file download URL."
         )(path=f"{misc_file_id}/download/")
-        return response.json()
+        return response.json()["download_url"]
 
     def make_misc_file_uploaded(self, misc_file_id: UUID) -> Dict[str, Any]:
         """Request to mark the file as uploaded.
@@ -62,7 +62,7 @@ class FileClientService(ClientService[UUID]):
         """
         response = safe_request(
             self.partial_update, err_prefix="Failed to patch the file status."
-        )(path=f"{misc_file_id}/uploaded/")
+        )(pk=misc_file_id, path="uploaded/")
         return response.json()
 
 
