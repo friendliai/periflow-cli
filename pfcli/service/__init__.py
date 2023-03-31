@@ -44,6 +44,8 @@ class ServiceType(str, Enum):
     PFS_VM = "PFS_VM"
     PFT_BILLING_SUMMARY = "BILLING_SUMMARY"
     METRICS = "METRICS"
+    FILE = "FILE"
+    GROUP_FILE = "GROUP_FILE"
 
 
 class GroupRole(str, Enum):

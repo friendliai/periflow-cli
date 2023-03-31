@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
@@ -14,6 +15,9 @@ import ruamel.yaml
 import typer
 import yaml
 from dateutil.parser import parse
+from dateutil.tz import tzlocal
+from rich.text import Text
+from tqdm import tqdm
 
 from pfcli.context import get_current_project_id
 from pfcli.service import (
@@ -33,6 +37,7 @@ from pfcli.service.client import (
     build_client,
 )
 from pfcli.service.client.deployment import DeploymentReqRespClientService
+from pfcli.service.client.file import FileClientService, GroupProjectFileClientService
 from pfcli.service.config import build_deployment_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import (
@@ -42,7 +47,7 @@ from pfcli.utils.format import (
     extract_deployment_id_part,
     secho_error_and_exit,
 )
-from pfcli.utils.fs import download_file
+from pfcli.utils.fs import download_file, get_file_info, upload_file
 from pfcli.utils.prompt import get_default_editor, open_editor
 
 app = typer.Typer(
@@ -90,6 +95,7 @@ deployment_panel = PanelFormatter(
     ],
     extra_fields=["error"],
     extra_headers=["error"],
+    substitute_only_exact_match=False,
 )
 
 deployment_table = TableFormatter(
@@ -107,6 +113,7 @@ deployment_table = TableFormatter(
     headers=["ID", "Name", "Status", "#Ready", "VM Type", "GPU Type", "#GPUs", "Start"],
     extra_fields=["error"],
     extra_headers=["error"],
+    substitute_only_exact_match=False,
 )
 
 deployment_metrics_table = TableFormatter(
@@ -157,34 +164,25 @@ deployment_event_table = TableFormatter(
     headers=["ID", "Type", "Description", "Timestamp"],
 )
 
-deployment_panel.add_substitution_rule("waiting", "[bold]waiting")
-deployment_panel.add_substitution_rule("enqueued", "[bold cyan]enqueued")
-deployment_panel.add_substitution_rule("running", "[bold blue]running")
-deployment_panel.add_substitution_rule("success", "[bold green]success")
-deployment_panel.add_substitution_rule("failed", "[bold red]failed")
-deployment_panel.add_substitution_rule("terminated", "[bold yellow]terminated")
-deployment_panel.add_substitution_rule("terminating", "[bold magenta]terminating")
-deployment_panel.add_substitution_rule("cancelling", "[bold magenta]cancelling")
-
-deployment_table.add_substitution_rule("waiting", "[bold]waiting")
-deployment_table.add_substitution_rule("enqueued", "[bold cyan]enqueued")
-deployment_table.add_substitution_rule("running", "[bold blue]running")
-deployment_table.add_substitution_rule("success", "[bold green]success")
-deployment_table.add_substitution_rule("failed", "[bold red]failed")
-deployment_table.add_substitution_rule("terminated", "[bold yellow]terminated")
-deployment_table.add_substitution_rule("terminating", "[bold magenta]terminating")
-deployment_table.add_substitution_rule("cancelling", "[bold magenta]cancelling")
-
-deployment_metrics_table.add_substitution_rule("waiting", "[bold]waiting")
-deployment_metrics_table.add_substitution_rule("enqueued", "[bold cyan]enqueued")
-deployment_metrics_table.add_substitution_rule("running", "[bold blue]running")
-deployment_metrics_table.add_substitution_rule("success", "[bold green]success")
-deployment_metrics_table.add_substitution_rule("failed", "[bold red]failed")
-deployment_metrics_table.add_substitution_rule("terminated", "[bold yellow]terminated")
-deployment_metrics_table.add_substitution_rule(
-    "terminating", "[bold magenta]terminating"
+deployment_panel.add_substitution_rule("Pending", "[bold yellow]Pending[/bold yellow]")
+deployment_panel.add_substitution_rule(
+    "Initializing", "[bold cyan]Initializing[/bold cyan]"
 )
-deployment_metrics_table.add_substitution_rule("cancelling", "[bold magenta]cancelling")
+deployment_panel.add_substitution_rule("Running", "[bold blue]Running[/bold blue]")
+deployment_panel.add_substitution_rule(
+    "Stopping", "[bold magenta]Stopping[/bold magenta]"
+)
+deployment_panel.add_substitution_rule("Terminated", "[bold]Terminated[/bold]")
+
+deployment_table.add_substitution_rule("Pending", "[bold yellow]Pending[/bold yellow]")
+deployment_table.add_substitution_rule(
+    "Initializing", "[bold cyan]Initializing[/bold cyan]"
+)
+deployment_table.add_substitution_rule("Running", "[bold blue]Running[/bold blue]")
+deployment_table.add_substitution_rule(
+    "Stopping", "[bold magenta]Stopping[/bold magenta]"
+)
+deployment_table.add_substitution_rule("Terminated", "[bold]Terminated[/bold]")
 
 
 @app.command()
@@ -220,8 +218,9 @@ def list(
         deployment["vms"] = (
             deployment["vms"][0]["name"] if deployment["vms"] else "None"
         )
+        deployment["status"] = ", ".join(deployment["status"])
 
-    target_deployment_list = deployments[:limit]
+    target_deployment_list = deployments[:limit]  # TODO: Use pagnination.
     deployment_table.render(target_deployment_list)
 
 
@@ -256,6 +255,7 @@ def view(
         if deployment["config"]["infrequest_perm_check"]
         else DeploymentSecurityLevel.PUBLIC.value
     )
+    deployment["status"] = ", ".join(deployment["status"])
     deployment_panel.render([deployment])
 
 
@@ -385,6 +385,9 @@ def create(
         "-l",
         help="Logging inference requests or not.",
     ),
+    default_request_config_file: Optional[typer.FileText] = typer.Option(
+        None, "--default-request-config-file", help="Path to default request config"
+    ),
 ):
     """Create a deployment object by using model checkpoint."""
     project_id = get_current_project_id()
@@ -417,6 +420,48 @@ def create(
         num_workers = orca_config.get("num_workers", 1)
         num_sessions = orca_config.get("num_sessions", 1)
         total_gpus = num_devices * num_workers * num_sessions
+
+    if default_request_config_file:
+        try:
+            json.load(default_request_config_file)
+        except json.JSONDecodeError as e:
+            secho_error_and_exit(
+                f"Default request config file has the invalid JSON format: {e!r}"
+            )
+
+        file_client: FileClientService = build_client(ServiceType.FILE)
+        group_file_client: GroupProjectFileClientService = build_client(
+            ServiceType.GROUP_FILE
+        )
+
+        file_size = os.stat(default_request_config_file.name).st_size
+        file_info = {
+            "name": os.path.basename(default_request_config_file.name),
+            "path": os.path.basename(default_request_config_file.name),
+            "mtime": datetime.fromtimestamp(
+                os.stat(default_request_config_file.name).st_mtime, tz=tzlocal()
+            ).isoformat(),
+            "size": file_size,
+        }
+        file_id = group_file_client.create_misc_file(file_info=file_info)["id"]
+
+        upload_url = file_client.get_misc_file_upload_url(misc_file_id=file_id)[
+            "upload_url"
+        ]
+        with tqdm(
+            total=file_size,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
+            desc="Uploading default request config",
+        ) as t:
+            upload_file(
+                file_path=default_request_config_file.name,
+                url=upload_url,
+                ctx=t,
+            )
+        file_client.make_misc_file_uploaded(misc_file_id=file_id)
+        config["orca_config"]["default_request_config_id"] = file_id
 
     request_data = {
         "project_id": str(project_id),
