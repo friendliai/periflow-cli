@@ -4,8 +4,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 from typing import Any, Dict, Type
 
 from pfcli.configurator.base import IO, Configurator, InteractiveConfigurator
@@ -104,9 +104,8 @@ class DRCConfigurator(Configurator):
             "properties": {
                 "stop": {"type": "array", "items": {"type": "string"}},
                 "stop_tokens": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
+                    "type": "object",
+                    "properties": {
                         "properties": {
                             "tokens": {"type": "array", "items": {"type": "integer"}}
                         },
@@ -115,9 +114,8 @@ class DRCConfigurator(Configurator):
                 },
                 "bad_words": {"type": "array", "items": {"type": "string"}},
                 "bad_word_tokens": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
+                    "type": "object",
+                    "properties": {
                         "properties": {
                             "tokens": {"type": "array", "items": {"type": "integer"}}
                         },
@@ -125,13 +123,11 @@ class DRCConfigurator(Configurator):
                     },
                 },
             },
-            "required": [],
-            "oneOf": [
-                {"required": ["stop"], "not": {"required": ["stop_tokens"]}},
-                {"required": ["stop_tokens"], "not": {"required": ["stop"]}},
-                {"required": ["bad_words"], "not": {"required": ["bad_word_tokens"]}},
-                {"required": ["bad_word_tokens"], "not": {"required": ["bad_words"]}},
+            "allOf": [
+                {"not": {"required": ["stop_tokens", "stop"]}},
+                {"not": {"required": ["bad_words", "bad_word_tokens"]}},
             ],
+            "minProperties": 1,
         }
 
     @classmethod
