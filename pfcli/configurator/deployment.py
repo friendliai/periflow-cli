@@ -5,10 +5,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Type
+import json
+from typing import Any, Dict, Type
 
-from pfcli.configurator.base import InteractiveConfigurator
+from pfcli.configurator.base import IO, Configurator, InteractiveConfigurator
 from pfcli.service import EngineType
+from pfcli.utils.format import secho_error_and_exit
 
 INFERENCE_SERVER_CONFIG = """
 # Inference server type config
@@ -90,3 +92,53 @@ def build_deployment_interactive_configurator(
 
     configurator.start_interaction()
     return configurator
+
+
+class DRCConfigurator(Configurator):
+    """Configurator for default request config."""
+
+    @property
+    def validation_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "stop": {"type": "array", "items": {"type": "string"}},
+                "stop_tokens": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "tokens": {"type": "array", "items": {"type": "integer"}}
+                        },
+                        "required": ["tokens"],
+                    },
+                },
+                "bad_words": {"type": "array", "items": {"type": "string"}},
+                "bad_word_tokens": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "tokens": {"type": "array", "items": {"type": "integer"}}
+                        },
+                        "required": ["tokens"],
+                    },
+                },
+            },
+            "required": [],
+            "oneOf": [
+                {"required": ["stop"], "not": {"required": ["stop_tokens"]}},
+                {"required": ["stop_tokens"], "not": {"required": ["stop"]}},
+                {"required": ["bad_words"], "not": {"required": ["bad_word_tokens"]}},
+                {"required": ["bad_word_tokens"], "not": {"required": ["bad_words"]}},
+            ],
+        }
+
+    @classmethod
+    def from_file(cls, f: IO) -> Configurator:
+        try:
+            config: Dict[str, Any] = json.load(f)
+        except json.JSONDecodeError as e:
+            secho_error_and_exit(f"Error occurred while parsing config file: {e!r}")
+
+        return cls(config)  # type: ignore
