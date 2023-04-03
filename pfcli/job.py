@@ -23,6 +23,7 @@ from rich.live import Live
 from rich.spinner import Spinner
 from rich.text import Text
 
+from pfcli.configurator.job import JobConfigurator, build_job_interactive_configurator
 from pfcli.service import (
     JobStatus,
     JobType,
@@ -43,7 +44,6 @@ from pfcli.service.client.job import (
     ProjectJobCheckpointClientService,
 )
 from pfcli.service.client.metrics import MetricsClientService
-from pfcli.service.config import JobConfigManager, build_job_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import (
     datetime_to_pretty_str,
@@ -222,7 +222,7 @@ def run(
     ),
 ):
     """Run a job."""
-    cfg_manager = JobConfigManager.from_file(config_file)
+    cfg_manager = JobConfigurator.from_file(config_file)
     cfg_manager.update_config(
         vm=vm_name,
         num_devices=num_devices,
@@ -445,7 +445,7 @@ def template_create(
         type=Choice([e.value for e in JobType]),
         prompt_suffix="\n>> ",
     )
-    configurator = build_job_configurator(job_type)
+    configurator = build_job_interactive_configurator(JobType(job_type))
     yaml_str = configurator.render()
 
     yaml = ruamel.yaml.YAML()

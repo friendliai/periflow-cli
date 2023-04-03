@@ -1,12 +1,13 @@
 # Copyright (C) 2021 FriendliAI
 
-"""PeriFlow YAML File Configuration Service"""
+"""PeriFlow Deployment Configurator."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, Tuple, Type, TypeVar, Union
+from typing import Dict, Type
 
+from pfcli.configurator.base import InteractiveConfigurator
 from pfcli.service import EngineType
 
 INFERENCE_SERVER_CONFIG = """
@@ -39,17 +40,6 @@ scaler_config:
   min_deployment_count:
   max_deployment_count:
 """
-
-
-T = TypeVar("T", bound=Union[str, Tuple[Any, ...]])
-
-
-class InteractiveConfigurator(Generic[T]):
-    def start_interaction(self) -> None:
-        raise NotImplementedError  # prama: no cover
-
-    def render(self) -> T:
-        raise NotImplementedError  # pragma: no cover
 
 
 @dataclass

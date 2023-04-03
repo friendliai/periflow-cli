@@ -25,7 +25,6 @@ from pfcli.service.auth import auto_token_refresh, get_auth_header
 from pfcli.utils.format import secho_error_and_exit
 from pfcli.utils.fs import (
     S3_MPU_PART_MAX_SIZE,
-    attach_storage_path_prefix,
     get_file_size,
     get_total_file_size,
     storage_path_to_local_path,
@@ -45,7 +44,7 @@ def safe_request(
         err_prefix = err_prefix.rstrip() + "\n"
 
     @wraps(func)
-    def wrapper(*args, **kwargs) -> Response:
+    def wrapper(*args, **kwargs) -> Response:  # type: ignore
         try:
             return func(*args, **kwargs)
         except requests.HTTPError as exc:
@@ -183,7 +182,7 @@ class GroupRequestMixin:
         group_id = get_current_group_id()
         if group_id is None:
             secho_error_and_exit("Organization is not set.")
-        self.group_id = group_id
+        self.group_id = group_id  # type: ignore
 
 
 class ProjectRequestMixin:
@@ -193,7 +192,7 @@ class ProjectRequestMixin:
         project_id = get_current_project_id()
         if project_id is None:
             secho_error_and_exit("Project is not set.")
-        self.project_id = project_id
+        self.project_id = project_id  # type: ignore
 
 
 class UploadableClientService(ClientService[T], Generic[T]):

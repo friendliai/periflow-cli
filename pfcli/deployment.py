@@ -18,6 +18,7 @@ from dateutil.parser import parse
 from dateutil.tz import tzlocal
 from tqdm import tqdm
 
+from pfcli.configurator.deployment import build_deployment_interactive_configurator
 from pfcli.context import get_current_project_id
 from pfcli.service import (
     CloudType,
@@ -37,7 +38,6 @@ from pfcli.service.client import (
 )
 from pfcli.service.client.deployment import DeploymentReqRespClientService
 from pfcli.service.client.file import FileClientService, GroupProjectFileClientService
-from pfcli.service.config import build_deployment_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import (
     datetime_to_pretty_str,
@@ -589,7 +589,7 @@ def template_create(
     )
 ):
     """Create a deployment engine configuration YAML file."""
-    configurator = build_deployment_configurator(EngineType.ORCA)
+    configurator = build_deployment_interactive_configurator(EngineType.ORCA)
     yaml_str = configurator.render()
 
     yaml = ruamel.yaml.YAML()

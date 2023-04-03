@@ -10,7 +10,7 @@ import yaml
 from _pytest.fixtures import SubRequest
 from typing_extensions import TypeAlias
 
-from pfcli.service.config import JobConfigManager
+from pfcli.configurator.job import JobConfigurator
 
 NestedDict: TypeAlias = Dict[str, Any]
 
@@ -220,7 +220,7 @@ class TestCustomJobConfig:
         with TemporaryFile(prefix="periflow-cli-unittest", mode="r+") as f:
             yaml.dump(yaml.safe_load(config_yaml_string), f)
             f.seek(0)  # Move cursor to the start of the file
-            cfg_manager = JobConfigManager.from_file(f)  # type: ignore
+            cfg_manager = JobConfigurator.from_file(f)  # type: ignore
             cfg_manager.validate()
 
 
@@ -252,5 +252,5 @@ class TestPredefinedJobConfig:
         with TemporaryFile(prefix="periflow-cli-unittest", mode="r+") as f:
             yaml.dump(yaml.safe_load(config_yaml_string), f)
             f.seek(0)  # Move cursor to the start of the file
-            cfg_manager = JobConfigManager.from_file(f)  # type: ignore
+            cfg_manager = JobConfigurator.from_file(f)  # type: ignore
             cfg_manager.validate()
