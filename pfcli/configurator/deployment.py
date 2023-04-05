@@ -37,7 +37,7 @@ ckpt_config:
 """
 
 SCALER_CONFIG = """
-# Keda scaler config
+# Scaler config
 scaler_config:
   min_deployment_count:
   max_deployment_count:
