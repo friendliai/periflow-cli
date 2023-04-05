@@ -34,6 +34,11 @@ def bad_word_tokens_config(request: SubRequest) -> dict:
     return {"bad_word_tokens": {"tokens": [199, 200]}} if request.param else {}
 
 
+@pytest.fixture
+def invalid_config(request: SubRequest) -> dict:
+    return {"wrong": "field"} if request.param else {}
+
+
 class TestDRCConfigurator:
     """Test `DRCConfigurator`."""
 
@@ -41,15 +46,23 @@ class TestDRCConfigurator:
     @pytest.mark.parametrize("stop_tokens_config", [True, False], indirect=True)
     @pytest.mark.parametrize("bad_words_config", [True, False], indirect=True)
     @pytest.mark.parametrize("bad_word_tokens_config", [True, False], indirect=True)
+    @pytest.mark.parametrize("invalid_config", [True, False], indirect=True)
     def test_validation(
         self,
         stop_config: dict,
         stop_tokens_config: dict,
         bad_words_config: dict,
         bad_word_tokens_config: dict,
+        invalid_config: dict,
     ):
         config = merge_dicts(
-            [stop_config, stop_tokens_config, bad_words_config, bad_word_tokens_config]
+            [
+                stop_config,
+                stop_tokens_config,
+                bad_words_config,
+                bad_word_tokens_config,
+                invalid_config,
+            ]
         )
         ctx = nullcontext()
         if (
@@ -61,6 +74,7 @@ class TestDRCConfigurator:
                 or bad_words_config
                 or bad_word_tokens_config
             )
+            or invalid_config
         ):
             ctx = pytest.raises(typer.Exit)
         with TemporaryFile(prefix="periflow-cli-unittest", mode="r+") as f:

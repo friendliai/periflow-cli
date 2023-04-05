@@ -128,6 +128,7 @@ class DRCConfigurator(Configurator):
                 {"not": {"required": ["bad_words", "bad_word_tokens"]}},
             ],
             "minProperties": 1,
+            "additionalProperties": False,
         }
 
     @classmethod

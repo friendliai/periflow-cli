@@ -18,7 +18,10 @@ from dateutil.parser import parse
 from dateutil.tz import tzlocal
 from tqdm import tqdm
 
-from pfcli.configurator.deployment import build_deployment_interactive_configurator
+from pfcli.configurator.deployment import (
+    DRCConfigurator,
+    build_deployment_interactive_configurator,
+)
 from pfcli.context import get_current_project_id
 from pfcli.service import (
     CloudType,
@@ -424,12 +427,8 @@ def create(
         total_gpus = num_devices * num_workers * num_sessions
 
     if default_request_config_file:
-        try:
-            json.load(default_request_config_file)
-        except json.JSONDecodeError as e:
-            secho_error_and_exit(
-                f"Default request config file has the invalid JSON format: {e!r}"
-            )
+        configurator = DRCConfigurator.from_file(default_request_config_file)
+        configurator.validate()
 
         file_client: FileClientService = build_client(ServiceType.FILE)
         group_file_client: GroupProjectFileClientService = build_client(
