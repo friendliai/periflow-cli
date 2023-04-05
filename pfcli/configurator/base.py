@@ -45,7 +45,7 @@ class Configurator(ABC):
     @classmethod
     @abstractmethod
     def from_file(cls, f: IO) -> Configurator:
-        """Create a new object from the  configuration file."""
+        """Create a new object from the configuration file."""
 
     def validate(self) -> None:
         """Validate the configuration."""
