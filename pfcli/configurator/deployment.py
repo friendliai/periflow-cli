@@ -124,7 +124,7 @@ class DRCConfigurator(Configurator):
                 },
             },
             "allOf": [
-                {"not": {"required": ["stop_tokens", "stop"]}},
+                {"not": {"required": ["stop", "stop_tokens"]}},
                 {"not": {"required": ["bad_words", "bad_word_tokens"]}},
             ],
             "minProperties": 1,
