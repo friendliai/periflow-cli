@@ -64,6 +64,7 @@ class ListFormatter(Formatter):
     headers: List[str]
     extra_fields: List[str] = field(default_factory=list)
     extra_headers: List[str] = field(default_factory=list)
+    substitute_exact_match_only: bool = True
 
     def __post_init__(self):
         super().__post_init__()
@@ -88,8 +89,15 @@ class ListFormatter(Formatter):
         self._substitution_rule[before] = after
 
     def _substitute(self, val: str) -> str:
-        if val in self._substitution_rule:
-            return self._substitution_rule[val]
+        if self.substitute_exact_match_only:
+            # Substitute only when `val` exactly matches to a rule.
+            if val in self._substitution_rule:
+                return self._substitution_rule[val]
+        else:
+            # Apply substitution for all matched substrings.
+            for before, after in self._substitution_rule.items():
+                if before in val:
+                    return val.replace(before, after)
         return val
 
 

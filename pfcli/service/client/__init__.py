@@ -26,6 +26,7 @@ from pfcli.service.client.deployment import (
     PFSProjectUsageClientService,
     PFSVMClientService,
 )
+from pfcli.service.client.file import FileClientService, GroupProjectFileClientService
 from pfcli.service.client.group import (
     GroupClientService,
     GroupProjectCheckpointClientService,
@@ -193,6 +194,11 @@ client_template_map: Dict[ServiceType, Tuple[Type[ClientService], Template]] = {
     ServiceType.METRICS: (
         MetricsClientService,
         Template(get_observatory_uri("graphql")),
+    ),
+    ServiceType.FILE: (FileClientService, Template(get_mr_uri("files/"))),
+    ServiceType.GROUP_FILE: (
+        GroupProjectFileClientService,
+        Template(get_mr_uri("orgs/$group_id/prjs/$project_id/files/")),
     ),
 }
 
