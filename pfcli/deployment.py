@@ -385,7 +385,10 @@ def create(
         help="Logging inference requests or not.",
     ),
     default_request_config_file: Optional[typer.FileText] = typer.Option(
-        None, "--default-request-config-file", help="Path to default request config"
+        None,
+        "--default-request-config-file",
+        "-drc",
+        help="Path to default request config",
     ),
 ):
     """Create a deployment object by using model checkpoint."""
@@ -434,6 +437,10 @@ def create(
         )
 
         file_size = os.stat(default_request_config_file.name).st_size
+        if file_size > 10737418240:  # 10 GiB
+            secho_error_and_exit(
+                f"Size of default request config file({file_size}bytes) should be <= 10 GiB"
+            )
         file_info = {
             "name": os.path.basename(default_request_config_file.name),
             "path": os.path.basename(default_request_config_file.name),
