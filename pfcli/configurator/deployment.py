@@ -28,14 +28,6 @@ orca_config:
   kv_cache_size:
 """
 
-CKPT_CONFIG = """
-# Orca ckeckpoint config
-ckpt_config:
-  version:
-  catagory:
-  data_type:
-"""
-
 SCALER_CONFIG = """
 # Scaler config
 scaler_config:
@@ -50,14 +42,11 @@ class DeploymentInteractiveConfigurator(InteractiveConfigurator[str]):
 
     ready: bool = False
     use_specific_image: bool = False
-    use_ckpt_config: bool = False
 
     def _render(self) -> str:
         yaml_str = ""
         if self.use_specific_image:
             yaml_str += INFERENCE_SERVER_CONFIG
-        if self.use_ckpt_config:
-            yaml_str += CKPT_CONFIG
 
         return yaml_str
 

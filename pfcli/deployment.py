@@ -68,7 +68,7 @@ app.add_typer(template_app, name="template", help="Manage deployment templates."
 deployment_panel = PanelFormatter(
     name="Deployment Overview",
     fields=[
-        "deployment_id",
+        "id",
         "config.name",
         "config.deployment_type",
         "status",
@@ -103,7 +103,7 @@ deployment_panel = PanelFormatter(
 deployment_table = TableFormatter(
     name="Deployments",
     fields=[
-        "deployment_id",
+        "id",
         "config.name",
         "status",
         "ready_replicas",
