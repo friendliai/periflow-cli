@@ -18,6 +18,10 @@ from dateutil.parser import parse
 from dateutil.tz import tzlocal
 from tqdm import tqdm
 
+from pfcli.configurator.deployment import (
+    DRCConfigurator,
+    build_deployment_interactive_configurator,
+)
 from pfcli.context import get_current_project_id
 from pfcli.service import (
     CloudType,
@@ -37,7 +41,6 @@ from pfcli.service.client import (
 )
 from pfcli.service.client.deployment import DeploymentReqRespClientService
 from pfcli.service.client.file import FileClientService, GroupProjectFileClientService
-from pfcli.service.config import build_deployment_configurator
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import (
     datetime_to_pretty_str,
@@ -424,12 +427,8 @@ def create(
         total_gpus = num_devices * num_workers * num_sessions
 
     if default_request_config_file:
-        try:
-            json.load(default_request_config_file)
-        except json.JSONDecodeError as e:
-            secho_error_and_exit(
-                f"Default request config file has the invalid JSON format: {e!r}"
-            )
+        configurator = DRCConfigurator.from_file(default_request_config_file)
+        configurator.validate()
 
         file_client: FileClientService = build_client(ServiceType.FILE)
         group_file_client: GroupProjectFileClientService = build_client(
@@ -596,7 +595,7 @@ def template_create(
     )
 ):
     """Create a deployment engine configuration YAML file."""
-    configurator = build_deployment_configurator(EngineType.ORCA)
+    configurator = build_deployment_interactive_configurator(EngineType.ORCA)
     yaml_str = configurator.render()
 
     yaml = ruamel.yaml.YAML()

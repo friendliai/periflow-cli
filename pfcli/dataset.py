@@ -14,6 +14,7 @@ import yaml
 from click import Choice
 from rich.text import Text
 
+from pfcli.configurator.data import build_data_interactive_configurator
 from pfcli.service import (
     JobType,
     ServiceType,
@@ -29,7 +30,6 @@ from pfcli.service.client import (
     build_client,
 )
 from pfcli.service.cloud import build_storage_helper
-from pfcli.service.config import build_data_configurator
 from pfcli.service.formatter import (
     JSONFormatter,
     PanelFormatter,
@@ -90,7 +90,7 @@ def main(
             type=Choice([e.value for e in JobType]),
             prompt_suffix="\n>> ",
         )
-        configurator = build_data_configurator(job_type)
+        configurator = build_data_interactive_configurator(job_type)
         (
             name,
             cloud,

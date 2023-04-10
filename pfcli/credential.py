@@ -9,13 +9,13 @@ from uuid import UUID
 
 import typer
 
+from pfcli.configurator.credential import CredentialInteractiveConfigurator
 from pfcli.service import CredType, ServiceType, cred_type_map_inv
 from pfcli.service.client import (
     CredentialClientService,
     ProjectCredentialClientService,
     build_client,
 )
-from pfcli.service.config import CredentialConfigService
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import secho_error_and_exit
 
@@ -74,7 +74,7 @@ def main(
             )
         return
 
-    configurator = CredentialConfigService()
+    configurator = CredentialInteractiveConfigurator()
 
     configurator.start_interaction()
     name, cred_type, value = configurator.render()
@@ -238,7 +238,7 @@ def update(
     credential_id: UUID = typer.Argument(..., help="UUID of credential to update.")
 ):
     """Update a credential data."""
-    configurator = CredentialConfigService()
+    configurator = CredentialInteractiveConfigurator()
 
     configurator.start_interaction_for_update(credential_id)
     name, _, value = configurator.render()
