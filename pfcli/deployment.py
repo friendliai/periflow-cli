@@ -41,6 +41,7 @@ from pfcli.service.client import (
 )
 from pfcli.service.client.deployment import DeploymentReqRespClientService
 from pfcli.service.client.file import FileClientService, GroupProjectFileClientService
+from pfcli.service.client.user import UserGroupProjectClientService
 from pfcli.service.formatter import PanelFormatter, TableFormatter
 from pfcli.utils.format import (
     datetime_to_pretty_str,
@@ -113,6 +114,37 @@ deployment_table = TableFormatter(
         "start",
     ],
     headers=["ID", "Name", "Status", "#Ready", "VM Type", "GPU Type", "#GPUs", "Start"],
+    extra_fields=["error"],
+    extra_headers=["error"],
+    substitute_exact_match_only=False,
+)
+
+deployment_org_table = TableFormatter(
+    name="Deployments",
+    fields=[
+        "deployment_id",
+        "config.name",
+        "status",
+        "ready_replicas",
+        "vms",
+        "config.vm.gpu_type",
+        "config.total_gpus",
+        "start",
+        "config.project_id",
+        "project_name",
+    ],
+    headers=[
+        "ID",
+        "Name",
+        "Status",
+        "#Ready",
+        "VM Type",
+        "GPU Type",
+        "#GPUs",
+        "Start",
+        "Project ID",
+        "Project Name",
+    ],
     extra_fields=["error"],
     extra_headers=["error"],
     substitute_exact_match_only=False,
@@ -198,6 +230,7 @@ def list(
     from_oldest: bool = typer.Option(
         False, "--from-oldest", help="Show oldest deployments first"
     ),
+    all: bool = typer.Option(False, "--all", help="Show all deployments in org"),
 ):
     """List all deployments."""
     project_id = get_current_project_id()
@@ -205,9 +238,13 @@ def list(
         secho_error_and_exit("Failed to identify project... Please set project again.")
 
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
-    deployments = client.list_deployments(str(project_id), False)["deployments"]
+    deployments = client.list_deployments(str(project_id) if not all else None, False)[
+        "deployments"
+    ]
     if include_terminated:
-        deployments += client.list_deployments(str(project_id), True)["deployments"]
+        deployments += client.list_deployments(
+            str(project_id) if not all else None, True
+        )["deployments"]
 
     deployments.sort(key=lambda x: x["start"], reverse=not from_oldest)
     for deployment in deployments:
@@ -223,7 +260,19 @@ def list(
         deployment["status"] = ", ".join(deployment["status"])
 
     target_deployment_list = deployments[:limit]  # TODO: Use pagnination.
-    deployment_table.render(target_deployment_list)
+
+    table = deployment_table
+    if all:
+        table = deployment_org_table
+        project_client: UserGroupProjectClientService = build_client(
+            ServiceType.USER_GROUP_PROJECT
+        )
+        projects = project_client.list_projects()
+        project_map = {project["id"]: project["name"] for project in projects}
+        for deployment in target_deployment_list:
+            deployment["project_name"] = project_map[deployment["config"]["project_id"]]
+
+    table.render(target_deployment_list)
 
 
 @app.command()

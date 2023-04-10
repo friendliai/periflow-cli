@@ -31,9 +31,15 @@ class DeploymentClientService(ClientService[str]):
             err_prefix=f"Failed to update scaler of deployment ({deployment_id}).",
         )(pk=deployment_id, path=f"scaler", json=scaler)
 
-    def list_deployments(self, project_id: str, archived: bool) -> Dict[str, Any]:
+    def list_deployments(
+        self, project_id: str | None, archived: bool
+    ) -> Dict[str, Any]:
+        params = {"archived": archived}
+        if not project_id:
+            params["project_id"] = project_id
+
         response = safe_request(self.list, err_prefix="Failed to list deployments.")(
-            params={"project_id": project_id, "archived": archived}
+            params=params
         )
         return response.json()
 
