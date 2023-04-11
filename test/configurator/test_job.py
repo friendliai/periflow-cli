@@ -23,10 +23,9 @@ job_setting:
 
 @pytest.fixture
 def required_config_predefined() -> str:
-    return """vm: az.NC24ads_A100_v4
-num_devices: 2
-job_setting:
+    return """job_setting:
   type: predefined
+  template_id: e039f470-ed78-47ea-8ca1-e7f3ee1831db
 """
 
 
@@ -131,7 +130,6 @@ def wandb_config(request: SubRequest) -> str:
 def predefined_config(request: SubRequest) -> str:
     return (
         """job_settings:
-  template_id: e039f470-ed78-47ea-8ca1-e7f3ee1831db
   model_config:
     lr: 1e-4
     weight_deacy: 1e-3
