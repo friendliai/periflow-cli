@@ -719,6 +719,8 @@ class JobConfigManager:
             name (Optional[str], optional): Job name. Defaults to None.
 
         """
+        del num_devices
+        del vm
         if name is not None:
             self._config["name"] = name
 
