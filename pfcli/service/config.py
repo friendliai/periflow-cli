@@ -992,3 +992,26 @@ class PredefinedJobConfigManager(JobConfigManager):
             "job_setting",
         ],
     }
+
+    def get_job_request_body(self) -> Dict[str, Any]:
+        body = deepcopy(self._config)
+        data_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
+
+        if "data" in body:
+            data_name: str = body["data"]["name"]
+            if data_name.startswith("huggingface:"):
+                body["public_source"] = {
+                    "data": {
+                        "provider": "huggingface",
+                        "name": data_name.lstrip("huggingface:"),
+                    }
+                }
+                del body["data"]
+            else:
+                data_id = data_client.get_id_by_name(data_name)
+                if data_id is None:
+                    secho_error_and_exit(f"Dataset ({data_name}) is not found.")
+                body["data"]["id"] = data_id
+                del body["data"]["name"]
+
+        return body
