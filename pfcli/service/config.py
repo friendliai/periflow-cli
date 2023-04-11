@@ -711,7 +711,6 @@ class JobConfigManager:
         num_devices: Optional[int] = None,
         name: Optional[str] = None,
     ) -> None:
-        raise NotImplementedError
         """In-place update the job configuration.
 
         Args:
