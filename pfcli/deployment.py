@@ -137,6 +137,7 @@ deployment_org_table = TableFormatter(
     fields=[
         "deployment_id",
         "config.name",
+        "description",
         "status",
         "ready_replicas",
         "vms",
@@ -149,6 +150,7 @@ deployment_org_table = TableFormatter(
     headers=[
         "ID",
         "Name",
+        "Description",
         "Status",
         "#Ready",
         "VM Type",
@@ -230,6 +232,16 @@ deployment_table.add_substitution_rule(
     "Stopping", "[bold magenta]Stopping[/bold magenta]"
 )
 deployment_table.add_substitution_rule("Terminated", "[bold]Terminated[/bold]")
+
+deployment_org_table.add_substitution_rule("Pending", "[bold yellow]Pending[/bold yellow]")
+deployment_org_table.add_substitution_rule(
+    "Initializing", "[bold cyan]Initializing[/bold cyan]"
+)
+deployment_org_table.add_substitution_rule("Running", "[bold blue]Running[/bold blue]")
+deployment_org_table.add_substitution_rule(
+    "Stopping", "[bold magenta]Stopping[/bold magenta]"
+)
+deployment_org_table.add_substitution_rule("Terminated", "[bold]Terminated[/bold]")
 
 
 def get_deployment_id_from_namespace(namespace: str):
