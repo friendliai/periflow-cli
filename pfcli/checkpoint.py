@@ -594,6 +594,7 @@ def upload(
 def restore(
     checkpoint_id: UUID = typer.Argument(..., help="UUID of checkpoint to restore.")
 ):
+    """Restore deleted checkpoint (available within 24 hours from the deletion)."""
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
 
     ckpt = client.get_checkpoint(checkpoint_id)
