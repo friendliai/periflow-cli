@@ -70,6 +70,7 @@ deployment_panel = PanelFormatter(
     fields=[
         "deployment_id",
         "config.name",
+        "description",
         "config.deployment_type",
         "status",
         "ready_replicas",
@@ -84,6 +85,7 @@ deployment_panel = PanelFormatter(
     headers=[
         "ID",
         "Name",
+        "Description",
         "Type",
         "Status",
         "#Ready",
@@ -105,6 +107,7 @@ deployment_table = TableFormatter(
     fields=[
         "deployment_id",
         "config.name",
+        "description",
         "status",
         "ready_replicas",
         "vms",
@@ -112,7 +115,17 @@ deployment_table = TableFormatter(
         "config.total_gpus",
         "start",
     ],
-    headers=["ID", "Name", "Status", "#Ready", "VM Type", "GPU Type", "#GPUs", "Start"],
+    headers=[
+        "ID",
+        "Name",
+        "Description",
+        "Status",
+        "#Ready",
+        "VM Type",
+        "GPU Type",
+        "#GPUs",
+        "Start",
+    ],
     extra_fields=["error"],
     extra_headers=["error"],
     substitute_exact_match_only=False,
@@ -187,6 +200,11 @@ deployment_table.add_substitution_rule(
 deployment_table.add_substitution_rule("Terminated", "[bold]Terminated[/bold]")
 
 
+def get_deployment_id_from_namespace(namespace: str):
+    """Get deployment id from namespace."""
+    return f"periflow-deployment-{namespace}"
+
+
 @app.command()
 def list(
     include_terminated: bool = typer.Option(
@@ -221,6 +239,9 @@ def list(
             deployment["vms"][0]["name"] if deployment["vms"] else "None"
         )
         deployment["status"] = ", ".join(deployment["status"])
+        deployment["deployment_id"] = get_deployment_id_from_namespace(
+            deployment["namespace"]
+        )
 
     target_deployment_list = deployments[:limit]  # TODO: Use pagnination.
     deployment_table.render(target_deployment_list)
@@ -258,6 +279,9 @@ def view(
         else DeploymentSecurityLevel.PUBLIC.value
     )
     deployment["status"] = ", ".join(deployment["status"])
+    deployment["deployment_id"] = get_deployment_id_from_namespace(
+        deployment["namespace"]
+    )
     deployment_panel.render([deployment])
 
 
@@ -354,6 +378,9 @@ def create(
     checkpoint_id: str = typer.Option(
         ..., "--checkpoint-id", "-id", help="Checkpoint id to deploy."
     ),
+    description: Optional[str] = typer.Option(
+        None, "--description", "-d", help="Deployment description."
+    ),
     deployment_name: str = typer.Option(
         ..., "--name", "-n", help="The name of deployment. "
     ),
@@ -372,9 +399,6 @@ def create(
     ),
     config_file: typer.FileText = typer.Option(
         ..., "--config-file", "-f", help="Path to configuration file."
-    ),
-    num_replicas: int = typer.Option(
-        1, "--replicas", "-rp", help="Number of replicas to run deployment."
     ),
     security_level: DeploymentSecurityLevel = typer.Option(
         DeploymentSecurityLevel.PUBLIC,
@@ -475,18 +499,20 @@ def create(
         "cloud": cloud,
         "region": region,
         "total_gpus": total_gpus,
-        "num_replicas": num_replicas,
         "infrequest_perm_check": True
         if security_level == DeploymentSecurityLevel.PROTECTED
         else False,
         "infrequest_log": True if logging else False,
         **config,
     }
+    if description:
+        request_data["description"] = description
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
     deployment = client.create_deployment(request_data)
+    deployment_id = get_deployment_id_from_namespace(deployment["namespace"])
 
     typer.secho(
-        f"Deployment ({deployment['deployment_id']}) started successfully. Use 'pf deployment view {deployment['deployment_id']}' to see the deployment details.\n"
+        f"Deployment ({deployment_id}) started successfully. Use 'pf deployment view {deployment_id}' to see the deployment details.\n"
         f"Send inference requests to '{deployment['endpoint']}'.",
         fg=typer.colors.BLUE,
     )
