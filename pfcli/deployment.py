@@ -230,7 +230,7 @@ def list(
     from_oldest: bool = typer.Option(
         False, "--from-oldest", help="Show oldest deployments first"
     ),
-    all: bool = typer.Option(False, "--all", help="Show all deployments in org"),
+    org: bool = typer.Option(False, "--org", help="Show all deployments in org"),
 ):
     """List all deployments."""
     project_id = get_current_project_id()
@@ -238,12 +238,12 @@ def list(
         secho_error_and_exit("Failed to identify project... Please set project again.")
 
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
-    deployments = client.list_deployments(str(project_id) if not all else None, False)[
+    deployments = client.list_deployments(str(project_id) if not org else None, False)[
         "deployments"
     ]
     if include_terminated:
         deployments += client.list_deployments(
-            str(project_id) if not all else None, True
+            str(project_id) if not org else None, True
         )["deployments"]
 
     deployments.sort(key=lambda x: x["start"], reverse=not from_oldest)
@@ -262,7 +262,7 @@ def list(
     target_deployment_list = deployments[:limit]  # TODO: Use pagnination.
 
     table = deployment_table
-    if all:
+    if org:
         table = deployment_org_table
         project_client: UserGroupProjectClientService = build_client(
             ServiceType.USER_GROUP_PROJECT
