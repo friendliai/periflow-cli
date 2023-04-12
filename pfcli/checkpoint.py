@@ -229,6 +229,7 @@ def view(
             model_panel = blender_model_info_panel
         elif (
             ckpt["attributes"]["model_type"] == "gpt-neox"
+            or ckpt["attributes"]["model_type"] == "gpt-neox-hf"
             or ckpt["attributes"]["model_type"] == "gpt-j"
         ):
             model_panel = gpt_neox_and_j_model_info_panel
