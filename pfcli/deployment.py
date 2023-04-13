@@ -73,6 +73,7 @@ deployment_panel = PanelFormatter(
         "config.name",
         "description",
         "config.deployment_type",
+        "config.model_id",
         "status",
         "ready_replicas",
         "vms",
@@ -88,6 +89,7 @@ deployment_panel = PanelFormatter(
         "Name",
         "Description",
         "Type",
+        "Ckpt ID",
         "Status",
         "#Ready",
         "VM Type",
@@ -233,7 +235,9 @@ deployment_table.add_substitution_rule(
 )
 deployment_table.add_substitution_rule("Terminated", "[bold]Terminated[/bold]")
 
-deployment_org_table.add_substitution_rule("Pending", "[bold yellow]Pending[/bold yellow]")
+deployment_org_table.add_substitution_rule(
+    "Pending", "[bold yellow]Pending[/bold yellow]"
+)
 deployment_org_table.add_substitution_rule(
     "Initializing", "[bold cyan]Initializing[/bold cyan]"
 )
