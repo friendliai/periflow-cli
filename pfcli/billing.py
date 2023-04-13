@@ -113,7 +113,9 @@ def summary(
     year: int = typer.Argument(...),
     month: int = typer.Argument(...),
     day: Optional[int] = typer.Argument(None),
-    scope: Scope = typer.Option(Scope.USR, "--scope", help="Scope of the summary."),
+    scope: Scope = typer.Option(
+        Scope.USR.value, "--scope", help="Scope of the summary."
+    ),
     time_granularity: Optional[TimeGranularity] = typer.Option(
         None, "--time-granularity", "-t", help="View within the given time granularity."
     ),
