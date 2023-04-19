@@ -7,6 +7,7 @@ from __future__ import annotations
 import os
 import re
 from datetime import datetime, timedelta, timezone
+from typing import NoReturn
 
 import typer
 
@@ -59,7 +60,7 @@ def timedelta_to_pretty_str(delta: timedelta, long_list: bool = False):
             return f"{delta.days + round(delta.seconds / (3600 * 24))} days"
 
 
-def secho_error_and_exit(text: str, color: str = typer.colors.RED):
+def secho_error_and_exit(text: str, color: str = typer.colors.RED) -> NoReturn:
     typer.secho(text, err=True, fg=color)
     raise typer.Exit(1)
 

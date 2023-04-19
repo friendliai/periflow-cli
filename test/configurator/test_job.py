@@ -8,7 +8,7 @@ import pytest
 import yaml
 from _pytest.fixtures import SubRequest
 
-from pfcli.configurator.job import JobConfigurator
+from pfcli.configurator.job import CustomJobConfigurator, PredefinedJobConfigurator
 from pfcli.utils.testing import merge_yaml_strings
 
 
@@ -23,9 +23,7 @@ job_setting:
 
 @pytest.fixture
 def required_config_predefined() -> str:
-    return """vm: az.NC24ads_A100_v4
-num_devices: 2
-job_setting:
+    return """job_setting:
   type: predefined
 """
 
@@ -36,9 +34,8 @@ def name_config(request: SubRequest) -> str:
 
 
 @pytest.fixture
-def docker_config(request: SubRequest) -> str:
-    return (
-        """job_setting:
+def docker_config() -> str:
+    return r"""job_setting:
   docker:
     image: friendliai/periflow:sdk
     command:
@@ -61,9 +58,6 @@ def docker_config(request: SubRequest) -> str:
     env_var:
       WANDB_PROJECT: hf-mlm
 """
-        if request.param
-        else ""
-    )
 
 
 @pytest.fixture
@@ -85,6 +79,18 @@ def input_checkpoint_config(request: SubRequest) -> str:
   input:
     id: 83198783-d13b-40b6-b9ca-8bfad2fde8da
     mount_path: /ckpt
+"""
+        if request.param
+        else ""
+    )
+
+
+@pytest.fixture
+def input_checkpoint_config_predefined(request: SubRequest) -> str:
+    return (
+        """checkpoint:
+  input:
+    id: 83198783-d13b-40b6-b9ca-8bfad2fde8da
 """
         if request.param
         else ""
@@ -115,6 +121,17 @@ def data_config(request: SubRequest) -> str:
 
 
 @pytest.fixture
+def data_config_predefined(request: SubRequest) -> str:
+    return (
+        """data:
+  name: my-data
+"""
+        if request.param
+        else ""
+    )
+
+
+@pytest.fixture
 def wandb_config(request: SubRequest) -> str:
     return (
         """plugin:
@@ -128,22 +145,17 @@ def wandb_config(request: SubRequest) -> str:
 
 
 @pytest.fixture
-def predefined_config(request: SubRequest) -> str:
-    return (
-        """job_settings:
+def predefined_config() -> str:
+    return """job_setting:
   template_id: e039f470-ed78-47ea-8ca1-e7f3ee1831db
   model_config:
     lr: 1e-4
     weight_deacy: 1e-3
 """
-        if request.param
-        else ""
-    )
 
 
 class TestCustomJobConfig:
     @pytest.mark.parametrize("name_config", [True, False], indirect=True)
-    @pytest.mark.parametrize("docker_config", [True, False], indirect=True)
     @pytest.mark.parametrize("workspace_config", [True, False], indirect=True)
     @pytest.mark.parametrize("input_checkpoint_config", [True, False], indirect=True)
     @pytest.mark.parametrize("output_checkpoint_config", [True, False], indirect=True)
@@ -175,22 +187,23 @@ class TestCustomJobConfig:
         with TemporaryFile(prefix="periflow-cli-unittest", mode="r+") as f:
             yaml.dump(yaml.safe_load(config_yaml_string), f)
             f.seek(0)  # Move cursor to the start of the file
-            cfg_manager = JobConfigurator.from_file(f)  # type: ignore
+            cfg_manager = CustomJobConfigurator.from_file(f)  # type: ignore
             cfg_manager.validate()
 
 
 class TestPredefinedJobConfig:
     @pytest.mark.parametrize("name_config", [True, False], indirect=True)
-    @pytest.mark.parametrize("input_checkpoint_config", [True, False], indirect=True)
-    @pytest.mark.parametrize("data_config", [True, False], indirect=True)
+    @pytest.mark.parametrize(
+        "input_checkpoint_config_predefined", [True, False], indirect=True
+    )
+    @pytest.mark.parametrize("data_config_predefined", [True, False], indirect=True)
     @pytest.mark.parametrize("wandb_config", [True, False], indirect=True)
-    @pytest.mark.parametrize("predefined_config", [True, False], indirect=True)
     def test_validation(
         self,
         required_config_predefined: str,
         name_config: str,
-        input_checkpoint_config: str,
-        data_config: str,
+        input_checkpoint_config_predefined: str,
+        data_config_predefined: str,
         wandb_config: str,
         predefined_config: str,
     ):
@@ -198,8 +211,8 @@ class TestPredefinedJobConfig:
             [
                 required_config_predefined,
                 name_config,
-                input_checkpoint_config,
-                data_config,
+                input_checkpoint_config_predefined,
+                data_config_predefined,
                 wandb_config,
                 predefined_config,
             ]
@@ -207,5 +220,5 @@ class TestPredefinedJobConfig:
         with TemporaryFile(prefix="periflow-cli-unittest", mode="r+") as f:
             yaml.dump(yaml.safe_load(config_yaml_string), f)
             f.seek(0)  # Move cursor to the start of the file
-            cfg_manager = JobConfigurator.from_file(f)  # type: ignore
+            cfg_manager = PredefinedJobConfigurator.from_file(f)  # type: ignore
             cfg_manager.validate()

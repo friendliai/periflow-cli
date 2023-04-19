@@ -23,7 +23,11 @@ from rich.live import Live
 from rich.spinner import Spinner
 from rich.text import Text
 
-from pfcli.configurator.job import JobConfigurator, build_job_interactive_configurator
+from pfcli.configurator.job import (
+    JobConfigurator,
+    build_job_interactive_configurator,
+    get_configurator,
+)
 from pfcli.service import (
     JobStatus,
     JobType,
@@ -222,14 +226,14 @@ def run(
     ),
 ):
     """Run a job."""
-    cfg_manager = JobConfigurator.from_file(config_file)
-    cfg_manager.update_config(
+    configurator = get_configurator(f=config_file)
+    configurator.update_config(
         vm=vm_name,
         num_devices=num_devices,
         name=job_name,
     )
-    cfg_manager.validate()
-    config = cfg_manager.get_job_request_body()
+    configurator.validate()
+    config = configurator.get_job_request_body()
 
     if workspace_dir is not None:
         workspace_dir = workspace_dir.resolve()  # ensure absolute path

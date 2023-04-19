@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, Optional, Type
+from typing import Any, Dict, Generic, Optional, Type, Union
 from uuid import UUID
 
 import typer
@@ -22,13 +22,18 @@ from pfcli.utils.format import secho_error_and_exit
 DEFAULT_JOB_TEMPLATE_CONFIG = """\
 # The name of job
 name:
+"""
 
+DEFAULT_CUSTOM_JOB_TEMPLATE_CONFIG = (
+    DEFAULT_JOB_TEMPLATE_CONFIG
+    + """
 # The name of vm type
 vm:
 
 # The number of GPU devices
 num_devices:
 """
+)
 
 DATA_CONFIG = """
 # Configure dataset
@@ -65,6 +70,8 @@ CUSTOM_JOB_SETTING_CONFIG = (
     #   - NODE_RANK: Index of the current node.
     #   - NPROC_PER_NODE: The number of processes in the current node.
     command:
+      setup:
+      run:
 """
 )
 
@@ -196,7 +203,7 @@ class CustomJobInteractiveConfigurator(JobInteractiveConfigurator[str]):
     def render(self) -> str:
         assert self.ready
 
-        yaml_str = DEFAULT_JOB_TEMPLATE_CONFIG
+        yaml_str = DEFAULT_CUSTOM_JOB_TEMPLATE_CONFIG
         yaml_str += CUSTOM_JOB_SETTING_CONFIG
         if self.use_private_image:
             yaml_str += PRIVATE_DOCKER_IMG_CONFIG
@@ -287,7 +294,29 @@ def build_job_interactive_configurator(job_type: JobType) -> JobInteractiveConfi
 
 
 class JobConfigurator(Configurator):
-    """Job configuration manager"""
+    """Job configuration manager."""
+
+    @classmethod
+    def from_file(cls, f: IO) -> JobConfigurator:
+        """Create a new `JobConfigManager` object from a job configuration YAML file.
+
+        Args:
+            f (io.TextIOWrapper): File descriptor of the job configuration YAML file.
+
+        Returns:
+            JobConfigManager: Object created from the YAML file.
+
+        """
+        try:
+            config: Dict[str, Any] = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            secho_error_and_exit(f"Error occurred while parsing config file: {e!r}")
+
+        return cls(config)  # type: ignore
+
+
+class CustomJobConfigurator(JobConfigurator):
+    """Custom job configuration manager."""
 
     @property
     def validation_schema(self) -> dict:
@@ -302,10 +331,7 @@ class JobConfigurator(Configurator):
                 "job_setting": {
                     "type": "object",
                     "properties": {
-                        "type": {
-                            "type": "string",
-                            "enum": ["custom", "predefined"],
-                        },
+                        "type": {"const": "custom"},
                         "docker": {
                             "type": "object",
                             "properties": {
@@ -319,6 +345,7 @@ class JobConfigurator(Configurator):
                                                 "run": {"type": "string"},
                                             },
                                             "required": ["run"],
+                                            "additionalProperties": False,
                                         },
                                         {
                                             "type": "string",
@@ -335,17 +362,14 @@ class JobConfigurator(Configurator):
                             "type": "object",
                             "properties": {"mount_path": {"type": "string"}},
                             "required": ["mount_path"],
-                        },
-                        "template_id": {
-                            "type": "string",
-                        },
-                        "model_config": {
-                            "type": "string",
+                            "additionalProperties": False,
                         },
                     },
                     "required": [
                         "type",
+                        "docker",
                     ],
+                    "additionalProperties": False,
                 },
                 "checkpoint": {
                     "type": "object",
@@ -360,9 +384,11 @@ class JobConfigurator(Configurator):
                                 "id",
                                 "mount_path",
                             ],
+                            "additionalProperties": False,
                         },
                         "output_checkpoint_dir": {"type": "string"},
                     },
+                    "additionalProperties": False,
                 },
                 "data": {
                     "type": "object",
@@ -374,6 +400,7 @@ class JobConfigurator(Configurator):
                         "name",
                         "mount_path",
                     ],
+                    "additionalProperties": False,
                 },
                 "dist": {
                     "type": "object",
@@ -393,6 +420,7 @@ class JobConfigurator(Configurator):
                         "pp_degree",
                         "mp_degree",
                     ],
+                    "additionalProperties": False,
                 },
                 "plugin": {
                     "type": "object",
@@ -403,6 +431,7 @@ class JobConfigurator(Configurator):
                             "required": ["credential_id"],
                         }
                     },
+                    "additionalProperties": False,
                 },
             },
             "required": [
@@ -410,25 +439,8 @@ class JobConfigurator(Configurator):
                 "num_devices",
                 "job_setting",
             ],
+            "additionalProperties": False,
         }
-
-    @classmethod
-    def from_file(cls, f: IO) -> JobConfigurator:
-        """Create a new `JobConfigManager` object from a job configuration YAML file.
-
-        Args:
-            f (io.TextIOWrapper): File descriptor of the job configuration YAML file.
-
-        Returns:
-            JobConfigManager: Object created from the YAML file.
-
-        """
-        try:
-            config: Dict[str, Any] = yaml.safe_load(f)
-        except yaml.YAMLError as e:
-            secho_error_and_exit(f"Error occurred while parsing config file: {e!r}")
-
-        return cls(config)  # type: ignore
 
     def update_config(
         self,
@@ -510,3 +522,140 @@ class JobConfigurator(Configurator):
                     body["job_setting"]["docker"]["command"]["setup"] = ""
 
         return body
+
+
+class PredefinedJobConfigurator(JobConfigurator):
+    """Predefined job configuration manager."""
+
+    @property
+    def validation_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                },
+                "job_setting": {
+                    "type": "object",
+                    "properties": {
+                        "type": {"const": "predefined"},
+                        "template_id": {
+                            "type": "string",
+                        },
+                        "model_config": {
+                            "type": "object",
+                            "minProperties": 1,
+                        },
+                    },
+                    "required": [
+                        "type",
+                        "template_id",
+                    ],
+                    "additionalProperties": False,
+                },
+                "checkpoint": {
+                    "type": "object",
+                    "properties": {
+                        "input": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string"},
+                            },
+                            "required": [
+                                "id",
+                            ],
+                            "additionalProperties": False,
+                        },
+                    },
+                    "additionalProperties": False,
+                },
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                    },
+                    "required": [
+                        "name",
+                    ],
+                    "additionalProperties": False,
+                },
+                "plugin": {
+                    "type": "object",
+                    "properties": {
+                        "wandb": {
+                            "type": "object",
+                            "properties": {"credential_id": {"type": "string"}},
+                            "required": ["credential_id"],
+                        }
+                    },
+                    "additionalProperties": False,
+                },
+            },
+            "required": [
+                "job_setting",
+            ],
+            "additionalProperties": False,
+        }
+
+    def update_config(
+        self,
+        vm: Optional[str] = None,
+        num_devices: Optional[int] = None,
+        name: Optional[str] = None,
+    ) -> None:
+        """In-place update the job configuration.
+
+        Args:
+            vm (Optional[str], optional): VM name. Defaults to None.
+            num_devices (Optional[int], optional): The number of devices. Defaults to None.
+            name (Optional[str], optional): Job name. Defaults to None.
+
+        """
+        if num_devices is not None or vm is not None:
+            secho_error_and_exit("Cannot configure VM settings for the predefined job.")
+        if name is not None:
+            self._config["name"] = name
+
+    def get_job_request_body(self) -> Dict[str, Any]:
+        """Get a request body for the REST API call.
+
+        Returns:
+            Dict[str, Any]: Post-processed job request body.
+
+        """
+        body = deepcopy(self._config)
+
+        data_client: ProjectDataClientService = build_client(ServiceType.PROJECT_DATA)
+
+        if "data" in body:
+            data_name: str = body["data"]["name"]
+            if data_name.startswith("huggingface:"):
+                body["public_source"] = {
+                    "data": {
+                        "provider": "huggingface",
+                        "name": data_name.lstrip("huggingface:"),
+                    }
+                }
+                del body["data"]
+            else:
+                data_id = data_client.get_id_by_name(data_name)
+                if data_id is None:
+                    secho_error_and_exit(f"Dataset ({data_name}) is not found.")
+                body["data"]["id"] = data_id
+                del body["data"]["name"]
+
+        return body
+
+
+def get_configurator(f: IO) -> Union[CustomJobConfigurator, PredefinedJobConfigurator]:
+    try:
+        config: Dict[str, Any] = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        secho_error_and_exit(f"Error occurred while parsing config file: {e!r}")
+
+    type_to_cls = {
+        "custom": CustomJobConfigurator,
+        "predefined": PredefinedJobConfigurator,
+    }
+    cls = type_to_cls[config["job_setting"]["type"]]
+    return cls(config)
