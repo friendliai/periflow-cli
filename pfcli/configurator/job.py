@@ -657,5 +657,10 @@ def get_configurator(f: IO) -> Union[CustomJobConfigurator, PredefinedJobConfigu
         "custom": CustomJobConfigurator,
         "predefined": PredefinedJobConfigurator,
     }
-    cls = type_to_cls[config["job_setting"]["type"]]
+    try:
+        cls = type_to_cls[config["job_setting"]["type"]]
+    except KeyError:
+        secho_error_and_exit(
+            f"Job config file({f.name}) should have 'type' field under 'job_setting'."
+        )
     return cls(config)
