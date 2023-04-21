@@ -429,7 +429,15 @@ class CustomJobConfigurator(JobConfigurator):
                             "type": "object",
                             "properties": {"credential_id": {"type": "string"}},
                             "required": ["credential_id"],
-                        }
+                        },
+                        "slack": {
+                            "type": "object",
+                            "properties": {
+                                "channel": {"type": "string"},
+                                "credential_id": {"type": "string"},
+                            },
+                            "required": ["channel", "credential_id"],
+                        },
                     },
                     "additionalProperties": False,
                 },
@@ -586,7 +594,15 @@ class PredefinedJobConfigurator(JobConfigurator):
                             "type": "object",
                             "properties": {"credential_id": {"type": "string"}},
                             "required": ["credential_id"],
-                        }
+                        },
+                        "slack": {
+                            "type": "object",
+                            "properties": {
+                                "channel": {"type": "string"},
+                                "credential_id": {"type": "string"},
+                            },
+                            "required": ["channel", "credential_id"],
+                        },
                     },
                     "additionalProperties": False,
                 },

@@ -145,6 +145,19 @@ def wandb_config(request: SubRequest) -> str:
 
 
 @pytest.fixture
+def slack_config(request: SubRequest) -> str:
+    return (
+        """plugin:
+  slack:
+    channel: alert
+    credential_id: 1a6cc6d3-2924-4cd1-b9b3-cbf729d68d82
+"""
+        if request.param
+        else ""
+    )
+
+
+@pytest.fixture
 def predefined_config() -> str:
     return """job_setting:
   template_id: e039f470-ed78-47ea-8ca1-e7f3ee1831db
@@ -161,6 +174,7 @@ class TestCustomJobConfig:
     @pytest.mark.parametrize("output_checkpoint_config", [True, False], indirect=True)
     @pytest.mark.parametrize("data_config", [True, False], indirect=True)
     @pytest.mark.parametrize("wandb_config", [True, False], indirect=True)
+    @pytest.mark.parametrize("slack_config", [True, False], indirect=True)
     def test_validation(
         self,
         required_config_custom: str,
@@ -171,6 +185,7 @@ class TestCustomJobConfig:
         output_checkpoint_config: str,
         data_config: str,
         wandb_config: str,
+        slack_config: str,
     ):
         config_yaml_string = merge_yaml_strings(
             [
@@ -182,6 +197,7 @@ class TestCustomJobConfig:
                 output_checkpoint_config,
                 data_config,
                 wandb_config,
+                slack_config,
             ]
         )
         with TemporaryFile(prefix="periflow-cli-unittest", mode="r+") as f:
@@ -198,6 +214,7 @@ class TestPredefinedJobConfig:
     )
     @pytest.mark.parametrize("data_config_predefined", [True, False], indirect=True)
     @pytest.mark.parametrize("wandb_config", [True, False], indirect=True)
+    @pytest.mark.parametrize("slack_config", [True, False], indirect=True)
     def test_validation(
         self,
         required_config_predefined: str,
@@ -205,6 +222,7 @@ class TestPredefinedJobConfig:
         input_checkpoint_config_predefined: str,
         data_config_predefined: str,
         wandb_config: str,
+        slack_config: str,
         predefined_config: str,
     ):
         config_yaml_string = merge_yaml_strings(
@@ -214,6 +232,7 @@ class TestPredefinedJobConfig:
                 input_checkpoint_config_predefined,
                 data_config_predefined,
                 wandb_config,
+                slack_config,
                 predefined_config,
             ]
         )
