@@ -172,11 +172,13 @@ class GpuType(str, Enum):
     A10G = "a10g"
     A100 = "a100"
     T4 = "t4"
+    CPU = "cpu"
 
 
 class EngineType(str, Enum):
     ORCA = "orca"
     TRITON = "triton"
+    MOCK = "mock"
 
 
 class DeploymentType(str, Enum):

@@ -456,7 +456,7 @@ def create(
     ),
     region: str = typer.Option(..., "--region", "-r", help="Region of cloud."),
     engine: Optional[EngineType] = typer.Option(
-        EngineType.ORCA, "--engine", "-e", help="Type of engine(orca or triton)."
+        EngineType.MOCK, "--engine", "-e", help="Type of engine(orca or triton)."
     ),
     config_file: typer.FileText = typer.Option(
         ..., "--config-file", "-f", help="Path to configuration file."
@@ -484,8 +484,8 @@ def create(
     if project_id is None:
         secho_error_and_exit("Failed to identify project... Please set project again.")
 
-    if engine is not EngineType.ORCA:
-        secho_error_and_exit("Only ORCA is supported!")
+    # if engine is not EngineType.ORCA:
+    #     secho_error_and_exit("Only ORCA is supported!")
 
     try:
         UUID(checkpoint_id)
@@ -497,7 +497,7 @@ def create(
     except yaml.YAMLError as e:
         secho_error_and_exit(f"Error occurred while parsing engine config file... {e}")
 
-    total_gpus = 1
+    total_gpus = 0 if engine == EngineType.MOCK else 1
     if engine == EngineType.ORCA:
         try:
             orca_config: dict = config["orca_config"]
@@ -557,6 +557,7 @@ def create(
         "deployment_type": deployment_type,
         "name": deployment_name,
         "vm": {"gpu_type": gpu_type},
+        "inference_server_type": {"name": engine},
         "cloud": cloud,
         "region": region,
         "total_gpus": total_gpus,
