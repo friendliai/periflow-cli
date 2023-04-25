@@ -237,8 +237,12 @@ deployment_table.add_substitution_rule("Terminated", "[bold]Terminated[/bold]")
 deployment_org_table.add_substitution_rule(
     "Initializing", "[bold yellow]Initializing[/bold yellow]"
 )
-deployment_org_table.add_substitution_rule("Healthy", "[bold green]Healthy[/bold green]")
-deployment_org_table.add_substitution_rule("Unhealthy", "[bold red]Unhealthy[/bold red]")
+deployment_org_table.add_substitution_rule(
+    "Healthy", "[bold green]Healthy[/bold green]"
+)
+deployment_org_table.add_substitution_rule(
+    "Unhealthy", "[bold red]Unhealthy[/bold red]"
+)
 deployment_org_table.add_substitution_rule(
     "Stopping", "[bold magenta]Stopping[/bold magenta]"
 )
