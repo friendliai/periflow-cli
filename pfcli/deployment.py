@@ -237,9 +237,6 @@ deployment_table.add_substitution_rule(
 deployment_table.add_substitution_rule("Terminated", "[bold]Terminated[/bold]")
 
 deployment_org_table.add_substitution_rule(
-    "Pending", "[bold yellow]Pending[/bold yellow]"
-)
-deployment_org_table.add_substitution_rule(
     "Initializing", "[bold yellow]Initializing[/bold yellow]"
 )
 deployment_org_table.add_substitution_rule(
