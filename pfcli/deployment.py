@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import ast
-import json
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
@@ -217,21 +216,21 @@ deployment_event_table = TableFormatter(
     headers=["ID", "Type", "Description", "Timestamp"],
 )
 
-deployment_panel.add_substitution_rule("Pending", "[bold yellow]Pending[/bold yellow]")
 deployment_panel.add_substitution_rule(
-    "Initializing", "[bold cyan]Initializing[/bold cyan]"
+    "Initializing", "[bold yellow]Initializing[/bold yellow]"
 )
-deployment_panel.add_substitution_rule("Running", "[bold blue]Running[/bold blue]")
+deployment_panel.add_substitution_rule("Healthy", "[bold green]Healthy[/bold green]")
+deployment_panel.add_substitution_rule("Unhealthy", "[bold red]Unhealthy[/bold red]")
 deployment_panel.add_substitution_rule(
     "Stopping", "[bold magenta]Stopping[/bold magenta]"
 )
 deployment_panel.add_substitution_rule("Terminated", "[bold]Terminated[/bold]")
 
-deployment_table.add_substitution_rule("Pending", "[bold yellow]Pending[/bold yellow]")
 deployment_table.add_substitution_rule(
-    "Initializing", "[bold cyan]Initializing[/bold cyan]"
+    "Initializing", "[bold yellow]Initializing[/bold yellow]"
 )
-deployment_table.add_substitution_rule("Running", "[bold blue]Running[/bold blue]")
+deployment_table.add_substitution_rule("Healthy", "[bold green]Healthy[/bold green]")
+deployment_table.add_substitution_rule("Unhealthy", "[bold red]Unhealthy[/bold red]")
 deployment_table.add_substitution_rule(
     "Stopping", "[bold magenta]Stopping[/bold magenta]"
 )
@@ -241,9 +240,14 @@ deployment_org_table.add_substitution_rule(
     "Pending", "[bold yellow]Pending[/bold yellow]"
 )
 deployment_org_table.add_substitution_rule(
-    "Initializing", "[bold cyan]Initializing[/bold cyan]"
+    "Initializing", "[bold yellow]Initializing[/bold yellow]"
 )
-deployment_org_table.add_substitution_rule("Running", "[bold blue]Running[/bold blue]")
+deployment_org_table.add_substitution_rule(
+    "Healthy", "[bold green]Healthy[/bold green]"
+)
+deployment_org_table.add_substitution_rule(
+    "Unhealthy", "[bold red]Unhealthy[/bold red]"
+)
 deployment_org_table.add_substitution_rule(
     "Stopping", "[bold magenta]Stopping[/bold magenta]"
 )
@@ -293,7 +297,6 @@ def list(
         deployment["vms"] = (
             deployment["vms"][0]["name"] if deployment["vms"] else "None"
         )
-        deployment["status"] = ", ".join(deployment["status"])
         deployment["deployment_id"] = get_deployment_id_from_namespace(
             deployment["namespace"]
         )
@@ -321,7 +324,7 @@ def delete(deployment_id: str = typer.Argument(..., help="ID of deployment to de
     client.delete_deployment(deployment_id)
     typer.secho(
         f"Deleted Deployment ({deployment_id}) successfully.",
-        fg=typer.colors.BLUE,
+        fg=typer.colors.green,
     )
 
 
@@ -348,7 +351,6 @@ def view(
         if deployment["config"]["infrequest_perm_check"]
         else DeploymentSecurityLevel.PUBLIC.value
     )
-    deployment["status"] = ", ".join(deployment["status"])
     deployment["deployment_id"] = get_deployment_id_from_namespace(
         deployment["namespace"]
     )
@@ -584,7 +586,7 @@ def create(
     typer.secho(
         f"Deployment ({deployment_id}) started successfully. Use 'pf deployment view {deployment_id}' to see the deployment details.\n"
         f"Send inference requests to '{deployment['endpoint']}'.",
-        fg=typer.colors.BLUE,
+        fg=typer.colors.green,
     )
 
 
@@ -600,7 +602,7 @@ def update(
     client.update_deployment_scaler(deployment_id=deployment_id, scaler=scaler)
     typer.secho(
         f"Scaler of deployment ({deployment_id}) is updated.\n" f"Scaler: {scaler}.",
-        fg=typer.colors.BLUE,
+        fg=typer.colors.green,
     )
 
 
