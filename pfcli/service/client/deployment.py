@@ -35,7 +35,7 @@ class DeploymentClientService(ClientService[str]):
         self, project_id: str | None, archived: bool
     ) -> Dict[str, Any]:
         params = {"archived": archived}
-        if not project_id:
+        if project_id:
             params["project_id"] = project_id
 
         response = safe_request(self.list, err_prefix="Failed to list deployments.")(

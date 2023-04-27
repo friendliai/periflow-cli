@@ -79,6 +79,7 @@ deployment_panel = PanelFormatter(
         "config.vm.gpu_type",
         "config.total_gpus",
         "start",
+        "end",
         "security_level",
         "config.infrequest_log",
         "endpoint",
@@ -95,6 +96,7 @@ deployment_panel = PanelFormatter(
         "GPU Type",
         "#GPUs",
         "Start",
+        "End",
         "Security Level",
         "Logging",
         "Endpoint",
@@ -336,7 +338,10 @@ def view(
         start = datetime_to_pretty_str(parse(started_at))
     else:
         start = None
+    end = deployment.get("end")
+    end = datetime_to_pretty_str(parse(end)) if end is not None else None
     deployment["start"] = start
+    deployment["end"] = end
     deployment["vms"] = deployment["vms"][0]["name"] if deployment["vms"] else "None"
     deployment["security_level"] = (
         DeploymentSecurityLevel.PROTECTED.value
