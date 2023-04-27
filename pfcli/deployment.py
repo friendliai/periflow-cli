@@ -319,7 +319,7 @@ def delete(deployment_id: str = typer.Argument(..., help="ID of deployment to de
     client.delete_deployment(deployment_id)
     typer.secho(
         f"Deleted Deployment ({deployment_id}) successfully.",
-        fg=typer.colors.green,
+        fg=typer.colors.GREEN,
     )
 
 
@@ -578,7 +578,7 @@ def create(
     typer.secho(
         f"Deployment ({deployment_id}) started successfully. Use 'pf deployment view {deployment_id}' to see the deployment details.\n"
         f"Send inference requests to '{deployment['endpoint']}'.",
-        fg=typer.colors.green,
+        fg=typer.colors.GREEN,
     )
 
 
@@ -594,7 +594,7 @@ def update(
     client.update_deployment_scaler(deployment_id=deployment_id, scaler=scaler)
     typer.secho(
         f"Scaler of deployment ({deployment_id}) is updated.\n" f"Scaler: {scaler}.",
-        fg=typer.colors.green,
+        fg=typer.colors.GREEN,
     )
 
 
