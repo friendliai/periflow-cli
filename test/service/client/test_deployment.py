@@ -88,7 +88,8 @@ def test_deployment_client_list_deployment(
         "deployments": [
             {"id": 1, "config": {"name": "one", "gpu_type": "t4", "total_gpus": 1}},
             {"id": 2, "config": {"name": "two", "gpu_type": "t4", "total_gpus": 2}},
-        ]
+        ],
+        "cursor": "1681093356202075-abcdefgh",
     }
 
     # Success
@@ -99,7 +100,9 @@ def test_deployment_client_list_deployment(
         ),
         json=results,
     )
-    assert deployment_client.list_deployments(project_id=1, archived=False) == results
+    assert deployment_client.list_deployments(
+        project_id=1, archived=False, limit=2, from_oldest=False
+    ) == results["deployments"]
 
     # Failed due to HTTP error
     requests_mock.get(
@@ -110,7 +113,9 @@ def test_deployment_client_list_deployment(
         status_code=404,
     )
     with pytest.raises(typer.Exit):
-        deployment_client.list_deployments(project_id=1, archived=False)
+        deployment_client.list_deployments(
+            project_id=1, archived=False, limit=2, from_oldest=False
+        )
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")

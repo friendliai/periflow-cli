@@ -6,9 +6,35 @@ from __future__ import annotations
 
 from datetime import datetime
 from string import Template
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional
+
+from requests import Response
 
 from pfcli.service.client.base import ClientService, ProjectRequestMixin, safe_request
+
+
+# TODO (ym): Replace this with pfcli.utils.request.paginated_get after unifying schema
+def paginated_get(
+    response_getter: Callable[..., Response],
+    path: Optional[str] = None,
+    limit: int = 20,
+    **params,
+) -> List[Dict[str, Any]]:
+    """Pagination listing"""
+    page_size = min(10, limit)
+    params = {"page_size": page_size, **params}
+    response_dict = response_getter(path=path, params={**params}).json()
+    items = response_dict["deployments"]
+    next_cursor = response_dict["cursor"]
+
+    while next_cursor is not None and len(items) < limit:
+        response_dict = response_getter(
+            path=path, params={**params, "cursor": next_cursor}
+        ).json()
+        items.extend(response_dict["deployments"])
+        next_cursor = response_dict["cursor"]
+
+    return items
 
 
 class DeploymentClientService(ClientService[str]):
@@ -32,16 +58,19 @@ class DeploymentClientService(ClientService[str]):
         )(pk=deployment_id, path=f"scaler", json=scaler)
 
     def list_deployments(
-        self, project_id: str | None, archived: bool
-    ) -> Dict[str, Any]:
-        params = {"archived": archived}
+        self, project_id: str | None, archived: bool, limit: int, from_oldest: bool
+    ) -> List[Dict[str, Any]]:
+        params: Dict[str, Any] = {"archived": archived}
         if project_id:
             params["project_id"] = project_id
+        if from_oldest:
+            params["descending"] = False
 
-        response = safe_request(self.list, err_prefix="Failed to list deployments.")(
-            params=params
+        return paginated_get(
+            safe_request(self.list, err_prefix="Failed to list deployments."),
+            limit=limit,
+            **params,
         )
-        return response.json()
 
     def delete_deployment(self, deployment_id: str) -> None:
         safe_request(self.delete, err_prefix="Failed to delete deployment.")(
