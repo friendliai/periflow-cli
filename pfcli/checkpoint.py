@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 import typer
@@ -81,6 +81,7 @@ panel_formatter = PanelFormatter(
         "iteration",
         "forms[0].form_category",
         "created_at",
+        "status",
     ],
     headers=[
         "ID",
@@ -91,6 +92,7 @@ panel_formatter = PanelFormatter(
         "Iteration",
         "Format",
         "Created At",
+        "Status",
     ],
 )
 json_formatter = JSONFormatter(name="Attributes")
@@ -175,6 +177,24 @@ blender_model_info_panel = PanelFormatter(
 )
 
 
+def determine_checkpoint_status(data: Dict[str, Any]) -> None:
+    """Given the checkpoint info, inplace update the status."""
+    if data["hard_deleted"]:
+        typer.secho(
+            f"This checkpoint is hard-deleted. You cannot use this checkpoint.",
+            fg=typer.colors.RED,
+        )
+        data["status"] = "[bold red]Hard-Deleted"
+    elif data["deleted"]:
+        typer.secho(
+            f"This is a deleted checkpoint. Please restore it if you want use this.",
+            fg=typer.colors.YELLOW,
+        )
+        data["status"] = "[bold yellow]Soft-Deleted"
+    else:
+        data["status"] = "[bold green]Active"
+
+
 @app.command()
 def list(
     category: Optional[CheckpointCategory] = typer.Option(
@@ -213,11 +233,8 @@ def view(
     """Show details of a checkpoint."""
     client: CheckpointClientService = build_client(ServiceType.CHECKPOINT)
     ckpt = client.get_checkpoint(checkpoint_id)
-    if ckpt["deleted"]:
-        secho_error_and_exit(
-            f"Checkpoint({checkpoint_id}) is deleted. Please restore it if you want to see the detail."
-        )
     ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
+    determine_checkpoint_status(ckpt)
 
     panel_formatter.render([ckpt])
     # Only show serving model info when form category is `ORCA`.
@@ -361,6 +378,7 @@ def create(
         attributes=attr,
     )
     ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
+    determine_checkpoint_status(ckpt)
 
     panel_formatter.render([ckpt])
     for file_info in ckpt["forms"][0]["files"]:
@@ -582,6 +600,7 @@ def upload(
     # Visualize the uploaded checkpoint info
     ckpt = client.get_checkpoint(ckpt_id)
     ckpt["created_at"] = datetime_to_pretty_str(parse(ckpt["created_at"]))
+    determine_checkpoint_status(ckpt)
     panel_formatter.render([ckpt])
     # Serving model info.
     if "attributes" in ckpt and "head_size" in ckpt["attributes"]:
