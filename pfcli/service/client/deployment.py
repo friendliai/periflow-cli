@@ -58,7 +58,7 @@ class DeploymentClientService(ClientService[str]):
         )(pk=deployment_id, path=f"scaler", json=scaler)
 
     def list_deployments(
-        self, project_id: str | None, archived: bool, limit: int, from_oldest: bool
+        self, project_id: Optional[str], archived: bool, limit: int, from_oldest: bool
     ) -> List[Dict[str, Any]]:
         params: Dict[str, Any] = {"archived": archived}
         if project_id:

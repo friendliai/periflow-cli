@@ -261,7 +261,8 @@ def list(
     include_terminated: bool = typer.Option(
         False,
         "--include-terminated",
-        help="Show all deployments in my project including terminated deployments",
+        help="Show all deployments in my project including terminated deployments. "
+        "The active deployments are shown above the terminated ones.",
     ),
     limit: int = typer.Option(20, "--limit", help="The number of deployments to view"),
     from_oldest: bool = typer.Option(
