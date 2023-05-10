@@ -261,7 +261,8 @@ def list(
     include_terminated: bool = typer.Option(
         False,
         "--include-terminated",
-        help="Show all deployments in my project including terminated deployments",
+        help="Show all deployments in my project including terminated deployments. "
+        "The active deployments are shown above the terminated ones.",
     ),
     limit: int = typer.Option(20, "--limit", help="The number of deployments to view"),
     from_oldest: bool = typer.Option(
@@ -275,15 +276,21 @@ def list(
         secho_error_and_exit("Failed to identify project... Please set project again.")
 
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
-    deployments = client.list_deployments(str(project_id) if not org else None, False)[
-        "deployments"
-    ]
-    if include_terminated:
+    deployments = client.list_deployments(
+        project_id=str(project_id) if not org else None,
+        archived=False,
+        limit=limit,
+        from_oldest=from_oldest,
+    )
+    num_active_deployments = len(deployments)
+    if include_terminated and limit > num_active_deployments:
         deployments += client.list_deployments(
-            str(project_id) if not org else None, True
-        )["deployments"]
+            project_id=str(project_id) if not org else None,
+            archived=True,
+            limit=limit - num_active_deployments,
+            from_oldest=from_oldest,
+        )
 
-    deployments.sort(key=lambda x: x["start"], reverse=not from_oldest)
     for deployment in deployments:
         started_at = deployment.get("start")
         if started_at is not None:
@@ -298,8 +305,6 @@ def list(
             deployment["namespace"]
         )
 
-    target_deployment_list = deployments[:limit]  # TODO: Use pagnination.
-
     table = deployment_table
     if org:
         table = deployment_org_table
@@ -308,10 +313,10 @@ def list(
         )
         projects = project_client.list_projects()
         project_map = {project["id"]: project["name"] for project in projects}
-        for deployment in target_deployment_list:
+        for deployment in deployments:
             deployment["project_name"] = project_map[deployment["config"]["project_id"]]
 
-    table.render(target_deployment_list)
+    table.render(deployments)
 
 
 @app.command()

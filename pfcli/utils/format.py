@@ -7,7 +7,7 @@ from __future__ import annotations
 import os
 import re
 from datetime import datetime, timedelta, timezone
-from typing import NoReturn
+from typing import NoReturn, Optional
 
 import typer
 
@@ -77,14 +77,14 @@ def datetime_to_simple_string(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def _regex_parse(pattern: str, s: str) -> str | None:
+def _regex_parse(pattern: str, s: str) -> Optional[str]:
     match = re.search(pattern, s)
     if match:
         return match.group()
     return None
 
 
-def extract_datetime_part(s: str) -> str | None:
+def extract_datetime_part(s: str) -> Optional[str]:
     """Extracts the datetime portion in the format "YYYY-MM-DD--HH" from the input string `s`.
 
     Args:
@@ -98,7 +98,7 @@ def extract_datetime_part(s: str) -> str | None:
     return _regex_parse(pattern, s)
 
 
-def extract_deployment_id_part(s: str) -> str | None:
+def extract_deployment_id_part(s: str) -> Optional[str]:
     """Extracts the deployment ID from the input string `s`.
 
     Args:
