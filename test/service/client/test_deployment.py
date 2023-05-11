@@ -100,9 +100,12 @@ def test_deployment_client_list_deployment(
         ),
         json=results,
     )
-    assert deployment_client.list_deployments(
-        project_id=1, archived=False, limit=2, from_oldest=False
-    ) == results["deployments"]
+    assert (
+        deployment_client.list_deployments(
+            project_id=1, archived=False, limit=2, from_oldest=False
+        )
+        == results["deployments"]
+    )
 
     # Failed due to HTTP error
     requests_mock.get(
