@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 from uuid import UUID
@@ -180,14 +181,20 @@ blender_model_info_panel = PanelFormatter(
 def determine_checkpoint_status(data: Dict[str, Any]) -> None:
     """Given the checkpoint info, inplace update the status."""
     if data["hard_deleted"]:
+        hard_deleted_at = datetime.strftime(
+            parse(data["hard_deleted_at"]), "%Y-%m-%d %H:%M:%S"
+        )
         typer.secho(
-            f"This checkpoint is hard-deleted. You cannot use this checkpoint.",
+            f"This checkpoint was hard-deleted at {hard_deleted_at}. "
+            "You cannot use this checkpoint.",
             fg=typer.colors.RED,
         )
         data["status"] = "[bold red]Hard-Deleted"
     elif data["deleted"]:
+        deleted_at = datetime.strftime(parse(data["deleted_at"]), "%Y-%m-%d %H:%M:%S")
         typer.secho(
-            f"This is a deleted checkpoint. Please restore it if you want use this.",
+            f"This checkpoint was deleted at {deleted_at}. "
+            "Please restore it if you want use this.",
             fg=typer.colors.YELLOW,
         )
         data["status"] = "[bold yellow]Soft-Deleted"
