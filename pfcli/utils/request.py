@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, List, Optional
 from requests.exceptions import HTTPError
 from requests.models import Response
 
-from pfcli.utils.url import periflow_discuss_url
+from pfcli.utils.url import discuss_url
 
 DEFAULT_PAGINATION_SIZE = 50
 
@@ -17,11 +17,11 @@ DEFAULT_PAGINATION_SIZE = 50
 def decode_http_err(exc: HTTPError) -> str:
     try:
         if exc.response.status_code == 500:
-            error_str = f"Internal Server Error: Please contact to system admin via {periflow_discuss_url}"
+            error_str = f"Internal Server Error: Please contact to system admin via {discuss_url}"
         elif exc.response.status_code == 404:
             error_str = (
                 "Not Found: The requested resource is not found. Please check it again. "
-                f"If you cannot find out why this error occurs, please visit {periflow_discuss_url}."
+                f"If you cannot find out why this error occurs, please visit {discuss_url}."
             )
         else:
             response = exc.response
