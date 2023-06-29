@@ -496,10 +496,16 @@ def create(
         help="Path to default request config",
     ),
     min_replicas: int = typer.Option(
-        1, "--min-replicas", "-min", help="Number of minimum replicas.",
+        1,
+        "--min-replicas",
+        "-min",
+        help="Number of minimum replicas.",
     ),
     max_replicas: int = typer.Option(
-        1, "--max-replicas", "-max", help="Number of maximum replicas.",
+        1,
+        "--max-replicas",
+        "-max",
+        help="Number of maximum replicas.",
     ),
 ):
     """Create a deployment object by using model checkpoint."""
@@ -608,17 +614,20 @@ def create(
         fg=typer.colors.GREEN,
     )
 
-    deployment_type: DeploymentType = typer.Option(
-        ..., "--type", "-t", help="Type of deployment(dev/prod)."
-    ),
-
+    deployment_type: DeploymentType = (
+        typer.Option(..., "--type", "-t", help="Type of deployment(dev/prod)."),
+    )
 
 
 @app.command()
 def update(
     deployment_id: str = typer.Argument(..., help="Deployment id to update."),
-    min_replicas: int = typer.Option(..., "--min-replicas", "-min", help="Set min_replicas of deployment."),
-    max_replicas: int = typer.Option(..., "--max-replicas", "-max", help="Set max_replicas of deployment."),
+    min_replicas: int = typer.Option(
+        ..., "--min-replicas", "-min", help="Set min_replicas of deployment."
+    ),
+    max_replicas: int = typer.Option(
+        ..., "--max-replicas", "-max", help="Set max_replicas of deployment."
+    ),
 ):
     """[Experimental] Update deployment."""
     if min_replicas > max_replicas:
@@ -626,9 +635,13 @@ def update(
             "Invalid #replicas: min_replicas should be less than max_replicas."
         )
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
-    client.update_deployment_scaler(deployment_id=deployment_id, min_replicas=min_replicas, max_replicas=max_replicas)
+    client.update_deployment_scaler(
+        deployment_id=deployment_id,
+        min_replicas=min_replicas,
+        max_replicas=max_replicas,
+    )
     typer.secho(
-        f"Scaler of deployment ({deployment_id}) is updated.\n" \
+        f"Scaler of deployment ({deployment_id}) is updated.\n"
         f"Set min_replicas to {min_replicas}, max_replicas to {max_replicas}",
         fg=typer.colors.GREEN,
     )

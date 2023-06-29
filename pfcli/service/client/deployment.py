@@ -51,7 +51,9 @@ class DeploymentClientService(ClientService[str]):
         )
         return response.json()
 
-    def update_deployment_scaler(self, deployment_id: str, min_replicas: int, max_replicas: int) -> None:
+    def update_deployment_scaler(
+        self, deployment_id: str, min_replicas: int, max_replicas: int
+    ) -> None:
         json_body = {
             "scaler_config": {
                 "min_replica_count": min_replicas,
