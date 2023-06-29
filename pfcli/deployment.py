@@ -341,7 +341,6 @@ def view(
     """Show details of a deployment."""
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
     deployment = client.get_deployment(deployment_id)
-    typer.secho(deployment)
 
     started_at = deployment.get("start")
     if started_at is not None:

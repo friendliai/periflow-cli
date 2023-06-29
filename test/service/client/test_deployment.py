@@ -190,7 +190,7 @@ def test_deployment_client_update_scaler(
             **deployment_client.url_kwargs, pk=1, path="scaler"
         ),
     )
-    deployment_client.update_deployment_scaler(1, {"max_replica_count": 10})
+    deployment_client.update_deployment_scaler(1, min_replicas=1, max_replicas=2)
 
     # Failed due to HTTP error
     requests_mock.patch(
@@ -200,7 +200,7 @@ def test_deployment_client_update_scaler(
         status_code=404,
     )
     with pytest.raises(typer.Exit):
-        deployment_client.update_deployment_scaler(1, {"max_replica_count": 10})
+        deployment_client.update_deployment_scaler(1, min_replicas=2, max_replicas=1)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
