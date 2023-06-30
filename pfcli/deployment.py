@@ -614,10 +614,6 @@ def create(
         fg=typer.colors.GREEN,
     )
 
-    deployment_type: DeploymentType = (
-        typer.Option(..., "--type", "-t", help="Type of deployment(dev/prod)."),
-    )
-
 
 @app.command()
 def update(
