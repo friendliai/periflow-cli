@@ -75,6 +75,8 @@ deployment_panel = PanelFormatter(
         "config.model_id",
         "status",
         "ready_replicas",
+        "config.scaler_config.min_replica_count",
+        "config.scaler_config.max_replica_count",
         "vms",
         "config.vm.gpu_type",
         "config.total_gpus",
@@ -92,6 +94,8 @@ deployment_panel = PanelFormatter(
         "Ckpt ID",
         "Status",
         "#Ready",
+        "Min Replicas",
+        "Max Replicas",
         "VM Type",
         "GPU Type",
         "#GPUs",
@@ -491,6 +495,18 @@ def create(
         "-drc",
         help="Path to default request config",
     ),
+    min_replicas: int = typer.Option(
+        1,
+        "--min-replicas",
+        "-min",
+        help="Number of minimum replicas.",
+    ),
+    max_replicas: int = typer.Option(
+        1,
+        "--max-replicas",
+        "-max",
+        help="Number of maximum replicas.",
+    ),
 ):
     """Create a deployment object by using model checkpoint."""
     project_id = get_current_project_id()
@@ -504,6 +520,9 @@ def create(
         UUID(checkpoint_id)
     except ValueError:
         secho_error_and_exit("Checkpoint ID should be in UUID format.")
+
+    if min_replicas > max_replicas:
+        secho_error_and_exit("min_replicas should be less than max_replicas.")
 
     try:
         config: Dict[str, Any] = yaml.safe_load(config_file)
@@ -564,6 +583,10 @@ def create(
         file_client.make_misc_file_uploaded(misc_file_id=file_id)
         config["orca_config"]["default_request_config_id"] = file_id
 
+    config["scaler_config"] = {}
+    config["scaler_config"]["min_replica_count"] = min_replicas
+    config["scaler_config"]["max_replica_count"] = max_replicas
+
     request_data = {
         "project_id": str(project_id),
         "model_id": checkpoint_id,
@@ -595,15 +618,27 @@ def create(
 @app.command()
 def update(
     deployment_id: str = typer.Argument(..., help="Deployment id to update."),
-    scaler: str = typer.Argument(
-        ..., callback=ast.literal_eval, help="Scaler for deployment."
+    min_replicas: int = typer.Option(
+        ..., "--min-replicas", "-min", help="Set min_replicas of deployment."
+    ),
+    max_replicas: int = typer.Option(
+        ..., "--max-replicas", "-max", help="Set max_replicas of deployment."
     ),
 ):
     """[Experimental] Update deployment."""
+    if min_replicas > max_replicas:
+        secho_error_and_exit(
+            "Invalid #replicas: min_replicas should be less than max_replicas."
+        )
     client: DeploymentClientService = build_client(ServiceType.DEPLOYMENT)
-    client.update_deployment_scaler(deployment_id=deployment_id, scaler=scaler)
+    client.update_deployment_scaler(
+        deployment_id=deployment_id,
+        min_replicas=min_replicas,
+        max_replicas=max_replicas,
+    )
     typer.secho(
-        f"Scaler of deployment ({deployment_id}) is updated.\n" f"Scaler: {scaler}.",
+        f"Scaler of deployment ({deployment_id}) is updated.\n"
+        f"Set min_replicas to {min_replicas}, max_replicas to {max_replicas}",
         fg=typer.colors.GREEN,
     )
 

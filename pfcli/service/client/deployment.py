@@ -51,11 +51,20 @@ class DeploymentClientService(ClientService[str]):
         )
         return response.json()
 
-    def update_deployment_scaler(self, deployment_id: str, scaler: dict) -> None:
+    def update_deployment_scaler(
+        self, deployment_id: str, min_replicas: int, max_replicas: int
+    ) -> None:
+        json_body = {
+            "scaler_config": {
+                "min_replica_count": min_replicas,
+                "max_replica_count": max_replicas,
+            },
+            "update_msg": f"Set min_replicas to {min_replicas}, max_replicas to {max_replicas}",
+        }
         safe_request(
             self.partial_update,
             err_prefix=f"Failed to update scaler of deployment ({deployment_id}).",
-        )(pk=deployment_id, path=f"scaler", json=scaler)
+        )(pk=deployment_id, path=f"scaler", json=json_body)
 
     def list_deployments(
         self, project_id: Optional[str], archived: bool, limit: int, from_oldest: bool
