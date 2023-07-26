@@ -45,11 +45,6 @@ class GroupClientService(ClientService):
             }
         )
 
-    def accept_invite(self, token: str, key: str) -> None:
-        safe_request(self.post, err_prefix="Invalid code... Please Try again.")(
-            path="invite/confirm", json={"email_token": token, "key": key}
-        )
-
     def get_users(self, pf_group_id: uuid.UUID, username: str) -> List[Dict[str, Any]]:
         get_response_dict = safe_request(
             self.list, err_prefix="Failed to get user in organization"
