@@ -38,11 +38,11 @@ class GroupClientService(ClientService):
 
     def invite_to_group(self, pf_group_id: uuid.UUID, email: str) -> None:
         safe_request(self.post, err_prefix="Failed to send invitation")(
-            path=f"{pf_group_id}/invite/signup", 
+            path=f"{pf_group_id}/invite/signup",
             json={
                 "email": email,
                 "callback_path": "/api/auth/invite/callback",
-            }
+            },
         )
 
     def get_users(self, pf_group_id: uuid.UUID, username: str) -> List[Dict[str, Any]]:
