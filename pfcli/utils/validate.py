@@ -66,10 +66,10 @@ def validate_parallelism_order(value: str) -> List[str]:
 
 
 def validate_cli_version() -> None:
-    installed_version = get_installed_cli_version()
-    if not is_latest_cli_version(installed_version):
-        latest_version = get_latest_cli_version()
-        secho_error_and_exit(
-            f"CLI version({installed_version}) is deprecated. "
-            f"Please install the latest version({latest_version}) with 'pip install {PERIFLOW_CLI_NAME}=={latest_version} -U --no-cache-dir'."
-        )
+    typer.secho(
+        "'periflow-cli' package is now deprecated and no longer maintained. "
+        "Please install 'periflow-client' package to continue receiving updates and support. "
+        "For more info, please visit https://github.com/friendliai/periflow-client.",
+        fg=typer.colors.RED,
+    )
+
