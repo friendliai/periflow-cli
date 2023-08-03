@@ -1,3 +1,7 @@
+# IMPORTANT
+
+This repository has been deprecated and no longer maintained. Please use **[periflow-client](https://github.com/friendliai/periflow-client)** to continue receiving updates and supports. You can install the package with `pip install periflow-client`.
+
 # PeriFlow CLI
 
 <p align="center">
